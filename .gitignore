@@ -2,5 +2,5 @@ _build/
 bin/
 .mooncakes/
 .tornado/
-target/
+target
 node_modules/
