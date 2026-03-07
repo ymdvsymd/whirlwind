@@ -32,6 +32,7 @@ arguments: plan_file:計画ファイル(Markdown)のパス
 2. `PLAN_FILE` の存在を確認する（相対パスの場合は CWD からの解決）
 
 3. リポジトリルートを取得:
+
    ```bash
    git rev-parse --show-toplevel
    ```
@@ -45,23 +46,43 @@ arguments: plan_file:計画ファイル(Markdown)のパス
 計画ファイルの Markdown を以下の規則でパースする。
 
 **重要: 計画ファイルが日本語の場合、英語に翻訳してからタスク化する。**
+
 - `description` 内の Task / Acceptance Criteria / Plan Context はすべて英語で記述する
 - `goal` フィールドも英語にする
 - コード内の識別子やファイルパスはそのまま保持する
 
 #### パース規則
 
-| Markdown 要素 | 変換先 |
-|--------------|--------|
-| `# 見出し` (最初のH1) | プロジェクト名（ディレクトリ名に使用） |
-| `## 見出し` | マイルストーンの `goal` |
-| `## ` がない場合 | ファイル全体を1マイルストーンとして扱う |
-| `- ` / `* ` / `N. ` リスト項目 | タスクの `description` |
-| `### ` サブ見出し | 同一マイルストーン内の Wave 区切り（wave を +1） |
+| Markdown 要素               | 変換先                                                |
+| --------------------------- | ----------------------------------------------------- |
+| `# 見出し` (最初のH1)       | プロジェクト名（ディレクトリ名に使用）                |
+| `## 見出し`                 | マイルストーンの `goal`（後述の goal 構成規則に従う） |
+| `##` がない場合             | ファイル全体を1マイルストーンとして扱う               |
+| `-` / `*` / `N.` リスト項目 | タスクの `description`                                |
+| `###` サブ見出し            | 同一マイルストーン内の Wave 区切り（wave を +1）      |
+
+#### goal の構成規則（Verifier 検証精度向上のため）
+
+`goal` は Verifier エージェントが Wave 検証時に参照する。
+Verifier は `task.description` を受け取らないため、`goal` が検証の主要な文脈となる。
+
+各マイルストーンの `goal` は以下の構成で生成すること。**英語で記述する。**
+
+```
+<## 見出しから取得した目標テキスト（英語）>
+
+---
+## Plan Context
+<計画ファイルの全内容（英語に翻訳）>
+```
+
+- `## 見出し` のテキストを英語に翻訳して先頭に置く
+- `---` セパレータの後に `## Plan Context` として計画ファイル全文の英語訳を付加する
+- これにより Verifier が「タスク結果がプラン全体の意図に合っているか」を正確に判断できる
 
 #### ディレクトリ名の生成
 
-- 最初の `# 見出し` からタイトルを取得（なければファイル名のベースネーム）
+- 最初の `# 見出し` のテキストを**英語に翻訳して**タイトルとする（なければファイル名のベースネーム）
 - 小文字化、スペース/アンダースコアをハイフンに変換、英数字とハイフン以外を除去、50文字以内に切り詰め
 - 出力ディレクトリ: `{repo_root}/.history/{yyyy-mm-dd}_{kebab-case-name}/`
 
@@ -73,16 +94,24 @@ arguments: plan_file:計画ファイル(Markdown)のパス
 #### description の拡張（最重要）
 
 `description` は Builder (Codex/Claude Code) に渡される**唯一の入力**である。
-system_prompt は空、milestone の goal も渡されない。
+system_prompt は空、milestone の goal も Builder には渡されない。
+
+> **Note:** 計画ファイルの全文コンテキストは `goal` と `description` の両方に含まれる。
+>
+> - `goal` 側: Verifier が Wave 検証時に参照（Builder は参照しない）
+> - `description` 側: Builder が実装時に参照（Verifier は参照しない）
+> - 将来 Tornado 本体が修正され Builder に goal が渡されるようになれば、description 側の Plan Context は削除可能
 
 各タスクの `description` は以下の3セクションで構成すること。**すべて英語で記述する**（計画ファイルが日本語の場合は翻訳する）。
 
 ##### 1. Task（実装指示）
+
 - 曖昧な項目は具体的な実装指示に書き換える
 - ファイルパス、期待する動作、実装の詳細を含める
 - Claude Code に直接指示するのと同じ粒度で書く
 
 ##### 2. Acceptance Criteria（受け入れ条件）
+
 Builder エージェントが**タスク完了後に自分自身で検証可能**な条件を必ず含める。
 条件は以下の3種類のみ。曖昧な条件は禁止。
 
@@ -91,6 +120,7 @@ Builder エージェントが**タスク完了後に自分自身で検証可能*
 - **Command**: `- [ ] Run: <command> → <expected result>`
 
 ##### 3. Plan Context
+
 計画ファイルの全内容を**英語に翻訳して**埋め込む。
 
 ##### description テンプレート
@@ -122,7 +152,7 @@ Builder エージェントが**タスク完了後に自分自身で検証可能*
   "milestones": [
     {
       "id": "m1",
-      "goal": "Goal text from ## heading (in English)",
+      "goal": "Goal text from ## heading (in English)\n\n---\n## Plan Context\n<full plan file content, translated to English>",
       "status": "pending",
       "current_wave": 0,
       "tasks": [
@@ -174,6 +204,7 @@ Builder エージェントが**タスク完了後に自分自身で検証可能*
 ```
 
 注意:
+
 - Planner は `"kind": "mock"` 固定（バリデーション通過用。tasks が事前定義済みなので実行されない）
 - Builder の kind は `DEV_KIND`（デフォルト: `codex`）
 - Verifier の kind は `VERIFIER_KIND`（デフォルト: `claude-code`）
@@ -185,6 +216,7 @@ Builder エージェントが**タスク完了後に自分自身で検証可能*
 1. **JSON バリデーション**: 生成した両ファイルを `jq .` で検証
 
 2. **サマリー表示**: 以下の情報を表示する
+
    ```
    === Ralph Start ===
    Plan file:    <plan-file.md>
@@ -195,12 +227,13 @@ Builder エージェントが**タスク完了後に自分自身で検証可能*
    Verifier:     <VERIFIER_KIND>
 
    Milestones:
-     m1: <goal> (N tasks, M waves)
-     m2: <goal> (N tasks, M waves)
+     m1: <goal の先頭行（見出しテキスト）> (N tasks, M waves)
+     m2: <goal の先頭行（見出しテキスト）> (N tasks, M waves)
      ...
    ```
 
 3. **tornado 起動**:
+
    ```bash
    npx -y @mizchi/tornado --ralph --config=<tornado.json の絶対パス> --lang=ja
    ```
