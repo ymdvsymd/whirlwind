@@ -179,9 +179,9 @@ rm <output_dir>/milestones-skeleton.json
   "review_dir": ".history/{date}_{name}",
   "max_rework_attempts": 3,
   "agents": [
-    { "id": "planner",  "kind": "mock",             "role": "planner",  "max_iterations": 1 },  // mock固定（tasks事前定義済み）
-    { "id": "builder",  "kind": "<DEV_KIND>",       "role": "dev",      "max_iterations": 10 }, // デフォルト: codex
-    { "id": "verifier", "kind": "<VERIFIER_KIND>",  "role": "verifier", "max_iterations": 5 }   // デフォルト: claude-code
+    { "id": "planner",  "kind": "mock",            "role": "planner",  "max_iterations": 1 },  // mock固定（tasks事前定義済み）
+    { "id": "builder",  "kind": "<DEV_KIND>",      "role": "dev",      "max_iterations": 10 }, // デフォルト: codex
+    { "id": "verifier", "kind": "<VERIFIER_KIND>", "role": "verifier", "max_iterations": 5 }   // デフォルト: claude-code
   ]
 }
 ```
