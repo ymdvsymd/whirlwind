@@ -15,7 +15,7 @@ arguments: plan_file:計画ファイル(Markdown)のパス
 
 ## 実行手順
 
-以下の Phase 1〜4 を**必ず順番に**実行すること。
+以下の Phase 1〜5 を**必ず順番に**実行すること。
 
 ---
 
@@ -180,8 +180,8 @@ rm <output_dir>/milestones-skeleton.json
   "max_rework_attempts": 3,
   "agents": [
     { "id": "planner",  "kind": "mock",             "role": "planner",  "max_iterations": 1 },  // mock固定（tasks事前定義済み）
-    { "id": "builder",  "kind": "<DEV_KIND>",        "role": "dev",      "max_iterations": 10 }, // デフォルト: codex
-    { "id": "verifier", "kind": "<VERIFIER_KIND>",   "role": "verifier", "max_iterations": 5 }   // デフォルト: claude-code
+    { "id": "builder",  "kind": "<DEV_KIND>",       "role": "dev",      "max_iterations": 10 }, // デフォルト: codex
+    { "id": "verifier", "kind": "<VERIFIER_KIND>",  "role": "verifier", "max_iterations": 5 }   // デフォルト: claude-code
   ]
 }
 ```
@@ -194,11 +194,28 @@ rm <output_dir>/milestones-skeleton.json
 
 2. **サマリー表示**: Plan file, Output dir, Milestones数, Tasks数, Builder/Verifier種別, 各マイルストーンの goal先頭行・タスク数・Wave数を表示
 
-3. **tornado 起動**:
+3. **tornado 起動**（バックグラウンド）:
+
+   Bash ツールで以下のコマンドを `run_in_background: true` で実行する:
 
    ```bash
-   npx -y @mizchi/tornado --ralph --config=<tornado.json の絶対パス> --lang=ja
+   npx -y @ymdvsymd/tornado@latest --ralph --config=<tornado.json の絶対パス> --lang=ja
    ```
+
+   起動後、ユーザーにタスク ID を共有する。
+
+---
+
+### Phase 5: 進捗モニタリング
+
+tornado がバックグラウンドで実行中の間、`/loop` スキルを使って **1 分間隔** で進捗を監視する。
+
+1. `/loop 1m` を起動し、以下のプロンプトを実行する:
+   - `TaskOutput` でバックグラウンドの tornado タスク出力を取得
+   - 最新の出力から進捗状況（現在のマイルストーン、Wave、タスク状態）を要約してユーザーに共有
+   - タスクが完了していたら `/loop` を停止
+
+2. tornado 完了通知を受けたら最終結果を報告する。
 
 ---
 
