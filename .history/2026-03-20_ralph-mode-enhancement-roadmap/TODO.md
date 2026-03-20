@@ -21,42 +21,6 @@
 
 ---
 
-### 2. Verifier 3観点検証の強化
-
-**問題**: VerifierAgent は曖昧な単一プロンプト（"Check code quality, correctness, and alignment"）を使用。一方、通常モードの ReviewAgent は構造化された3観点評価（CodeQuality / Performance / Security）を実施している。
-
-**調査結果**:
-
-| 項目 | ReviewAgent (通常モード) | VerifierAgent (Ralph モード) |
-|------|------------------------|----------------------------|
-| LLM 呼び出し | 3回/タスク | 1回/Wave |
-| 観点分離 | 明示的（各観点に専用プロンプト） | なし（汎用プロンプト） |
-| フィードバックタグ | `[CodeQuality]`, `[Performance]`, `[Security]` | なし |
-| スコープ | 単一タスク | Wave 全体（マイルストーン認識あり） |
-
-**3つの選択肢**:
-
-| アプローチ | LLM 回数 | コスト | 観点カバレッジ |
-|-----------|---------|--------|--------------|
-| 現状（曖昧な単一プロンプト） | 1回/Wave | 1x | 暗黙的 |
-| **Option 1: プロンプト強化（推奨）** | **1回/Wave** | **1x** | **明示的** |
-| Option 2: フル3観点（3回呼び出し） | 3回/Wave | 3x | 最大 |
-
-**推奨: Option 1** — 1回の LLM 呼び出しの中で3観点を明示指示。
-
-**実装**:
-- `src/ralph/verifier.mbt` — `build_verify_prompt()` を更新:
-  - CodeQuality（可読性、命名、エラーハンドリング、テストカバレッジ）
-  - Performance（計算量、不要なアロケーション、N+1クエリ、キャッシング）
-  - Security（入力バリデーション、インジェクション、認証/認可、機密データ露出）
-  - フィードバック形式: `task_id: [Security] SQL injection check missing`
-- `src/ralph/verifier_test.mbt` — 観点タグ付きフィードバックのパーステスト追加
-- `rework_tasks()` は変更不要 — 観点タグはフィードバック文中に埋め込まれ、`strip_task_feedback_prefix()` はそのまま動作
-
-**効果測定**: 導入後、フィードバックの観点タグ出現率が30%未満なら Option 2 へエスカレーション。
-
----
-
 ## 優先度: MEDIUM
 
 ### 3. Ralph resume 機能（current_wave の活用）
@@ -137,9 +101,9 @@
 
 ## 参考: Dead Code / クリーンアップ候補
 
-| 対象 | 場所 | 状態 |
-|------|------|------|
-| `plan_doc` フィールド (RalphTask) | `types.mbt` | どこからも読まれていない — 削除 or 実装 |
-| `MockBackend::failing()` | `agent/mock.mbt:72` | 未使用 — `FailingMockBackend` が代替 |
-| `Orchestrator::run()` | `orchestrator/orchestrator.mbt` | ランタイムから呼ばれていない — ライブラリ API として文書化 or 削除 |
-| `spawn/` モジュール | `src/spawn/` | 他モジュールからインポートなし — 将来の非同期基盤 |
+| 対象                              | 場所                            | 状態                                                               |
+| --------------------------------- | ------------------------------- | ------------------------------------------------------------------ |
+| `plan_doc` フィールド (RalphTask) | `types.mbt`                     | どこからも読まれていない — 削除 or 実装                            |
+| `MockBackend::failing()`          | `agent/mock.mbt:72`             | 未使用 — `FailingMockBackend` が代替                               |
+| `Orchestrator::run()`             | `orchestrator/orchestrator.mbt` | ランタイムから呼ばれていない — ライブラリ API として文書化 or 削除 |
+| `spawn/` モジュール               | `src/spawn/`                    | 他モジュールからインポートなし — 将来の非同期基盤                  |

@@ -30,10 +30,22 @@ test "VerifierAgent::parse_verdict milestone_failed" {
   }
 }
 
-test "VerifierAgent::parse_verdict defaults to approved" {
+test "VerifierAgent::parse_verdict rejects unrecognized output" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.parse_verdict("Everything looks fine")
-  inspect(verdict, content="Approved")
+  match verdict {
+    MilestoneFailed(reason) => assert_true(reason.contains("expected verdict tags"))
+    _ => panic()
+  }
+}
+
+test "VerifierAgent::parse_verdict rejects empty output" {
+  let v = @ralph.VerifierAgent::new()
+  let verdict = v.parse_verdict("")
+  match verdict {
+    MilestoneFailed(_) => ()
+    _ => panic()
+  }
 }
 
 test "VerifierAgent::build_perspective_prompt includes code quality checklist" {

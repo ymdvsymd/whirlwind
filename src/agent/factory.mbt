@@ -15,7 +15,11 @@ pub fn create_backend(config : @types.AgentConfig) -> BoxedBackend {
       let model = config.model.unwrap_or(@llm.default_anthropic_model)
       ApiBackend::anthropic(api_key, model~).boxed()
     }
-    Mock => MockBackend::new().boxed()
+    Mock =>
+      match config.role {
+        Verifier => MockBackend::new(default_response="<wave_approved>").boxed()
+        _ => MockBackend::new().boxed()
+      }
   }
 }
 

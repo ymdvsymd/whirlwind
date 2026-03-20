@@ -124,8 +124,8 @@ pub fn VerifierAgent::parse_verdict(
   if output.contains("<wave_approved>") {
     return Approved
   }
-  // Default to approved if no tags found
-  Approved
+  // No recognized tags found — treat as verification failure
+  MilestoneFailed("Verifier output did not contain expected verdict tags")
 }
 
 ///| Run the verifier agent
