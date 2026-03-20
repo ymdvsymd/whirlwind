@@ -221,6 +221,14 @@ LoadingMilestones -> Planning(m_id) -> ExecutingWave(m_id, wave)
   -> MilestoneComplete(m_id) -> AllComplete
 ```
 
+**フィードバックルーティング (v0.6.0):**
+
+`rework_tasks()` はターゲット指定のフィードバック配信を実装:
+- `strip_task_feedback_prefix()`: タスクIDプレフィクス除去
+- フィードバック項目がタスクIDにマッチ → ターゲット指定モード
+- マッチなし → ブロードキャストモード（全Done タスクにフォールバック）
+- リワークプロンプト: `task.description + "\n\nFeedback from verifier:\n" + feedback_str`
+
 ### 6.2 PlannerAgent (planner.mbt)
 
 マイルストーン -> Waveごとのタスクリスト生成

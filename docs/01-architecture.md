@@ -5,7 +5,7 @@
 ### 1.1 全モジュール構成（12パッケージ）
 
 ```
-mizchi/tornado (root)
+mizchi/tornado (root)  ※ npm は @ymdvsymd/tornado v0.6.0
   types          (基本型定義、no import)
   config         (-> types)
   cli            (-> types, config)
@@ -154,25 +154,76 @@ pub struct OrchestratorCallbacks {
 
 ### 4.4 ステートマシン
 
-**通常モード (Heartbeat Loop):**
-```
-run_repl() の while true ループ:
-  run_dev(task) -> [skip review or run_review()] -> build_next_task() -> continue
-  run_review() 内部:
-    review -> Approved / NeedsChanges / Rejected
-    NeedsChanges -> while cycle < max_cycles { run_dev(feedback) -> re-review }
+**通常モード (Heartbeat Loop) — `run_repl()`:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Boot
+    Boot --> LoadSession : セッションあり
+    Boot --> WaitTask : セッションなし
+    LoadSession --> WaitTask : 拒否 / なし
+    LoadSession --> Dev : 復元
+
+    WaitTask --> Dev : task入力
+
+    Dev --> SkipReview : dev_since_review < review_interval
+    Dev --> Review : dev_since_review >= review_interval
+    Dev --> SkipReview : dev出力が空
+
+    SkipReview --> Dev : build_next_task()
+
+    Review --> Approved : review OK
+    Review --> Rework : NeedsChanges
+    Rework --> Review : cycle < max_cycles
+    Review --> Rejected : cycle >= max_cycles
+
+    Approved --> Dev : build_next_task()
+    Rejected --> Dev : build_next_task()
+
+    note right of Dev : check_interrupt() で<br/>ユーザー割り込み可能
 ```
 
-> **Note:** `Orchestrator::run()` は 6 フェーズ制御
-> (Decomposing → Assigning → Executing → Reviewing → Iterating → Finalizing) を
-> 定義しているが、現在の `run_repl()` からは**呼ばれていない**。
+**Ralph Loop — `run_ralph()`:**
 
-**Ralph Loop フェーズ:**
+```mermaid
+stateDiagram-v2
+    [*] --> LoadingMilestones
+    LoadingMilestones --> Planning : milestone取得
+
+    Planning --> ExecutingWave : wave生成
+    ExecutingWave --> Verifying : wave完了
+
+    Verifying --> MilestoneComplete : 検証OK
+    Verifying --> Reworking : 要修正
+
+    Reworking --> Verifying : 再検証
+
+    MilestoneComplete --> Planning : 次のmilestone
+    MilestoneComplete --> AllComplete : 全milestone完了
+    AllComplete --> [*]
 ```
-LoadingMilestones -> Planning(m_id) -> ExecutingWave(m_id, wave)
-  -> Verifying(m_id, wave) -> (Reworking -> Verifying)*
-  -> MilestoneComplete(m_id) -> AllComplete
+
+**Orchestrator モード — `Orchestrator::run()` (未使用):**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Decomposing
+    Decomposing --> Assigning : タスク分解完了
+    Assigning --> Executing : エージェント割当完了
+    Executing --> Reviewing : 全タスク実行完了
+    Executing --> Finalizing : レビューなし
+
+    Reviewing --> Finalizing : 全タスクApproved
+    Reviewing --> Iterating : NeedsChanges
+
+    Iterating --> Reviewing : 再レビュー
+    Reviewing --> Finalizing : cycle >= max_cycles
+
+    Finalizing --> [*]
 ```
+
+> **Note:** `Orchestrator::run()` は現在どのエントリーポイントからも呼ばれていない。
+> `run_repl()` / `run_ralph()` とは独立した3つ目のオーケストレーション設計である。
 
 ### 4.5 代数的データ型による型安全性
 
@@ -263,3 +314,27 @@ ReviewAgent::review(task, backend)
 | 新Ralphフェーズ | RalphPhase enum + ralph_loop.mbt |
 | 新LLMプロバイダ | mizchi/llm に実装追加 (ApiBackend自動対応) |
 | 新UI画面 | views.mbt + state.mbt |
+
+---
+
+## 7. アーキテクチャ上の考慮点
+
+### 7.1 cmd/app/main.mbt の集中
+
+`main.mbt` は約1,380行で、REPL ループ、セッション永続化、タスクビルダー、レビュー実行、
+git コンテキスト収集を単一ファイルに含む。`run_repl()` 関数だけで約400行。
+将来的に `session/`, `context/`, `prompt_builder/` への分解が検討できる。
+
+### 7.2 spawn/ モジュールの未使用
+
+`src/spawn/` の非同期 `spawn_streaming` インフラは他モジュールからインポートされていない。
+エージェントシステムは `sdk_js.mbt` の同期 `spawnSync` を使用。
+将来的な非同期実行（Wave 並列化等）のための基盤として残されている。
+
+### 7.3 orchestrator/ と ralph/ の重複
+
+両モジュールがタスク実行とリワークループを異なるアプローチで実装:
+- `orchestrator/`: `TaskManager` + `ReviewAgent`（3観点レビュー）
+- `ralph/`: `MilestoneManager` + `VerifierAgent`（Wave 単位検証）
+
+実行・リワークのプリミティブを共有する余地がある。

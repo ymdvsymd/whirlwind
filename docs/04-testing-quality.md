@@ -2,10 +2,10 @@
 
 ## エグゼクティブサマリー
 
-- **テストカバレッジ**: 3,420行 (テスト) vs 5,745行 (実装) = **59.5%**
 - **テストファイル数**: 16 (MoonBit 14 + TypeScript 2)
-- **テストケース総数**: 約165テストケース
-- **品質スコア**: 8.2/10
+- **テストケース総数**: 約216テストケース
+- **品質スコア**: 8.5/10
+- **最終更新**: 2026-03-20 (v0.6.0)
 
 ---
 
@@ -15,19 +15,19 @@
 
 | ファイル | 行数 | ケース数 | テスト対象 |
 |---------|------|---------|----------|
-| src/agent/agent_test.mbt | 516 | 32 | MockBackend, イベント解析, OutputLineBuffer |
-| src/cli/cli_test.mbt | 402 | 25 | CLI引数パース, フラグ解析 |
-| src/review/review_test.mbt | 345 | 27 | 3観点レビュー, 評決パース, 多言語 |
-| src/orchestrator/orchestrator_test.mbt | 365 | 13 | フェーズ遷移, イテレーション |
-| src/ralph/ralph_loop_test.mbt | 310 | 8 | 自律ループ全体フロー |
-| src/ralph/milestone_test.mbt | 205 | 15 | マイルストーン管理, JSON永続化 |
+| src/agent/agent_test.mbt | 516 | 30 | MockBackend, イベント解析, OutputLineBuffer |
+| src/cli/cli_test.mbt | 402 | 19 | CLI引数パース, フラグ解析 |
+| src/review/review_test.mbt | 345 | 26 | 3観点レビュー, 評決パース, 多言語, バックエンド障害伝播 |
+| src/orchestrator/orchestrator_test.mbt | 365 | 10 | フェーズ遷移, イテレーション, reworkデータ保持 |
+| src/ralph/ralph_loop_test.mbt | ~550 | 12 | 自律ループ, フィードバックルーティング(5テスト追加), reworkプロンプト検証 |
+| src/ralph/milestone_test.mbt | 205 | 13 | マイルストーン管理, JSON永続化 |
 | src/config/config_test.mbt | 279 | 22 | 設定パース, バリデーション |
-| src/display/display_test.mbt | 167 | 15 | ツール表示, テキスト整形 |
-| src/types/types_test.mbt | 155 | 17 | 型定義, enum to_string |
-| src/tui/tui_test.mbt | 143 | 10 | TUI状態, コールバック |
+| src/display/display_test.mbt | 167 | 22 | ツール表示, テキスト整形 |
+| src/types/types_test.mbt | 155 | 14 | 型定義, enum to_string |
+| src/tui/tui_test.mbt | 143 | 9 | TUI状態, コールバック |
 | src/spawn/line_buffer_test.mbt | 103 | 10 | 行バッファ, CRLF |
-| src/ralph/verifier_test.mbt | 95 | 8 | 検証結果パース |
-| src/task/task_test.mbt | 89 | 9 | タスク管理, テキストパース |
+| src/ralph/verifier_test.mbt | 95 | 7 | 検証結果パース |
+| src/task/task_test.mbt | 89 | 8 | タスク管理, テキストパース |
 | src/ralph/planner_test.mbt | 64 | 4 | 計画生成, WAVEパース |
 
 ### TypeScript テスト (2ファイル, ~140行)
@@ -35,7 +35,7 @@
 | ファイル | 行数 | ケース数 | テスト対象 |
 |---------|------|---------|----------|
 | sdk/agent-runner.test.mjs | 70 | 2 | アダプター実行フロー |
-| sdk/codex-normalizer.test.mjs | 70 | 3+ | Codex->Claude正規化 |
+| sdk/codex-normalizer.test.mjs | 70 | 8 | Codex->Claude正規化（全 normalizer 関数） |
 
 ---
 
@@ -103,7 +103,7 @@ struct EventCollector {
 | spawn (line_buffer) | 高 | A | エッジケース豊富 |
 | review | 中-高 | A- | 3観点 + マージ + 多言語 |
 | orchestrator | 中-高 | A- | フェーズ遷移 + 失敗回復 |
-| ralph | 中-高 | B+ | 状態マシン + rework cycle |
+| ralph | 高 | A- | 状態マシン + フィードバックルーティング + rework cycle |
 | types | 中 | B | enum show のみ |
 | tui | 中 | B | 状態 + コールバック (render詳細不足) |
 | sdk | 低-中 | C+ | アダプター基本フローのみ |
@@ -114,7 +114,9 @@ struct EventCollector {
 2. **実際のSDK実行**: SubprocessBackend の実動作
 3. **ファイルI/O**: review markdown生成、milestone JSON永続化
 4. **大規模シナリオ**: 100+ タスク、並列エージェント
-5. **TUIレンダリング詳細**: VNode描画の実際の出力
+5. **TUIレンダリング詳細**: VNode描画の実際の出力（smoke test のみ: `output.length() > 0`）
+6. **SDKアダプター**: claude-adapter.mjs, codex-adapter.mjs にテストファイルなし
+7. **cmd/app/main.mbt**: アプリケーションエントリーポイントにテストなし
 
 ---
 
@@ -156,11 +158,11 @@ struct EventCollector {
    files: [bin/, sdk/] を npm に公開
 ```
 
-### バージョン不一致
+### バージョン情報
 
-- `moon.mod.json`: 0.5.0
-- `package.json`: 0.4.0
-- 注: MoonBitパッケージとnpmパッケージのバージョンが異なる
+- `moon.mod.json`: 0.5.0 (MoonBit パッケージ)
+- `package.json`: 0.6.0 (npm パッケージ: @ymdvsymd/tornado)
+- 注: MoonBit パッケージと npm パッケージのバージョンが異なる
 
 ---
 
@@ -200,17 +202,17 @@ node_modules/     # NPM dependencies
 
 ### 優先度: 高
 
-1. **SDK統合テスト追加**: Claude/Codex adapter の実動作テスト
-2. **バージョン同期**: moon.mod.json と package.json の一致
+1. **Verifier サイレント承認バグ修正**: バックエンド障害時に `Approved` を返す問題（`verifier.mbt:107`）。Review モジュールでは修正済みの同一パターン。1行修正 + 1テスト追加で対応可能。
+2. **SDK統合テスト追加**: Claude/Codex adapter の実動作テスト
 
 ### 優先度: 中
 
-3. **MockBackend拡張**: regex/glob パターンマッチング
-4. **TUIレンダリングテスト**: render_app の出力検証
-5. **エラー伝播テスト**: Backend失敗 -> Review拒否の一貫性
+3. **TUIレンダリングテスト**: render_app の出力検証（現在 `length() > 0` のみ）
+4. **CI/CDパイプライン**: GitHub Actions で `just test` を自動実行
+5. **dead code 整理**: `MockBackend::failing()` が未使用（`FailingMockBackend` が代替）
 
 ### 優先度: 低
 
 6. **大規模シナリオテスト**: 100+ タスク
 7. **パフォーマンステスト**: ストリーミング処理のスループット
-8. **テスト構造ドキュメント**: Mock戦略ガイド
+8. **リンター導入**: ESLint/Prettier for SDK TypeScript
