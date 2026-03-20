@@ -1,5 +1,5 @@
 ---
-name: ralph-start
+name: ralph-tornado
 description: >
   Markdown計画ファイルをtornado Ralphモードの入力に変換し、バックグラウンドで起動・監視するオーケストレーター。
   計画 → milestones.json + tornado.json 変換、起動、進捗監視を実行。
@@ -7,12 +7,12 @@ description: >
 arguments: plan_file:計画ファイル(Markdown)のパス
 ---
 
-# ralph-start: 計画ファイル → tornado Ralph モード起動
+# ralph-tornado: 計画ファイル → tornado Ralph モード起動
 
 ## 引数
 
 ```
-/ralph-start <plan-file.md> [--dev=<kind>] [--verifier=<kind>]
+/ralph-tornado <plan-file.md> [--dev=<kind>] [--verifier=<kind>]
 ```
 
 `$ARGUMENTS` の内容: `$ARGUMENTS`
@@ -87,7 +87,7 @@ Markdown を **`references/parse-rules.md`** の規則でパースする。
 スクリプトで Verification Scope 指示と Plan Context を注入する:
 
 ```bash
-node .claude/skills/ralph-start/scripts/inject-plan-context.js <output_dir>
+node .claude/skills/ralph-tornado/scripts/inject-plan-context.js <output_dir>
 ```
 
 > このスクリプトが以下を自動処理:
