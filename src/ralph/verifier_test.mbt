@@ -36,23 +36,6 @@ test "VerifierAgent::parse_verdict defaults to approved" {
   inspect(verdict, content="Approved")
 }
 
-test "VerifierAgent::build_verify_prompt includes milestone and results" {
-  let v = @ralph.VerifierAgent::new()
-  let milestone : @types.Milestone = {
-    id: "m1",
-    goal: "Build auth",
-    status: @types.MilestoneStatus::InProgress,
-    tasks: [],
-    current_wave: 0,
-  }
-  let results : Array[(String, String)] = [("m1-t1", "Created schema file")]
-  let prompt = v.build_verify_prompt(milestone, 0, results, "")
-  assert_true(prompt.contains("m1"))
-  assert_true(prompt.contains("Build auth"))
-  assert_true(prompt.contains("Created schema file"))
-  assert_true(prompt.contains("wave_approved"))
-}
-
 test "VerifierAgent::build_perspective_prompt includes code quality checklist" {
   let v = @ralph.VerifierAgent::new()
   let milestone : @types.Milestone = {
@@ -107,6 +90,21 @@ test "VerifierAgent::build_perspective_prompt goal alignment includes milestone 
   let prompt = v.build_perspective_prompt(GoalAlignment, milestone, 0, [], "")
   assert_true(prompt.contains("Ship milestone goal text"))
   assert_true(prompt.contains("<wave_approved>"))
+}
+
+test "VerifierAgent::build_perspective_prompt includes scope instructions" {
+  let v = @ralph.VerifierAgent::new()
+  let milestone : @types.Milestone = {
+    id: "m1",
+    goal: "Build auth",
+    status: @types.MilestoneStatus::InProgress,
+    tasks: [],
+    current_wave: 0,
+  }
+  let prompt = v.build_perspective_prompt(GoalAlignment, milestone, 0, [], "")
+  assert_true(prompt.contains("## Instructions"))
+  assert_true(prompt.contains("Verify ONLY the tasks"))
+  assert_true(prompt.contains("other waves"))
 }
 
 test "VerifierAgent::merge_verdicts returns approved when all perspectives approve" {

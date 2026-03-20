@@ -19,57 +19,6 @@ pub fn VerifierAgent::new(
   { agent_id, lang }
 }
 
-///| Build the verification prompt
-pub fn VerifierAgent::build_verify_prompt(
-  self : VerifierAgent,
-  milestone : @types.Milestone,
-  wave : Int,
-  wave_results : Array[(String, String)],
-  project_context : String,
-) -> String {
-  let lang_instruction = if self.lang == "ja" {
-    "Respond in Japanese."
-  } else {
-    "Respond in English."
-  }
-  let buf = StringBuilder::new()
-  buf.write_string("You are a Verifier agent. ")
-  buf.write_string(lang_instruction)
-  buf.write_string("\n\n")
-  buf.write_string("## Milestone\n")
-  buf.write_string("ID: ")
-  buf.write_string(milestone.id)
-  buf.write_string("\nGoal: ")
-  buf.write_string(milestone.goal)
-  buf.write_string("\nWave: ")
-  buf.write_string(wave.to_string())
-  buf.write_string("\n\n")
-  if not(project_context.is_empty()) {
-    buf.write_string("## Project Context\n")
-    buf.write_string(project_context)
-    buf.write_string("\n\n")
-  }
-  buf.write_string("## Wave Results\n")
-  for pair in wave_results {
-    buf.write_string("### Task: ")
-    buf.write_string(pair.0)
-    buf.write_string("\n")
-    buf.write_string(pair.1)
-    buf.write_string("\n\n")
-  }
-  buf.write_string(
-    "## Instructions\n" +
-    "Verify that all tasks in this wave were completed correctly.\n" +
-    "Check code quality, correctness, and alignment with the milestone goal.\n\n" +
-    "## Output Format\n" +
-    "Use exactly one of these tags:\n" +
-    "- <wave_approved> if all tasks pass verification\n" +
-    "- <needs_rework>task_id: reason</needs_rework> for tasks that need fixes\n" +
-    "- <milestone_failed>reason</milestone_failed> if the milestone cannot be achieved\n",
-  )
-  buf.to_string()
-}
-
 fn goal_alignment_checklist(lang : String) -> String {
   let buf = StringBuilder::new()
   if lang == "ja" {
@@ -77,14 +26,18 @@ fn goal_alignment_checklist(lang : String) -> String {
     buf.write_string("以下の観点で評価してください:\n")
     buf.write_string("- 出力はマイルストーンで定義された目標を達成しているか\n")
     buf.write_string("- すべてのタスク出力に一貫性があるか\n")
-    buf.write_string("- 不足している成果物や未完了の実装がないか\n")
+    buf.write_string(
+      "- 当該 Wave のタスクに不足している成果物や未完了の実装がないか（他 Wave の作業は検証対象外）\n",
+    )
     buf.write_string("- 全体の方向性がプロジェクトの意図と一致しているか\n")
   } else {
     buf.write_string("## Review Focus: Goal Alignment\n")
     buf.write_string("Evaluate the following aspects:\n")
     buf.write_string("- Does the output achieve the stated milestone goal?\n")
     buf.write_string("- Are all task outputs consistent with each other?\n")
-    buf.write_string("- Are there missing deliverables or incomplete implementations?\n")
+    buf.write_string(
+      "- Are there missing deliverables or incomplete implementations for this wave's tasks? (Work from other waves is out of scope)\n",
+    )
     buf.write_string("- Does the overall direction match the project's intent?\n")
   }
   buf.to_string()
@@ -134,6 +87,13 @@ pub fn VerifierAgent::build_perspective_prompt(
     Security => buf.write_string(@prompts.security_checklist(self.lang))
     GoalAlignment => buf.write_string(goal_alignment_checklist(self.lang))
   }
+  buf.write_string(
+    "\n## Instructions\n" +
+    "Verify ONLY the tasks listed in the Wave Results section above.\n" +
+    "The milestone goal may contain supplementary context referencing work from other waves.\n" +
+    "Do NOT flag incomplete implementations or missing deliverables that belong to other waves.\n" +
+    "Focus your review exclusively on the current wave's output.\n\n",
+  )
   buf.write_string(
     "\n## Output Format\n" +
     "Use exactly one of these tags:\n" +
