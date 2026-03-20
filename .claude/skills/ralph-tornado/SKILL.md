@@ -114,7 +114,7 @@ node .claude/skills/ralph-tornado/scripts/inject-plan-context.js <output_dir>
    Bash ツールで以下のコマンドを `run_in_background: true` で実行する:
 
    ```bash
-   npx -y @ymdvsymd/tornado@latest --ralph --config=<tornado.json の絶対パス> --lang=ja
+   npx -y @ymdvsymd/tornado@latest --ralph --config=<tornado.json の絶対パス>
    ```
 
    起動後、ユーザーにタスク ID を共有する。
