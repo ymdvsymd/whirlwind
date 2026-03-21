@@ -109,7 +109,11 @@ pub fn VerifierAgent::verify(
   let result = backend.run(prompt, system_prompt, on_event)
   match result.status {
     Completed => self.parse_verdict(result.content)
-    _ => Approved // If verifier fails, default to approved
+    Failed(err) =>
+      // If verifier backend fails, signal rework rather than silently approving
+      NeedsRework(["Verification failed: " + err])
+    _ =>
+      NeedsRework(["Verification backend returned unexpected status"])
   }
 }
 

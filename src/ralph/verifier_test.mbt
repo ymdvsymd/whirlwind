@@ -99,3 +99,30 @@ test "VerifierAgent::verify with mock backend needs_rework" {
     _ => panic()
   }
 }
+
+///|
+test "VerifierAgent::verify returns NeedsRework on backend failure" {
+  // When the verifier backend fails, it should NOT silently approve.
+  // Instead, it should return NeedsRework to trigger a retry.
+  let v = @ralph.VerifierAgent::new()
+  let failing = @agent.FailingMockBackend::new(
+    error_msg="connection timeout",
+  )
+  let backend = failing.boxed()
+  let milestone : @types.Milestone = {
+    id: "m1",
+    goal: "Build auth",
+    status: @types.MilestoneStatus::InProgress,
+    tasks: [],
+    current_wave: 0,
+  }
+  let verdict = v.verify(milestone, 0, [], backend, "")
+  match verdict {
+    NeedsRework(items) => {
+      assert_true(items.length() == 1)
+      assert_true(items[0].contains("Verification failed"))
+      assert_true(items[0].contains("connection timeout"))
+    }
+    other => fail("Expected NeedsRework on backend failure, got \{other}")
+  }
+}

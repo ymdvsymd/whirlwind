@@ -297,3 +297,84 @@ test "load_from_json sets next_task_id correctly" {
   let new_id = mgr.gen_task_id("m1")
   inspect(new_id, content="m1-t6")
 }
+
+///|
+test "has_undone_tasks treats failed tasks as undone" {
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "A", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "a", "wave": 0, "status": "done" },
+    #|        { "id": "m1-t2", "description": "b", "wave": 0, "status": "failed" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  // Failed tasks should be considered undone so they can be retried
+  assert_true(mgr.has_undone_tasks(mgr.milestones[0]))
+}
+
+///|
+test "next_wave_number includes waves with failed tasks" {
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "A", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "a", "wave": 0, "status": "done" },
+    #|        { "id": "m1-t2", "description": "b", "wave": 1, "status": "failed" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  // Wave 1 has a failed task, should be returned as next wave
+  inspect(mgr.next_wave_number(mgr.milestones[0]), content="Some(1)")
+}
+
+///|
+test "milestone serialization roundtrip preserves failure reason" {
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "A", "status": "failed",
+    #|      "failure_reason": "Architecture fundamentally flawed",
+    #|      "current_wave": 0,
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "a", "wave": 0, "status": "failed",
+    #|          "failure_reason": "API rate limit exceeded" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  // Verify original failure reasons are loaded
+  match mgr.milestones[0].status {
+    @types.MilestoneStatus::Failed(reason) =>
+      inspect(reason, content="Architecture fundamentally flawed")
+    _ => fail("Expected Failed status")
+  }
+  match mgr.milestones[0].tasks[0].status {
+    @types.TaskStatus::Failed(reason) =>
+      inspect(reason, content="API rate limit exceeded")
+    _ => fail("Expected Failed task status")
+  }
+  // Roundtrip: serialize and reload
+  let serialized = mgr.to_json()
+  let mgr2 = @ralph.MilestoneManager::load_from_json(serialized)
+  match mgr2.milestones[0].status {
+    @types.MilestoneStatus::Failed(reason) =>
+      inspect(reason, content="Architecture fundamentally flawed")
+    _ => fail("Expected Failed status after roundtrip")
+  }
+  match mgr2.milestones[0].tasks[0].status {
+    @types.TaskStatus::Failed(reason) =>
+      inspect(reason, content="API rate limit exceeded")
+    _ => fail("Expected Failed task status after roundtrip")
+  }
+}

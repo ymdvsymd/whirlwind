@@ -309,3 +309,82 @@ test "RalphLoop multi-wave execution" {
   // Builder should have been called 3 times (1 in wave 0 + 2 in wave 1)
   assert_true(builder_mock.get_history().length() == 3)
 }
+
+///|
+test "RalphLoop rework includes verifier feedback in builder prompt" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  // First verify returns needs_rework, subsequent calls approve
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<needs_rework>m1-t1: add input validation</needs_rework>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let callbacks = @types.OrchestratorCallbacks::noop()
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  // Builder history should include the rework calls with feedback
+  let history = builder_mock.get_history()
+  // First call is original, subsequent calls are rework with feedback
+  assert_true(history.length() > 1)
+  // The rework prompt should include the verifier's feedback
+  let rework_prompt = history[1].0
+  assert_true(rework_prompt.contains("Feedback from verification"))
+  assert_true(rework_prompt.contains("add input validation"))
+}
+
+///|
+test "RalphLoop with failing builder retries failed tasks" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  // Builder always fails
+  let builder_fail = @agent.FailingMockBackend::new(
+    error_msg="API rate limit",
+  )
+  // Verifier also fails (returning NeedsRework instead of silent approve)
+  let verifier_fail = @agent.FailingMockBackend::new(
+    error_msg="connection timeout",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_fail.boxed()
+  backends["verifier"] = verifier_fail.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  // Should hit max rework attempts and eventually accept
+  assert_true(
+    infos.iter().any(fn(m) { m.contains("Max rework attempts") }),
+  )
+  // Task should have been retried (rework attempts)
+  assert_true(infos.iter().any(fn(m) { m.contains("Rework needed") }))
+}

@@ -149,8 +149,12 @@ fn RalphLoop::run_wave(
     }
     Some(backend) => {
       let bid = builder_id.unwrap()
-      // Execute each task sequentially
+      // Execute each pending/failed task sequentially
       for task in tasks {
+        match task.status {
+          Done => continue // Skip already-completed tasks
+          _ => ()
+        }
         task.status = InProgress(bid)
         emit_info(self, "Running task \{task.id}: \{task.description}")
         let result = backend.run(task.description, "", fn(e) {
@@ -174,7 +178,20 @@ fn RalphLoop::run_wave(
   }
   // Verify wave
   let wave_results = collect_wave_results(tasks)
-  self.verify_wave(milestone, wave, wave_results, 0)
+  let accepted = self.verify_wave(milestone, wave, wave_results, 0)
+  if accepted {
+    // Mark all wave tasks as Done so has_undone_tasks won't re-trigger
+    for task in tasks {
+      match task.status {
+        Done => ()
+        _ => {
+          emit_info(self, "Task \{task.id} accepted despite status")
+          task.status = Done
+        }
+      }
+    }
+  }
+  accepted
 }
 
 ///|
@@ -251,7 +268,7 @@ fn RalphLoop::rework_tasks(
   self : RalphLoop,
   milestone : @types.Milestone,
   wave : Int,
-  _feedback : Array[String],
+  feedback : Array[String],
 ) -> Array[(String, String)] {
   let tasks = self.milestone_manager.get_wave_tasks(milestone, wave)
   let builder_id = find_agent_id(self.config, @types.AgentRole::Dev)
@@ -259,16 +276,23 @@ fn RalphLoop::rework_tasks(
     Some(id) => find_backend(self.backends, id)
     None => None
   }
+  // Build feedback text from verifier issues
+  let feedback_text = feedback.iter().fold(
+    init="",
+    fn(acc, item) { acc + "- " + item + "\n" },
+  )
   match builder_backend {
     None => collect_wave_results(tasks)
     Some(backend) => {
       let bid = builder_id.unwrap()
       for task in tasks {
-        // Reset and re-execute pending/failed tasks
+        // Re-execute all tasks in the wave (verifier flagged the wave for rework)
         match task.status {
-          Failed(_) | Pending => {
+          Failed(_) | Pending | Done => {
             task.status = InProgress(bid)
-            let rework_prompt = "Rework: " + task.description
+            let rework_prompt = task.description +
+              "\n\nFeedback from verification:\n" +
+              feedback_text
             let result = backend.run(rework_prompt, "", fn(e) {
               handle_event(self, bid, e)
             })
@@ -284,7 +308,7 @@ fn RalphLoop::rework_tasks(
               }
             }
           }
-          _ => () // Already done, skip
+          _ => () // InProgress, skip
         }
       }
       collect_wave_results(tasks)

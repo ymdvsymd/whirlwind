@@ -83,7 +83,7 @@ pub fn MilestoneManager::get_wave_tasks(
 }
 
 ///|
-/// Check if milestone has undone tasks
+/// Check if milestone has undone tasks (Pending, InProgress, or Failed)
 pub fn MilestoneManager::has_undone_tasks(
   _self : MilestoneManager,
   milestone : @types.Milestone,
@@ -92,14 +92,14 @@ pub fn MilestoneManager::has_undone_tasks(
   .iter()
   .any(fn(t) {
     match t.status {
-      Pending | InProgress(_) => true
+      Pending | InProgress(_) | Failed(_) => true
       _ => false
     }
   })
 }
 
 ///|
-/// Get the next wave number that has pending tasks
+/// Get the next wave number that has undone tasks (Pending, InProgress, or Failed)
 pub fn MilestoneManager::next_wave_number(
   _self : MilestoneManager,
   milestone : @types.Milestone,
@@ -107,7 +107,7 @@ pub fn MilestoneManager::next_wave_number(
   let mut min_wave : Int? = None
   for t in milestone.tasks {
     match t.status {
-      Pending | InProgress(_) =>
+      Pending | InProgress(_) | Failed(_) =>
         match min_wave {
           None => min_wave = Some(t.wave)
           Some(w) => if t.wave < w { min_wave = Some(t.wave) }
@@ -205,10 +205,11 @@ fn parse_milestone(json : Json) -> @types.Milestone {
   let id = get_str(json, "id", "")
   let goal = get_str(json, "goal", "")
   let status_str = get_str(json, "status", "pending")
+  let failure_reason = get_str(json, "failure_reason", "unknown")
   let status : @types.MilestoneStatus = match status_str {
     "in_progress" => InProgress
     "done" => Done
-    "failed" => Failed("unknown")
+    "failed" => Failed(failure_reason)
     _ => Pending
   }
   let tasks : Array[@types.RalphTask] = []
@@ -233,10 +234,11 @@ fn parse_ralph_task(json : Json) -> @types.RalphTask {
   let description = get_str(json, "description", "")
   let wave = get_num(json, "wave", 0)
   let status_str = get_str(json, "status", "pending")
+  let task_failure_reason = get_str(json, "failure_reason", "unknown")
   let status : @types.TaskStatus = match status_str {
     "in_progress" => InProgress("")
     "done" => Done
-    "failed" => Failed("unknown")
+    "failed" => Failed(task_failure_reason)
     _ => Pending
   }
   let result : String? = match json {
@@ -266,6 +268,10 @@ fn milestone_to_json(m : @types.Milestone) -> String {
     Done => "done"
     Failed(_) => "failed"
   }
+  let failure_reason = match m.status {
+    Failed(reason) => ",\"failure_reason\":" + json_escape(reason)
+    _ => ""
+  }
   let task_parts : Array[String] = []
   for t in m.tasks {
     task_parts.push(ralph_task_to_json(t))
@@ -277,7 +283,9 @@ fn milestone_to_json(m : @types.Milestone) -> String {
   json_escape(m.goal) +
   ",\"status\":\"" +
   status_str +
-  "\",\"current_wave\":" +
+  "\"" +
+  failure_reason +
+  ",\"current_wave\":" +
   m.current_wave.to_string() +
   ",\"tasks\":" +
   tasks_json +
@@ -291,6 +299,10 @@ fn ralph_task_to_json(t : @types.RalphTask) -> String {
     InProgress(_) => "in_progress"
     Done => "done"
     Failed(_) => "failed"
+  }
+  let failure_reason = match t.status {
+    Failed(reason) => ",\"failure_reason\":" + json_escape(reason)
+    _ => ""
   }
   let result_json = match t.result {
     Some(s) => json_escape(s)
@@ -308,7 +320,9 @@ fn ralph_task_to_json(t : @types.RalphTask) -> String {
   t.wave.to_string() +
   ",\"status\":\"" +
   status_str +
-  "\",\"result\":" +
+  "\"" +
+  failure_reason +
+  ",\"result\":" +
   result_json +
   ",\"plan_doc\":" +
   plan_doc_json +
