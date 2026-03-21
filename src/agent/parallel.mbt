@@ -4,7 +4,6 @@ pub fn run_parallel(
   tasks : Array[(String, String)],
   on_output : (@types.AgentEvent) -> Unit,
   model? : String = "",
-  session_ids~ : Array[String] = [],
 ) -> Array[@types.AgentResult] {
   match backend.name() {
     "claude-code" => run_parallel_sdk_backend(
@@ -12,14 +11,12 @@ pub fn run_parallel(
       tasks,
       on_output,
       model,
-      session_ids,
     )
     "codex" => run_parallel_sdk_backend(
       "codex",
       tasks,
       on_output,
       model,
-      session_ids,
     )
     _ => run_parallel_sequential(backend, tasks, on_output)
   }
@@ -43,12 +40,11 @@ fn run_parallel_sdk_backend(
   tasks : Array[(String, String)],
   on_output : (@types.AgentEvent) -> Unit,
   model : String,
-  session_ids : Array[String],
 ) -> Array[@types.AgentResult] {
   let opts : Map[String, Json] = {}
   opts["runner"] = runner.to_json()
   let task_opts : Array[Json] = []
-  for i, task in tasks {
+  for task in tasks {
     let (prompt, system_prompt) = task
     let task_json : Map[String, Json] = {}
     task_json["prompt"] = prompt.to_json()
@@ -57,16 +53,6 @@ fn run_parallel_sdk_backend(
     }
     if not(model.is_empty()) {
       task_json["model"] = model.to_json()
-    }
-    // Attach session ID for resume if available from pool
-    let sid = if i < session_ids.length() { session_ids[i] } else { "" }
-    if not(sid.is_empty()) {
-      // Use the appropriate key for each runner
-      match runner {
-        "codex" => task_json["threadId"] = sid.to_json()
-        "claude" => task_json["sessionId"] = sid.to_json()
-        _ => ()
-      }
     }
     task_opts.push(Json::object(task_json))
   }
