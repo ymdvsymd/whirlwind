@@ -21,7 +21,20 @@ type ClaudeMessage = {
   elapsed_time_seconds?: number;
   event?: {
     type?: string;
-    content_block?: { type?: string; name?: string };
+    index?: number;
+    content_block?: {
+      type?: string;
+      name?: string;
+      input?: unknown;
+      text?: string;
+      thinking?: string;
+    };
+    delta?: {
+      type?: string;
+      text?: string;
+      thinking?: string;
+      partial_json?: string;
+    };
   };
   message?: {
     content?: Array<{
@@ -40,15 +53,26 @@ type ClaudeMessage = {
   [key: string]: unknown;
 };
 
+type ClaudeStreamBlockState = {
+  kind: string;
+  toolName: string;
+  text: string;
+  json: string;
+  lastPreview: string;
+  lastToolSummary: string;
+};
+
 type ClaudeLogState = {
   lastStatus: string | null | undefined;
   lastToolProgressById: Map<string, number>;
+  streamBlocks: Map<number, ClaudeStreamBlockState>;
 };
 
 export function createClaudeAdapter(): AgentAdapter<ClaudeMessage> {
   const state: ClaudeLogState = {
     lastStatus: undefined,
     lastToolProgressById: new Map(),
+    streamBlocks: new Map(),
   };
 
   return {
@@ -94,7 +118,7 @@ function extractLogs(message: ClaudeMessage, state: ClaudeLogState): string[] {
     case "system":
       return extractSystemLog(message, state);
     case "stream_event":
-      return extractStreamEventLog(message);
+      return extractStreamEventLog(message, state);
     case "assistant":
       return extractToolUseLog(message);
     case "tool_progress":
@@ -128,21 +152,228 @@ function extractSystemLog(
   }
 }
 
-function extractStreamEventLog(message: ClaudeMessage): string[] {
+function extractStreamEventLog(
+  message: ClaudeMessage,
+  state: ClaudeLogState,
+): string[] {
   const event = message.event;
-  if (event?.type !== "content_block_start") return [];
+  if (!event?.type) return [];
 
+  switch (event.type) {
+    case "content_block_start":
+      return extractContentBlockStartLog(event, state);
+    case "content_block_delta":
+      return extractContentBlockDeltaLog(event, state);
+    case "content_block_stop":
+      return extractContentBlockStopLog(event, state);
+    default:
+      return [];
+  }
+}
+
+function extractContentBlockStartLog(
+  event: NonNullable<ClaudeMessage["event"]>,
+  state: ClaudeLogState,
+): string[] {
   const block = event.content_block;
-  if (block?.type === "tool_use") {
-    return [`Tool: ${block.name}`];
+  if (!block?.type) return [];
+
+  const index = typeof event.index === "number" ? event.index : undefined;
+  const streamBlock = createStreamBlockState(block);
+  if (index !== undefined) {
+    state.streamBlocks.set(index, streamBlock);
   }
-  if (block?.type === "thinking") {
-    return ["Thinking..."];
+
+  if (block.type === "tool_use") {
+    const toolName = block.name || "unknown";
+    const summary = summarizeToolInputForProgress(toolName, block.input);
+    if (summary) {
+      streamBlock.lastToolSummary = summary;
+      return [`Tool: ${toolName}(${summary})`];
+    }
+    return [`Tool: ${toolName}`];
   }
-  if (block?.type === "text") {
-    return ["Generating..."];
+
+  if (block.type === "thinking" || block.type === "text") {
+    return emitTextProgressLog(streamBlock, block.type, true);
   }
+
   return [];
+}
+
+function extractContentBlockDeltaLog(
+  event: NonNullable<ClaudeMessage["event"]>,
+  state: ClaudeLogState,
+): string[] {
+  if (typeof event.index !== "number") return [];
+
+  const block = state.streamBlocks.get(event.index);
+  const delta = event.delta;
+  if (!block || !delta?.type) return [];
+
+  switch (delta.type) {
+    case "thinking_delta":
+      if (block.kind !== "thinking" || typeof delta.thinking !== "string") {
+        return [];
+      }
+      block.text += delta.thinking;
+      return emitTextProgressLog(block, "thinking");
+    case "text_delta":
+      if (block.kind !== "text" || typeof delta.text !== "string") {
+        return [];
+      }
+      block.text += delta.text;
+      return emitTextProgressLog(block, "text");
+    case "input_json_delta":
+      if (block.kind !== "tool_use" || typeof delta.partial_json !== "string") {
+        return [];
+      }
+      block.json += delta.partial_json;
+      return emitToolInputProgressLog(block);
+    default:
+      return [];
+  }
+}
+
+function extractContentBlockStopLog(
+  event: NonNullable<ClaudeMessage["event"]>,
+  state: ClaudeLogState,
+): string[] {
+  if (typeof event.index !== "number") return [];
+
+  const block = state.streamBlocks.get(event.index);
+  if (!block) return [];
+  state.streamBlocks.delete(event.index);
+
+  if (block.kind === "thinking" || block.kind === "text") {
+    return emitTextProgressLog(block, block.kind, true);
+  }
+  if (block.kind === "tool_use") {
+    return emitToolInputProgressLog(block);
+  }
+
+  return [];
+}
+
+function createStreamBlockState(
+  block: NonNullable<NonNullable<ClaudeMessage["event"]>["content_block"]>,
+): ClaudeStreamBlockState {
+  return {
+    kind: block.type || "",
+    toolName: block.name || "",
+    text: initialBlockText(block),
+    json: "",
+    lastPreview: "",
+    lastToolSummary: "",
+  };
+}
+
+function initialBlockText(
+  block: NonNullable<NonNullable<ClaudeMessage["event"]>["content_block"]>,
+): string {
+  if (block.type === "thinking" && typeof block.thinking === "string") {
+    return block.thinking;
+  }
+  if (block.type === "text" && typeof block.text === "string") {
+    return block.text;
+  }
+  return "";
+}
+
+function emitTextProgressLog(
+  block: ClaudeStreamBlockState,
+  kind: string,
+  force = false,
+): string[] {
+  const fullPreview = collapseWhitespace(block.text);
+  if (!fullPreview) {
+    return [];
+  }
+
+  const preview = force
+    ? fullPreview
+    : extractStableTextPreview(fullPreview);
+  const display = extractTextProgressDelta(block.lastPreview, preview);
+  if (!preview || !display) {
+    return [];
+  }
+  if (!force && !shouldEmitTextProgress(block.lastPreview, preview)) {
+    return [];
+  }
+
+  block.lastPreview = preview;
+  const label = kind === "thinking" ? "Thinking" : "Generating";
+  return [`${label}: ${truncate(display, 160)}`];
+}
+
+function extractTextProgressDelta(previous: string, next: string): string {
+  if (!next || next === previous) {
+    return "";
+  }
+  if (!previous) {
+    return next;
+  }
+  if (next.startsWith(previous)) {
+    return next.slice(previous.length).trim();
+  }
+  return next;
+}
+
+function extractStableTextPreview(value: string): string {
+  const end = lastSentenceBoundary(value);
+  if (end <= 0) return "";
+  return value.slice(0, end).trim();
+}
+
+function lastSentenceBoundary(value: string): number {
+  for (let i = value.length - 1; i >= 0; i -= 1) {
+    const ch = value[i];
+    if (ch === "." || ch === "!" || ch === "?" || ch === "。"
+      || ch === "！" || ch === "？") {
+      return i + 1;
+    }
+  }
+  return 0;
+}
+
+function emitToolInputProgressLog(block: ClaudeStreamBlockState): string[] {
+  const summary = summarizeToolJsonBuffer(block.toolName, block.json);
+  if (!summary || summary === block.lastToolSummary) {
+    return [];
+  }
+
+  block.lastToolSummary = summary;
+  return [`Tool: ${block.toolName || "unknown"}(${summary})`];
+}
+
+function shouldEmitTextProgress(previous: string, next: string): boolean {
+  if (!previous) {
+    return next.length >= 24 || hasSentenceBoundary(next);
+  }
+
+  const suffix = next.startsWith(previous) ? next.slice(previous.length) : next;
+  return next.length - previous.length >= 48 || hasSentenceBoundary(suffix);
+}
+
+function hasSentenceBoundary(value: string): boolean {
+  return /[.!?。！？\n]/.test(value);
+}
+
+function summarizeToolJsonBuffer(toolName: string, json: string): string {
+  const parsed = parseJsonBuffer(json);
+  if (parsed === undefined) return "";
+  return summarizeToolInputForProgress(toolName, parsed);
+}
+
+function parseJsonBuffer(json: string): unknown | undefined {
+  const trimmed = json.trim();
+  if (!trimmed) return undefined;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return undefined;
+  }
 }
 
 function extractToolUseLog(message: ClaudeMessage): string[] {
@@ -261,6 +492,21 @@ function summarizeToolInput(toolName: string | undefined, input: unknown): strin
   }
 
   return truncate(JSON.stringify(input), 120);
+}
+
+function summarizeToolInputForProgress(
+  toolName: string | undefined,
+  input: unknown,
+): string {
+  if (isRecord(input) && Object.keys(input).length === 0) {
+    return "";
+  }
+
+  const summary = summarizeToolInput(toolName, input);
+  if (summary === "{}" || summary === "[]" || summary === "null") {
+    return "";
+  }
+  return summary;
 }
 
 function firstString(
