@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/cmd/app"
+
+// Values
+pub fn check_interrupt() -> String
+
+pub fn exec_sync(String) -> String
+
+pub fn get_env(String) -> String
+
+pub fn now_timestamp() -> String
+
+pub fn print_inline(String) -> Unit
+
+pub fn prompt_sync(String) -> String
+
+pub fn read_file_sync(String) -> String
+
+pub fn sleep_ms(Int) -> Unit
+
+pub fn start_stdin_watcher() -> Unit
+
+pub fn write_file_sync(String, String) -> Unit
+
+// Errors
+
+// Types and methods
+type ReviewOutcome
+
+type SessionState
+
+// Type aliases
+
+// Traits
+

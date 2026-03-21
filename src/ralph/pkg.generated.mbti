@@ -1,0 +1,68 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/ralph"
+
+import {
+  "mizchi/tornado/agent",
+  "mizchi/tornado/config",
+  "mizchi/tornado/types",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct MilestoneManager {
+  milestones : Array[@types.Milestone]
+  mut next_task_id : Int
+}
+pub fn MilestoneManager::add_milestones(Self, Array[@types.Milestone]) -> Unit
+pub fn MilestoneManager::all_milestones_done(Self) -> Bool
+pub fn MilestoneManager::gen_task_id(Self, String) -> String
+pub fn MilestoneManager::get_wave_tasks(Self, @types.Milestone, Int) -> Array[@types.RalphTask]
+pub fn MilestoneManager::has_undone_tasks(Self, @types.Milestone) -> Bool
+pub fn MilestoneManager::load_from_json(String) -> Self raise Failure
+pub fn MilestoneManager::new() -> Self
+pub fn MilestoneManager::next_pending_milestone(Self) -> @types.Milestone?
+pub fn MilestoneManager::next_wave_number(Self, @types.Milestone) -> Int?
+pub fn MilestoneManager::parse_milestone_design(Self, String) -> Array[@types.Milestone]
+pub fn MilestoneManager::parse_planner_output(Self, String, String) -> Array[@types.RalphTask]
+pub fn MilestoneManager::to_json(Self) -> String
+
+pub struct PlannerAgent {
+  agent_id : String
+  lang : String
+}
+pub fn PlannerAgent::build_milestone_design_prompt(Self, String) -> String
+pub fn PlannerAgent::build_plan_prompt(Self, @types.Milestone, String) -> String
+pub fn PlannerAgent::design_milestones(Self, @agent.BoxedBackend, String, MilestoneManager, on_event? : (@types.AgentEvent) -> Unit) -> Array[@types.Milestone]
+pub fn PlannerAgent::new(agent_id? : String, lang? : String) -> Self
+pub fn PlannerAgent::parse_plan(Self, String, String, MilestoneManager) -> Array[@types.RalphTask]
+pub fn PlannerAgent::plan(Self, @types.Milestone, @agent.BoxedBackend, String, MilestoneManager, on_event? : (@types.AgentEvent) -> Unit) -> Array[@types.RalphTask]
+
+pub struct RalphLoop {
+  config : @config.ProjectConfig
+  milestone_manager : MilestoneManager
+  planner : PlannerAgent?
+  verifier : VerifierAgent?
+  backends : Map[String, @agent.BoxedBackend]
+  callbacks : @types.OrchestratorCallbacks
+  mut current_phase : @types.RalphPhase
+  max_rework_attempts : Int
+}
+pub fn RalphLoop::new(@config.ProjectConfig, MilestoneManager, Map[String, @agent.BoxedBackend], @types.OrchestratorCallbacks, lang? : String) -> Self
+pub fn RalphLoop::run(Self) -> Unit
+
+pub struct VerifierAgent {
+  agent_id : String
+  lang : String
+}
+pub fn VerifierAgent::build_verify_prompt(Self, @types.Milestone, Int, Array[(String, String)], String) -> String
+pub fn VerifierAgent::new(agent_id? : String, lang? : String) -> Self
+pub fn VerifierAgent::parse_verdict(Self, String) -> @types.VerifierVerdict
+pub fn VerifierAgent::verify(Self, @types.Milestone, Int, Array[(String, String)], @agent.BoxedBackend, String, on_event? : (@types.AgentEvent) -> Unit) -> @types.VerifierVerdict
+
+// Type aliases
+
+// Traits
+

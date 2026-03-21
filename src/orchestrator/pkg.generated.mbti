@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/orchestrator"
+
+import {
+  "mizchi/tornado/agent",
+  "mizchi/tornado/config",
+  "mizchi/tornado/review",
+  "mizchi/tornado/task",
+  "mizchi/tornado/types",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Orchestrator {
+  config : @config.ProjectConfig
+  task_manager : @task.TaskManager
+  review_agent : @review.ReviewAgent?
+  backends : Map[String, @agent.BoxedBackend]
+  callbacks : @types.OrchestratorCallbacks
+  mut review_cycles : Int
+}
+pub fn Orchestrator::new(@config.ProjectConfig, Map[String, @agent.BoxedBackend], @types.OrchestratorCallbacks, lang? : String) -> Self
+pub fn Orchestrator::run(Self, @types.Session) -> Unit
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/spawn"
+
+// Values
+pub fn spawn_lines(String, Array[String], (String) -> Unit, (String) -> Unit, (Int) -> Unit) -> Unit
+
+pub fn spawn_lines_raw(String, String, (String) -> Unit, (String) -> Unit, (Int) -> Unit) -> Unit
+
+pub fn spawn_streaming(String, String, (String) -> Unit, (String) -> Unit, (Int) -> Unit) -> Unit
+
+// Errors
+
+// Types and methods
+pub struct LineBuffer {
+  buf : StringBuilder
+}
+pub fn LineBuffer::flush(Self, (String) -> Unit) -> Unit
+pub fn LineBuffer::new() -> Self
+pub fn LineBuffer::push(Self, String, (String) -> Unit) -> Unit
+
+// Type aliases
+
+// Traits
+

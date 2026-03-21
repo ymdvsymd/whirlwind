@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/task"
+
+import {
+  "mizchi/tornado/types",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct TaskManager {
+  tasks : Array[@types.Task]
+  mut next_id : Int
+}
+pub fn TaskManager::add_task(Self, String, parent_id? : String?) -> @types.Task
+pub fn TaskManager::all_done(Self) -> Bool
+pub fn TaskManager::assign_next(Self, String) -> @types.Task?
+pub fn TaskManager::completed_count(Self) -> Int
+pub fn TaskManager::get_completed(Self) -> Array[@types.Task]
+pub fn TaskManager::get_pending(Self) -> Array[@types.Task]
+pub fn TaskManager::get_task(Self, String) -> @types.Task?
+pub fn TaskManager::new() -> Self
+pub fn TaskManager::parse_tasks(Self, String, parent_id? : String?) -> Array[@types.Task]
+pub fn TaskManager::total(Self) -> Int
+
+// Type aliases
+
+// Traits
+

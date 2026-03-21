@@ -1,0 +1,198 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/types"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct AgentConfig {
+  id : String
+  kind : AgentKind
+  role : AgentRole
+  model : String?
+  system_prompt : String?
+  working_dir : String
+  max_iterations : Int
+}
+
+pub(all) enum AgentEvent {
+  OutputLine(String)
+  Info(String)
+  ToolCall(name~ : String, input~ : String)
+  ToolResult(name~ : String, output~ : String)
+  SubAgentStart(agent_type~ : String, task~ : String)
+  SubAgentEnd(agent_type~ : String)
+  StatusChange(AgentStatus)
+  SessionId(String)
+  Usage(input_tokens~ : Int, output_tokens~ : Int, cache_read~ : Int, cache_write~ : Int, cost_usd~ : Double)
+}
+
+pub(all) enum AgentKind {
+  ClaudeCode
+  Codex
+  Api
+  Mock
+}
+pub impl Eq for AgentKind
+pub impl Show for AgentKind
+
+pub(all) struct AgentResult {
+  content : String
+  status : AgentStatus
+  error : String?
+}
+
+pub(all) enum AgentRole {
+  Dev
+  Review
+  Orchestrator
+  Planner
+  Verifier
+}
+pub impl Eq for AgentRole
+pub impl Show for AgentRole
+
+pub(all) enum AgentStatus {
+  Idle
+  Running
+  Completed
+  Failed(String)
+  Aborted
+}
+pub impl Eq for AgentStatus
+pub impl Show for AgentStatus
+
+pub(all) struct Milestone {
+  id : String
+  goal : String
+  mut status : MilestoneStatus
+  mut tasks : Array[RalphTask]
+  mut current_wave : Int
+}
+
+pub(all) enum MilestoneStatus {
+  Pending
+  InProgress
+  Done
+  Failed(String)
+}
+pub impl Eq for MilestoneStatus
+pub impl Show for MilestoneStatus
+
+pub(all) struct OrchestratorCallbacks {
+  on_agent_output : (String, String) -> Unit
+  on_agent_complete : (String, String) -> Unit
+  on_task_start : (String, String, String) -> Unit
+  on_task_complete : (String, String) -> Unit
+  on_task_assign : (String, String) -> Unit
+  on_review_start : (String, String) -> Unit
+  on_review_complete : (String, ReviewVerdict) -> Unit
+  on_phase_change : (String, OrchestratorPhase) -> Unit
+  on_session_complete : (String) -> Unit
+  on_info : (String) -> Unit
+}
+pub fn OrchestratorCallbacks::noop() -> Self
+
+pub(all) enum OrchestratorPhase {
+  Decomposing
+  Assigning
+  Executing
+  Reviewing
+  Iterating
+  Finalizing
+}
+pub impl Eq for OrchestratorPhase
+pub impl Show for OrchestratorPhase
+
+pub(all) enum RalphPhase {
+  LoadingMilestones
+  Planning(String)
+  ExecutingWave(String, Int)
+  Verifying(String, Int)
+  Reworking(String, Int)
+  MilestoneComplete(String)
+  AllComplete
+}
+pub impl Eq for RalphPhase
+pub impl Show for RalphPhase
+
+pub(all) struct RalphTask {
+  id : String
+  description : String
+  wave : Int
+  mut status : TaskStatus
+  mut result : String?
+  mut plan_doc : String?
+}
+
+pub(all) struct ReviewResult {
+  reviewer_id : String
+  verdict : ReviewVerdict
+  summary : String
+  file_path : String
+}
+pub impl Show for ReviewResult
+
+pub(all) enum ReviewVerdict {
+  Approved
+  NeedsChanges(Array[String])
+  Rejected(String)
+}
+pub impl Eq for ReviewVerdict
+pub impl Show for ReviewVerdict
+
+pub(all) struct Session {
+  id : String
+  user_task : String
+  mut status : SessionStatus
+  mut current_phase : OrchestratorPhase
+  agents : Array[AgentConfig]
+  tasks : Array[Task]
+}
+pub fn Session::new(String, String, Array[AgentConfig]) -> Self
+
+pub(all) enum SessionStatus {
+  Active
+  Completed
+  Failed(String)
+}
+pub impl Eq for SessionStatus
+pub impl Show for SessionStatus
+
+pub(all) struct Task {
+  id : String
+  description : String
+  parent_id : String?
+  mut status : TaskStatus
+  mut result : String?
+  mut review : ReviewResult?
+}
+pub fn Task::assign(Self, String) -> Unit
+pub fn Task::complete(Self, String) -> Unit
+pub fn Task::fail(Self, String) -> Unit
+pub fn Task::is_done(Self) -> Bool
+pub fn Task::is_pending(Self) -> Bool
+pub fn Task::new(String, String, parent_id? : String?) -> Self
+
+pub(all) enum TaskStatus {
+  Pending
+  InProgress(String)
+  Done
+  Failed(String)
+}
+pub impl Eq for TaskStatus
+pub impl Show for TaskStatus
+
+pub(all) enum VerifierVerdict {
+  Approved
+  NeedsRework(Array[String])
+  MilestoneFailed(String)
+}
+pub impl Eq for VerifierVerdict
+pub impl Show for VerifierVerdict
+
+// Type aliases
+
+// Traits
+

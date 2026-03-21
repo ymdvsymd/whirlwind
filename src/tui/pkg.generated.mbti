@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/tui"
+
+import {
+  "mizchi/signals/ui",
+  "mizchi/tornado/types",
+  "mizchi/tui/vnode",
+}
+
+// Values
+pub fn render_agent_panel(@types.AgentConfig, Array[String], Array[@types.Task]) -> @ui.Node[@vnode.TuiEvent, @vnode.TuiAttrValue]
+
+pub fn render_app(TuiState) -> @ui.Node[@vnode.TuiEvent, @vnode.TuiAttrValue]
+
+pub fn render_header(@types.Session, Int) -> @ui.Node[@vnode.TuiEvent, @vnode.TuiAttrValue]
+
+pub fn render_status_bar(@types.Session) -> @ui.Node[@vnode.TuiEvent, @vnode.TuiAttrValue]
+
+pub fn render_tabs(Array[@types.AgentConfig], Int) -> @ui.Node[@vnode.TuiEvent, @vnode.TuiAttrValue]
+
+// Errors
+
+// Types and methods
+pub struct TuiState {
+  sessions : Map[String, @types.Session]
+  mut active_session_id : String
+  mut active_tab : Int
+  agent_logs : Map[String, Array[String]]
+  phase_log : Array[String]
+}
+pub fn TuiState::active_session(Self) -> @types.Session?
+pub fn TuiState::add_session(Self, @types.Session) -> Unit
+pub fn TuiState::append_log(Self, String, String) -> Unit
+pub fn TuiState::get_logs(Self, String, max_lines? : Int) -> Array[String]
+pub fn TuiState::make_callbacks(Self) -> @types.OrchestratorCallbacks
+pub fn TuiState::new() -> Self
+pub fn TuiState::next_tab(Self) -> Unit
+pub fn TuiState::prev_tab(Self) -> Unit
+
+// Type aliases
+
+// Traits
+
