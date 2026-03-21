@@ -113,6 +113,33 @@ test "parse_cli_args validate command" {
   }
 }
 
+test "parse_cli_args version command" {
+  let args = ["tornado", "version"]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Version => ()
+    _ => panic()
+  }
+}
+
+test "parse_cli_args --version flag" {
+  let args = ["tornado", "--version"]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Version => ()
+    _ => panic()
+  }
+}
+
+test "parse_cli_args -v flag" {
+  let args = ["tornado", "-v"]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Version => ()
+    _ => panic()
+  }
+}
+
 test "parse_cli_args --log=path" {
   let args = ["tornado", "--log=/tmp/tornado.log"]
   let parsed = @cli.parse_cli_args(args, file_exists_mock)

@@ -121,6 +121,15 @@ fn RalphLoop::run_milestone(
       }
     }
   }
+  let all_results = collect_all_task_results(milestone)
+  let goal_ok = self.verify_goal_alignment(milestone, all_results, 0)
+  if not(goal_ok) {
+    match milestone.status {
+      Failed(_) => ()
+      _ => milestone.status = Failed("Goal alignment verification failed")
+    }
+    return false
+  }
   milestone.summary = generate_milestone_summary(milestone)
   milestone.status = Done
   self.current_phase = MilestoneComplete(milestone.id)
@@ -214,6 +223,7 @@ fn RalphLoop::verify_wave(
             wave_results,
             backend,
             "",
+            perspectives=[CodeQuality, Performance, Security],
             on_event=fn(e) { handle_event(self, verifier.agent_id, e) },
           )
           match verdict {
@@ -237,6 +247,73 @@ fn RalphLoop::verify_wave(
               // Re-execute failed tasks
               let reworked = self.rework_tasks(milestone, wave, items)
               self.verify_wave(milestone, wave, reworked, attempt + 1)
+            }
+            MilestoneFailed(reason) => {
+              emit_info(self, "Milestone failed: \{reason}")
+              milestone.status = Failed(reason)
+              false
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+///| Verify overall milestone goal alignment after all waves are complete
+fn RalphLoop::verify_goal_alignment(
+  self : RalphLoop,
+  milestone : @types.Milestone,
+  all_results : Array[(String, String)],
+  attempt : Int,
+) -> Bool {
+  match self.verifier {
+    None => true
+    Some(verifier) => {
+      let verification_wave = last_wave_number(milestone)
+      self.current_phase = Verifying(milestone.id, verification_wave)
+      emit_info(
+        self,
+        "Verifying goal alignment for \{milestone.id} (attempt \{attempt + 1})",
+      )
+      let verifier_backend = find_backend(
+        self.backends, verifier.agent_id,
+      )
+      match verifier_backend {
+        None => {
+          emit_info(self, "No verifier backend found, auto-approving")
+          true
+        }
+        Some(backend) => {
+          let verdict = verifier.verify(
+            milestone,
+            verification_wave,
+            all_results,
+            backend,
+            "",
+            perspectives=[GoalAlignment],
+            on_event=fn(e) { handle_event(self, verifier.agent_id, e) },
+          )
+          match verdict {
+            Approved => {
+              emit_info(self, "Goal alignment approved for \{milestone.id}")
+              true
+            }
+            NeedsRework(items) => {
+              if attempt >= self.max_rework_attempts {
+                emit_info(
+                  self,
+                  "Max rework attempts reached for goal alignment, accepting as-is",
+                )
+                return true
+              }
+              self.current_phase = Reworking(milestone.id, verification_wave)
+              emit_info(
+                self,
+                "Goal alignment rework needed for \{milestone.id}: \{items.length()} issues",
+              )
+              let reworked = self.rework_milestone_tasks(milestone, items)
+              self.verify_goal_alignment(milestone, reworked, attempt + 1)
             }
             MilestoneFailed(reason) => {
               emit_info(self, "Milestone failed: \{reason}")
@@ -278,7 +355,26 @@ fn RalphLoop::rework_tasks(
   feedback : Array[String],
 ) -> Array[(String, String)] {
   let tasks = self.milestone_manager.get_wave_tasks(milestone, wave)
+  self.rework_task_list(tasks, feedback)
+  collect_wave_results(tasks)
+}
 
+///| Re-execute milestone tasks that need rework
+fn RalphLoop::rework_milestone_tasks(
+  self : RalphLoop,
+  milestone : @types.Milestone,
+  feedback : Array[String],
+) -> Array[(String, String)] {
+  let tasks = milestone.tasks
+  self.rework_task_list(tasks, feedback)
+  collect_all_task_results(milestone)
+}
+
+fn RalphLoop::rework_task_list(
+  self : RalphLoop,
+  tasks : Array[@types.RalphTask],
+  feedback : Array[String],
+) -> Unit {
   let mut matched_any = false
   for item in feedback {
     for task in tasks {
@@ -303,7 +399,7 @@ fn RalphLoop::rework_tasks(
     None => None
   }
   match builder_backend {
-    None => collect_wave_results(tasks)
+    None => ()
     Some(backend) => {
       let bid = builder_id.unwrap()
       for task in tasks {
@@ -351,7 +447,6 @@ fn RalphLoop::rework_tasks(
           _ => ()
         }
       }
-      collect_wave_results(tasks)
     }
   }
 }
@@ -445,6 +540,30 @@ fn collect_wave_results(
     results.push((task.id, content))
   }
   results
+}
+
+fn collect_all_task_results(
+  milestone : @types.Milestone,
+) -> Array[(String, String)] {
+  let results : Array[(String, String)] = []
+  for task in milestone.tasks {
+    let content = match task.result {
+      Some(r) => r
+      None => "(no output)"
+    }
+    results.push((task.id, content))
+  }
+  results
+}
+
+fn last_wave_number(milestone : @types.Milestone) -> Int {
+  let mut wave = 0
+  for task in milestone.tasks {
+    if task.wave > wave {
+      wave = task.wave
+    }
+  }
+  wave
 }
 
 fn handle_event(

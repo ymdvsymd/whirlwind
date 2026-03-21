@@ -13,6 +13,7 @@ pub(all) enum CliCommand {
   )
   Validate(String?)
   Help
+  Version
 }
 
 ///| Parse top-level CLI args.
@@ -39,6 +40,7 @@ pub fn parse_cli_args(
   let first = args[1]
   match first {
     "help" | "--help" | "-h" => Help
+    "version" | "--version" | "-v" => Version
     "validate" => {
       if args.length() >= 3 {
         Validate(Some(args[2]))

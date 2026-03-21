@@ -108,7 +108,7 @@ test "VerifierAgent::build_perspective_prompt goal alignment includes milestone 
   assert_true(prompt.contains("<wave_approved>"))
 }
 
-test "VerifierAgent::build_perspective_prompt includes scope instructions" {
+test "VerifierAgent::build_perspective_prompt includes goal alignment instructions" {
   let v = @ralph.VerifierAgent::new()
   let milestone : @types.Milestone = {
     id: "m1",
@@ -120,8 +120,9 @@ test "VerifierAgent::build_perspective_prompt includes scope instructions" {
   }
   let prompt = v.build_perspective_prompt(GoalAlignment, milestone, 0, [], "")
   assert_true(prompt.contains("## Instructions"))
-  assert_true(prompt.contains("Verify ONLY the tasks"))
-  assert_true(prompt.contains("other waves"))
+  assert_true(prompt.contains("Verify ALL tasks across all waves"))
+  assert_false(prompt.contains("Verify ONLY the tasks"))
+  assert_false(prompt.contains("other waves"))
 }
 
 test "VerifierAgent::merge_verdicts returns approved when all perspectives approve" {
@@ -210,6 +211,56 @@ test "VerifierAgent::verify with mock backend approved calls all four perspectiv
   let verdict = v.verify(milestone, 0, [], backend, "")
   let history = mock.get_history()
   assert_true(history.length() == 4)
+  inspect(verdict, content="Approved")
+}
+
+test "VerifierAgent::verify with explicit perspectives skips goal alignment" {
+  let v = @ralph.VerifierAgent::new()
+  let mock = @agent.MockBackend::new(default_response="<wave_approved>")
+  let backend = mock.boxed()
+  let milestone : @types.Milestone = {
+    id: "m1",
+    goal: "Build auth",
+    status: @types.MilestoneStatus::InProgress,
+    tasks: [],
+    current_wave: 0,
+    summary: "",
+  }
+  let verdict = v.verify(
+    milestone,
+    0,
+    [],
+    backend,
+    "",
+    perspectives=[CodeQuality, Performance, Security],
+  )
+  let history = mock.get_history()
+  assert_true(history.length() == 3)
+  inspect(verdict, content="Approved")
+}
+
+test "VerifierAgent::verify with goal alignment only calls backend once" {
+  let v = @ralph.VerifierAgent::new()
+  let mock = @agent.MockBackend::new(default_response="<wave_approved>")
+  let backend = mock.boxed()
+  let milestone : @types.Milestone = {
+    id: "m1",
+    goal: "Build auth",
+    status: @types.MilestoneStatus::InProgress,
+    tasks: [],
+    current_wave: 0,
+    summary: "",
+  }
+  let verdict = v.verify(
+    milestone,
+    0,
+    [],
+    backend,
+    "",
+    perspectives=[GoalAlignment],
+  )
+  let history = mock.get_history()
+  assert_true(history.length() == 1)
   inspect(verdict, content="Approved")
 }
 

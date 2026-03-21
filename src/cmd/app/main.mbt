@@ -67,6 +67,7 @@ fn main {
         None => println("Usage: tornado validate <config.json>")
       }
     @cli.CliCommand::Help => print_usage()
+    @cli.CliCommand::Version => println("tornado v0.7.4")
   }
 }
 
@@ -97,6 +98,7 @@ fn print_usage() -> Unit {
   println("Options:")
   println("  --review-interval=N  Run N dev iterations per review (default: 1)")
   println("  --rlm                Enable improvement loop mode (measure→improve→verify→commit/revert)")
+  println("  --version, -v          Show version")
   println(
     "  --ralph              Enable ralph loop mode (milestone→plan→execute→verify)",
   )

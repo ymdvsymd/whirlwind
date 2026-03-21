@@ -27,7 +27,7 @@ fn goal_alignment_checklist(lang : String) -> String {
     buf.write_string("- 出力はマイルストーンで定義された目標を達成しているか\n")
     buf.write_string("- すべてのタスク出力に一貫性があるか\n")
     buf.write_string(
-      "- 当該 Wave のタスクに不足している成果物や未完了の実装がないか（他 Wave の作業は検証対象外）\n",
+      "- 不足している成果物や未完了の実装がないか\n",
     )
     buf.write_string("- 全体の方向性がプロジェクトの意図と一致しているか\n")
   } else {
@@ -36,7 +36,7 @@ fn goal_alignment_checklist(lang : String) -> String {
     buf.write_string("- Does the output achieve the stated milestone goal?\n")
     buf.write_string("- Are all task outputs consistent with each other?\n")
     buf.write_string(
-      "- Are there missing deliverables or incomplete implementations for this wave's tasks? (Work from other waves is out of scope)\n",
+      "- Are there missing deliverables or incomplete implementations?\n",
     )
     buf.write_string("- Does the overall direction match the project's intent?\n")
   }
@@ -87,13 +87,21 @@ pub fn VerifierAgent::build_perspective_prompt(
     Security => buf.write_string(@prompts.security_checklist(self.lang))
     GoalAlignment => buf.write_string(goal_alignment_checklist(self.lang))
   }
-  buf.write_string(
-    "\n## Instructions\n" +
-    "Verify ONLY the tasks listed in the Wave Results section above.\n" +
-    "The milestone goal may contain supplementary context referencing work from other waves.\n" +
-    "Do NOT flag incomplete implementations or missing deliverables that belong to other waves.\n" +
-    "Focus your review exclusively on the current wave's output.\n\n",
-  )
+  match perspective {
+    GoalAlignment =>
+      buf.write_string(
+        "\n## Instructions\n" +
+        "Verify ALL tasks across all waves.\n\n",
+      )
+    _ =>
+      buf.write_string(
+        "\n## Instructions\n" +
+        "Verify ONLY the tasks listed in the Wave Results section above.\n" +
+        "The milestone goal may contain supplementary context referencing work from other waves.\n" +
+        "Do NOT flag incomplete implementations or missing deliverables that belong to other waves.\n" +
+        "Focus your review exclusively on the current wave's output.\n\n",
+      )
+  }
   buf.write_string(
     "\n## Output Format\n" +
     "Use exactly one of these tags:\n" +
@@ -136,14 +144,14 @@ pub fn VerifierAgent::verify(
   wave_results : Array[(String, String)],
   backend : @agent.BoxedBackend,
   project_context : String,
-  on_event~ : (@types.AgentEvent) -> Unit = fn(_e) {  },
-) -> @types.VerifierVerdict {
-  let perspectives : Array[VerifierPerspective] = [
+  perspectives~ : Array[VerifierPerspective] = [
     CodeQuality,
     Performance,
     Security,
     GoalAlignment,
-  ]
+  ],
+  on_event~ : (@types.AgentEvent) -> Unit = fn(_e) {  },
+) -> @types.VerifierVerdict {
   let tasks : Array[(String, String)] = []
   for perspective in perspectives {
     on_event(Info("Verifying perspective: " + perspective.to_string()))

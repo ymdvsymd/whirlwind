@@ -423,6 +423,324 @@ test "RalphLoop multi-wave execution" {
   assert_true(builder_mock.get_history().length() == 3)
 }
 
+test "RalphLoop runs goal alignment verification after waves complete" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  inspect(mgr.milestones[0].status, content="Done")
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Verifying goal alignment for m1")
+    }),
+  )
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Goal alignment approved for m1")
+    }),
+  )
+  let history = verifier_mock.get_history()
+  assert_true(history.length() == 4)
+  let (goal_prompt, _) = history[3]
+  assert_true(goal_prompt.contains("## Review Focus: Goal Alignment"))
+  assert_true(goal_prompt.contains("Verify ALL tasks across all waves"))
+}
+
+test "RalphLoop multi-wave full cycle uses 3 wave perspectives and one final goal alignment verification" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Ship auth flow", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Build handlers", "wave": 1, "status": "pending" },
+    #|        { "id": "m1-t3", "description": "Add integration tests", "wave": 2, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let rl = @ralph.RalphLoop::new(
+    config,
+    mgr,
+    backends,
+    @types.OrchestratorCallbacks::noop(),
+  )
+
+  rl.run()
+
+  inspect(mgr.milestones[0].status, content="Done")
+  let history = verifier_mock.get_history()
+  let num_waves = 3
+  assert_true(history.length() == (3 * num_waves) + 1)
+
+  for i in 0..<(3 * num_waves) {
+    let (wave_prompt, _) = history[i]
+    assert_false(wave_prompt.contains("## Review Focus: Goal Alignment"))
+    assert_true(wave_prompt.contains("Verify ONLY the tasks listed in the Wave Results section above."))
+  }
+
+  let (goal_prompt, _) = history[(3 * num_waves)]
+  assert_true(goal_prompt.contains("## Review Focus: Goal Alignment"))
+  assert_true(goal_prompt.contains("Verify ALL tasks across all waves"))
+}
+
+test "RalphLoop reworks milestone tasks during goal alignment verification" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done v1")
+  builder_mock.add_response(
+    "Feedback from verifier",
+    "Done v2 REWORKED",
+  )
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  verifier_mock.add_response(
+    "Done v1\n\n## Review Focus: Goal Alignment",
+    "<needs_rework>m1-t1: missing end-to-end behavior</needs_rework>",
+  )
+  verifier_mock.add_response("REWORKED", "<wave_approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  inspect(mgr.milestones[0].status, content="Done")
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Goal alignment rework needed for m1")
+    }),
+  )
+  let builder_history = builder_mock.get_history()
+  assert_true(builder_history.length() == 2)
+  let (rework_task, _) = builder_history[1]
+  assert_true(rework_task.contains("Implement login flow"))
+  assert_true(
+    rework_task.contains(
+      "Feedback from verifier:\n- [GoalAlignment] missing end-to-end behavior",
+    ),
+  )
+  assert_true(mgr.milestones[0].tasks[0].result.unwrap().contains("REWORKED"))
+  assert_true(verifier_mock.get_history().length() == 5)
+}
+
+test "RalphLoop goal alignment rework cycle retries and then completes milestone" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Ship auth flow", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done v1")
+  builder_mock.add_response(
+    "Feedback from verifier",
+    "Done v2 REWORKED",
+  )
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  verifier_mock.add_response(
+    "Done v1\n\n## Review Focus: Goal Alignment",
+    "<needs_rework>m1-t1: missing end-to-end behavior</needs_rework>",
+  )
+  verifier_mock.add_response("Done v2 REWORKED", "<wave_approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  inspect(mgr.milestones[0].status, content="Done")
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Verifying goal alignment for m1 (attempt 1)")
+    }),
+  )
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Goal alignment rework needed for m1")
+    }),
+  )
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Verifying goal alignment for m1 (attempt 2)")
+    }),
+  )
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Goal alignment approved for m1")
+    }),
+  )
+
+  let builder_history = builder_mock.get_history()
+  assert_true(builder_history.length() == 2)
+  let (rework_task, _) = builder_history[1]
+  assert_true(rework_task.contains("Implement login flow"))
+  assert_true(rework_task.contains("[GoalAlignment] missing end-to-end behavior"))
+  inspect(mgr.milestones[0].tasks[0].result.unwrap(), content="Done v2 REWORKED")
+
+  let verifier_history = verifier_mock.get_history()
+  assert_true(verifier_history.length() == 5)
+  let (first_goal_prompt, _) = verifier_history[3]
+  let (second_goal_prompt, _) = verifier_history[4]
+  assert_true(first_goal_prompt.contains("## Review Focus: Goal Alignment"))
+  assert_true(first_goal_prompt.contains("Done v1"))
+  assert_true(second_goal_prompt.contains("## Review Focus: Goal Alignment"))
+  assert_true(second_goal_prompt.contains("Done v2 REWORKED"))
+}
+
+test "RalphLoop fails milestone when goal alignment verification fails" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  verifier_mock.add_response(
+    "## Review Focus: Goal Alignment",
+    "<milestone_failed>Milestone goal was not achieved</milestone_failed>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let rl = @ralph.RalphLoop::new(
+    config,
+    mgr,
+    backends,
+    @types.OrchestratorCallbacks::noop(),
+  )
+
+  rl.run()
+
+  assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
+}
+
+test "RalphLoop marks milestone failed when GoalAlignment returns milestone_failed after wave approval" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  verifier_mock.add_response(
+    "## Review Focus: Goal Alignment",
+    "<milestone_failed>Milestone goal was not achieved</milestone_failed>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let rl = @ralph.RalphLoop::new(
+    config,
+    mgr,
+    backends,
+    @types.OrchestratorCallbacks::noop(),
+  )
+
+  rl.run()
+
+  let history = verifier_mock.get_history()
+  assert_true(history.length() == 4)
+  let (wave_prompt, _) = history[0]
+  assert_false(wave_prompt.contains("## Review Focus: Goal Alignment"))
+  let (goal_prompt, _) = history[3]
+  assert_true(goal_prompt.contains("## Review Focus: Goal Alignment"))
+  assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
+}
+
 test "rework_tasks passes targeted feedback to specific task only" {
   let config = make_ralph_config()
   let json =
