@@ -225,6 +225,74 @@ test "parse_planner_output with dash items" {
   inspect(tasks[0].description, content="Set up project structure")
 }
 
+test "parse_planner_output handles markdown bold WAVE headers" {
+  let mgr = @ralph.MilestoneManager::new()
+  let output =
+    #|**WAVE 0:**
+    #|1. Create database schema
+    #|2. Write migration scripts
+    #|
+    #|**WAVE 1:**
+    #|1. Build API handlers
+  let tasks = mgr.parse_planner_output(output, "m1")
+  assert_true(tasks.length() == 3)
+  inspect(tasks[0].wave, content="0")
+  inspect(tasks[1].wave, content="0")
+  inspect(tasks[2].wave, content="1")
+  inspect(tasks[2].description, content="Build API handlers")
+}
+
+test "parse_planner_output stops at --- separator after tasks" {
+  let mgr = @ralph.MilestoneManager::new()
+  let output =
+    #|WAVE 0:
+    #|1. Create database schema
+    #|
+    #|---
+    #|
+    #|- Wave 0 can run in parallel
+    #|- Wave 1 depends on wave 0
+  let tasks = mgr.parse_planner_output(output, "m1")
+  assert_true(tasks.length() == 1)
+  inspect(tasks[0].description, content="Create database schema")
+}
+
+test "parse_planner_output ignores --- before tasks" {
+  let mgr = @ralph.MilestoneManager::new()
+  let output =
+    #|Some intro text
+    #|
+    #|---
+    #|
+    #|## WAVE 0:
+    #|1. Create database schema
+    #|
+    #|## WAVE 1:
+    #|1. Build API handlers
+    #|
+    #|---
+    #|
+    #|- Wave 0 note
+  let tasks = mgr.parse_planner_output(output, "m1")
+  assert_true(tasks.length() == 2)
+  inspect(tasks[0].wave, content="0")
+  inspect(tasks[1].wave, content="1")
+}
+
+test "parse_planner_output handles ## WAVE headers" {
+  let mgr = @ralph.MilestoneManager::new()
+  let output =
+    #|## WAVE 0:
+    #|1. First task
+    #|
+    #|## WAVE 1:
+    #|1. Second task
+  let tasks = mgr.parse_planner_output(output, "m1")
+  assert_true(tasks.length() == 2)
+  inspect(tasks[0].wave, content="0")
+  inspect(tasks[1].wave, content="1")
+}
+
 test "gen_task_id generates unique ids" {
   let mgr = @ralph.MilestoneManager::new()
   let id1 = mgr.gen_task_id("m1")

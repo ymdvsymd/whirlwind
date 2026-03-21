@@ -344,9 +344,15 @@ fn parse_plan_text(
     if trimmed.is_empty() {
       continue
     }
+    // Stop at "---" separator only after we've found tasks
+    if is_separator(trimmed) && tasks.length() > 0 {
+      break
+    }
+    // Strip markdown formatting before checking wave prefix
+    let stripped = strip_markdown_prefix(trimmed)
     // Check for "WAVE N:" header
-    if has_wave_prefix(trimmed) {
-      let num = parse_wave_number(trimmed)
+    if has_wave_prefix(stripped) {
+      let num = parse_wave_number(stripped)
       if num >= 0 {
         current_wave = num
       }
@@ -406,6 +412,32 @@ fn trim(s : String) -> String {
     return ""
   }
   String::from_array(chars[start:end])
+}
+
+fn is_separator(s : String) -> Bool {
+  let chars = s.to_array()
+  if chars.length() < 3 {
+    return false
+  }
+  for ch in chars {
+    if ch != '-' {
+      return false
+    }
+  }
+  true
+}
+
+fn strip_markdown_prefix(s : String) -> String {
+  let mut result = s
+  // Strip leading "## ", "# ", etc.
+  while result.has_prefix("#") {
+    result = trim(String::from_array(result.to_array()[1:]))
+  }
+  // Strip bold markers "**"
+  while result.has_prefix("**") {
+    result = String::from_array(result.to_array()[2:])
+  }
+  result
 }
 
 fn has_wave_prefix(s : String) -> Bool {

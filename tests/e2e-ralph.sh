@@ -63,18 +63,19 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 LOG_FILE="$TMP_DIR/tornado.log"
 
+# Initialize git repo in temp dir (required by Codex SDK for file operations)
+git init -q "$TMP_DIR"
+
 if [ "$MODE" = "live" ]; then
   cat >"$TMP_DIR/plan.md" <<'EOF'
 # Ralph e2e plan
 
 ## Goals
-- Set up the project structure
-- Implement the requested feature
-- Add automated tests
+- Create a minimal Node.js hello-world project with one source file and one test file
 
 ## Constraints
-- Keep the changes focused
-- Verify milestone progress incrementally
+- Each milestone should require at most 2 tasks in a single wave
+- Do not install any npm packages
 EOF
   BRIEF="$(build_live_brief "$TMP_DIR/plan.md")"
 fi
@@ -87,7 +88,7 @@ cat >"$TMP_DIR/tornado.json" <<EOF
   "review_interval": 1,
   "ralph_enabled": true,
   "milestones_path": "milestones.json",
-  "max_rework_attempts": 3,
+  "max_rework_attempts": 2,
   "agents": [
     {
       "id": "planner",
@@ -120,21 +121,21 @@ cat >"$TMP_DIR/milestones.json" <<EOF
   "milestones": [
     {
       "id": "m1",
-      "goal": "Basic setup",
+      "goal": "Create src/hello.js that exports a greet(name) function returning 'Hello, <name>!'",
       "status": "pending",
       "summary": "",
       "tasks": []
     },
     {
       "id": "m2",
-      "goal": "Feature implementation",
+      "goal": "Create tests/hello.test.js that uses Node assert to test greet('World') === 'Hello, World!'",
       "status": "pending",
       "summary": "",
       "tasks": []
     },
     {
       "id": "m3",
-      "goal": "Add tests",
+      "goal": "Run 'node tests/hello.test.js' and verify it exits with code 0",
       "status": "pending",
       "summary": "",
       "tasks": []

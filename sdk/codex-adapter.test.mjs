@@ -71,4 +71,33 @@ test('createCodexAdapter creates Codex with no config when systemPrompt is absen
   assert.equal(result.sessionId, 'thread-2');
 });
 
+test('createCodexAdapter passes sandboxMode workspace-write to startThread', async () => {
+  let threadOpts;
+  const fakeThread = {
+    id: 'thread-3',
+    async runStreamed() {
+      return { events: emptyAsync() };
+    },
+  };
+
+  class FakeCodex {
+    constructor() {}
+
+    startThread(opts) {
+      threadOpts = opts;
+      return fakeThread;
+    }
+
+    resumeThread() {
+      throw new Error('resumeThread should not be called');
+    }
+  }
+
+  const adapter = createCodexAdapter({ CodexClient: FakeCodex });
+  await adapter.start({ prompt: 'Test task' });
+
+  assert.equal(threadOpts.sandboxMode, 'workspace-write');
+  assert.equal(threadOpts.skipGitRepoCheck, undefined);
+});
+
 async function* emptyAsync() {}
