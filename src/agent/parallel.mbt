@@ -51,14 +51,15 @@ fn run_parallel_sdk_backend(
   }
   opts["tasks"] = Json::array(task_opts)
   let raw_output = run_parallel_sdk(Json::object(opts).stringify())
-  if raw_output.has_prefix("ERROR:") {
-    return replicate_failed_result(tasks.length(), raw_output)
+  let sdk_output = match check_ffi_error(raw_output) {
+    Err(err) => return replicate_failed_result(tasks.length(), err)
+    Ok(output) => output
   }
-  let parsed = @json.parse(raw_output) catch {
+  let parsed = @json.parse(sdk_output) catch {
     _ =>
       return replicate_failed_result(
         tasks.length(),
-        "ERROR: failed to parse parallel SDK output",
+        "failed to parse parallel SDK output",
       )
   }
   match parsed {
@@ -68,24 +69,30 @@ fn run_parallel_sdk_backend(
         match entry {
           String(jsonl) => results.push(parse_jsonl_result(jsonl, on_output))
           _ =>
-            results.push(
-              @types.AgentResult::failed(
-                "ERROR: invalid parallel SDK result entry",
+            results.push({
+              content: "",
+              status: @types.AgentStatus::Failed(
+                "invalid parallel SDK result entry",
               ),
-            )
+              error: Some("invalid parallel SDK result entry"),
+              session_id: "",
+            })
         }
       }
       while results.length() < tasks.length() {
-        results.push(
-          @types.AgentResult::failed("ERROR: missing parallel SDK result"),
-        )
+        results.push({
+          content: "",
+          status: @types.AgentStatus::Failed("missing parallel SDK result"),
+          error: Some("missing parallel SDK result"),
+          session_id: "",
+        })
       }
       results
     }
     _ =>
       replicate_failed_result(
         tasks.length(),
-        "ERROR: invalid parallel SDK output shape",
+        "invalid parallel SDK output shape",
       )
   }
 }
@@ -97,9 +104,24 @@ fn replicate_failed_result(
 ) -> Array[@types.AgentResult] {
   let results : Array[@types.AgentResult] = []
   for _ in 0..<count {
-    results.push(@types.AgentResult::failed(err))
+    results.push({
+      content: "",
+      status: @types.AgentStatus::Failed(err),
+      error: Some(err),
+      session_id: "",
+    })
   }
   results
+}
+
+///|
+fn failed_result(err : String) -> @types.AgentResult {
+  {
+    content: "",
+    status: @types.AgentStatus::Failed(err),
+    error: Some(err),
+    session_id: "",
+  }
 }
 
 ///|
@@ -107,10 +129,14 @@ pub fn parse_jsonl_result(
   jsonl : String,
   on_output : (@types.AgentEvent) -> Unit,
 ) -> @types.AgentResult {
-  if jsonl.has_prefix("ERROR:") {
-    let err = jsonl
-    on_output(@types.AgentEvent::StatusChange(@types.AgentStatus::Failed(err)))
-    return @types.AgentResult::failed(err)
+  match check_ffi_error(jsonl) {
+    Err(err) => {
+      on_output(
+        @types.AgentEvent::StatusChange(@types.AgentStatus::Failed(err)),
+      )
+      return failed_result(err)
+    }
+    Ok(_) => ()
   }
   let buf = StringBuilder::new()
   let line_buf = OutputLineBuffer::new()
@@ -183,56 +209,37 @@ fn parse_sdk_event_json(
     Some(String(ts)) => wrap_output_with_ts(on_output, ts)
     _ => on_output
   }
-  let event_type = match map.get("type") {
-    Some(String(t)) => t
-    _ => return false
-  }
-  dispatch_sdk_event(event_type, map, buf, line_buf, error_buf, ts_on_output)
-}
-
-///|
-fn dispatch_sdk_event(
-  event_type : String,
-  map : Map[String, Json],
-  buf : StringBuilder,
-  line_buf : OutputLineBuffer,
-  error_buf : StringBuilder,
-  on_output : (@types.AgentEvent) -> Unit,
-) -> Bool {
-  match event_type {
-    "system" => parse_system_event(map, on_output)
-    "assistant" => parse_tool_calls(map, on_output)
-    "stream_event" =>
-      match map.get("event") {
-        Some(Object(event)) =>
-          parse_sdk_stream_event(event, buf, line_buf, on_output)
+  match map.get("type") {
+    Some(String(event_type)) =>
+      match event_type {
+        "system" => parse_system_event(map, ts_on_output)
+        "assistant" => parse_tool_calls(map, ts_on_output)
+        "stream_event" =>
+          match map.get("event") {
+            Some(Object(event)) =>
+              parse_sdk_stream_event(event, buf, line_buf, ts_on_output)
+            _ => ()
+          }
+        "tool_result" => parse_tool_result(map, ts_on_output)
+        "content_block_start" => parse_content_block_start(map, ts_on_output)
+        "result" => {
+          parse_sdk_result_event(map, ts_on_output)
+          match map.get("is_error") {
+            Some(True) => {
+              match map.get("result") {
+                Some(String(err_msg)) => error_buf.write_string(err_msg)
+                _ => ()
+              }
+              return true
+            }
+            _ => ()
+          }
+        }
         _ => ()
       }
-    "tool_result" => parse_tool_result(map, on_output)
-    "content_block_start" => parse_content_block_start(map, on_output)
-    "result" => return parse_sdk_result_error(map, error_buf, on_output)
     _ => ()
   }
   false
-}
-
-///|
-fn parse_sdk_result_error(
-  map : Map[String, Json],
-  error_buf : StringBuilder,
-  on_output : (@types.AgentEvent) -> Unit,
-) -> Bool {
-  parse_sdk_result_event(map, on_output)
-  match map.get("is_error") {
-    Some(True) => {
-      match map.get("result") {
-        Some(String(err_msg)) => error_buf.write_string(err_msg)
-        _ => ()
-      }
-      true
-    }
-    _ => false
-  }
 }
 
 ///|
@@ -259,38 +266,30 @@ fn parse_sdk_stream_event(
   line_buf : OutputLineBuffer,
   on_output : (@types.AgentEvent) -> Unit,
 ) -> Unit {
-  let event_type = match event.get("type") {
-    Some(String(t)) => t
-    _ => return
-  }
-  match event_type {
-    "content_block_start" => parse_content_block_start(event, on_output)
-    "content_block_delta" => apply_text_delta(event, buf, line_buf, on_output)
+  match event.get("type") {
+    Some(String(event_type)) =>
+      match event_type {
+        "content_block_start" => parse_content_block_start(event, on_output)
+        "content_block_delta" =>
+          match event.get("delta") {
+            Some(Object(delta)) =>
+              match delta.get("type") {
+                Some(String("text_delta")) =>
+                  match delta.get("text") {
+                    Some(String(text)) => {
+                      buf.write_string(text)
+                      line_buf.push(text, fn(line) {
+                        on_output(@types.AgentEvent::OutputLine(line))
+                      })
+                    }
+                    _ => ()
+                  }
+                _ => ()
+              }
+            _ => ()
+          }
+        _ => ()
+      }
     _ => ()
   }
-}
-
-///|
-fn apply_text_delta(
-  event : Map[String, Json],
-  buf : StringBuilder,
-  line_buf : OutputLineBuffer,
-  on_output : (@types.AgentEvent) -> Unit,
-) -> Unit {
-  let delta = match event.get("delta") {
-    Some(Object(d)) => d
-    _ => return
-  }
-  match delta.get("type") {
-    Some(String("text_delta")) => ()
-    _ => return
-  }
-  let text = match delta.get("text") {
-    Some(String(t)) => t
-    _ => return
-  }
-  buf.write_string(text)
-  line_buf.push(text, fn(line) {
-    on_output(@types.AgentEvent::OutputLine(line))
-  })
 }
