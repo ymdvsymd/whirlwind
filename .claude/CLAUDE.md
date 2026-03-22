@@ -1,1 +1,1 @@
-(project-specific rules are in `.claude/rules/` directory)
+(rules are in .claude/rules/ directory)

@@ -27,7 +27,7 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 0. **状態初期化** — PROCESSED_IDS, ALL_RESULTS を初期化
 1. **チケット収集・バッチ計画** — readyチケット取得、並列安全性分析、バッチ分割
 2. **チケット実行** — TDD（テスト先行）で各チケットを修正・実装
-3. **バッチオーケストレーション** — サブエージェント並列起動、worktreeマージ、バッチ毎テスト
+3. **バッチオーケストレーション** — サブエージェント並列起動、worktreeマージ、コード品質改善、バッチ毎テスト
 4. **障害分離・バグ起票** — live失敗時のper-ticket isolation、P1でバグ起票
 5. **クローズ・最終レポート** — 全イテレーションの結果を集約、チケットクローズ
 
@@ -187,14 +187,34 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
       git branch -D <worktree-branch>
       ```
 
-5. **マージ後検証**:
+5. **コード品質改善 (`/simplify`)**:
+
+   バッチ内の全コード変更が完了・マージ済みであることを確認し、
+   `/simplify` スキルを呼び出してコード品質レビューとクリーンアップを実行する:
+
+   ```
+   Skill tool:
+     skill: "simplify"
+   ```
+
+   - `/simplify` が変更を行った場合:
+     a. 変更ファイルをフォーマット（`moon fmt` / `npx prettier --write`）
+     b. コミットする:
+        ```bash
+        git add <changed-files>
+        git commit -m "refactor: simplify batch code"
+        ```
+   - `/simplify` が変更を行わなかった場合 → そのままステップ6 へ
+
+6. **マージ後検証**:
 
    ```bash
    just test
    ```
 
-   - **PASS** → ステップ6 へ
-   - **FAIL** → 競合解決ミスの可能性。失敗内容を確認し修正を試みる。
+   - **PASS** → ステップ7 へ
+   - **FAIL** → `/simplify` の変更が原因の可能性。`/simplify` コミットを revert して再テスト。
+     それでも失敗する場合は競合解決ミスの可能性。失敗内容を確認し修正を試みる。
      3回試行しても通過しない場合、バッチ全体の変更を revert し、
      全チケットを失敗マークして P1 バグを起票:
      ```bash
@@ -203,7 +223,7 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
        --type=bug --priority=1
      ```
 
-6. **バッチ後結合テスト**:
+7. **バッチ後結合テスト**:
 
    ```bash
    just test
@@ -218,7 +238,7 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
    - **成功** → 次バッチへ進行
    - **失敗** → Phase 4（障害分離）へ移行
 
-7. 全バッチ完了後:
+8. 全バッチ完了後:
    - 結果を `ALL_RESULTS` に追加
    - **このイテレーションの成功チケットを即座にクローズ**:
      ```bash
@@ -320,6 +340,7 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 | TDD テスト作成失敗 | チケットを失敗マーク、unclaim、次へ |
 | 実装後 `just test` 失敗 | 変更を revert、失敗マーク、次へ |
 | worktree マージ競合 | 競合解決 → `just test` → 失敗なら revert + P1 バグ起票 |
+| `/simplify` 後の `just test` 失敗 | `/simplify` コミットを revert し再テスト。それでも失敗なら既存のステップ6 失敗パスへ |
 | マージ後 `just test` 失敗（3回） | バッチ変更を revert、P1 バグ起票、次バッチ続行 |
 | `just live` 失敗 | Phase 4 で障害分離・バグ起票 |
 | サーキットブレーカー発動（5回） | 残バグ報告して Phase 5 へ |
