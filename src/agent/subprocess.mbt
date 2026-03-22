@@ -144,7 +144,7 @@ pub fn parse_sdk_result_event(
   match map.get("duration_api_ms") {
     Some(Number(n, ..)) => {
       let secs = n / 1000.0
-      buf.write_string(", api=\{secs}s")
+      buf.write_string(", api_total=\{secs}s")
     }
     _ => ()
   }

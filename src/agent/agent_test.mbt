@@ -566,7 +566,7 @@ test "parse_sdk_result_event with full metrics" {
   assert_true(info.contains("Result: success"))
   assert_true(info.contains("cost=$"))
   assert_true(info.contains("duration="))
-  assert_true(info.contains("api="))
+  assert_true(info.contains("api_total="))
   assert_true(info.contains("turns=3"))
   assert_true(info.contains("tokens=5000in/1200out"))
 }
@@ -600,6 +600,28 @@ test "parse_sdk_result_event omits zero tokens" {
   let map = json_map(s)
   @agent.parse_sdk_result_event(map, ec.handler())
   assert_true(not(ec.infos[0].contains("tokens=")))
+}
+
+///|
+test "parse_sdk_result_event labels api time as cumulative (tornado-a2v)" {
+  // Regression: when parallel API calls occur, duration_api_ms can exceed
+  // duration_ms. The label must indicate it is a cumulative sum, not
+  // wall-clock time, to avoid confusion.
+  let ec = EventCollector::new()
+  let s =
+    #|{
+    #|  "type": "result",
+    #|  "subtype": "success",
+    #|  "duration_ms": 145358,
+    #|  "duration_api_ms": 190683
+    #|}
+  let map = json_map(s)
+  @agent.parse_sdk_result_event(map, ec.handler())
+  let info = ec.infos[0]
+  // Must NOT use the ambiguous "api=" label
+  assert_true(not(info.contains(", api=")))
+  // Must use the explicit "api_total=" label
+  assert_true(info.contains("api_total="))
 }
 
 // ── Codex stream_event text accumulation ──
