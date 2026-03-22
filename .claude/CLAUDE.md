@@ -17,8 +17,8 @@ just fmt       # MoonBit フォーマット
 ```
 
 ## 品質ルール
-- コミット前に `just test` と `just live` を実行すること
-- `just test` だけでは不十分。結合テスト (`just live`) まで通して検証する
+- コミット前に `just test` を実行すること
+- プッシュ前に `just live` を実行すること
 - `moon fmt` と `npx prettier --write` でフォーマット
 - テスト以外のファイルで `console.log` 禁止 (hook で強制)
 
