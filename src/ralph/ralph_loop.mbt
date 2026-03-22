@@ -1,4 +1,5 @@
-///| Main ralph loop state machine
+///|
+/// Main ralph loop state machine
 pub struct RalphLoop {
   config : @config.ProjectConfig
   milestone_manager : MilestoneManager
@@ -10,13 +11,14 @@ pub struct RalphLoop {
   max_rework_attempts : Int
 }
 
-///| Create a new ralph loop
+///|
+/// Create a new ralph loop
 pub fn RalphLoop::new(
   config : @config.ProjectConfig,
   milestone_manager : MilestoneManager,
   backends : Map[String, @agent.BoxedBackend],
   callbacks : @types.OrchestratorCallbacks,
-  lang~ : String = "en",
+  lang? : String = "en",
 ) -> RalphLoop {
   let planner_id = find_agent_id(config, @types.AgentRole::Planner)
   let verifier_id = find_agent_id(config, @types.AgentRole::Verifier)
@@ -40,7 +42,8 @@ pub fn RalphLoop::new(
   }
 }
 
-///| Run the ralph loop to completion
+///|
+/// Run the ralph loop to completion
 pub fn RalphLoop::run(self : RalphLoop) -> Unit {
   self.current_phase = LoadingMilestones
   emit_info(self, "Ralph loop started")
@@ -63,7 +66,8 @@ pub fn RalphLoop::run(self : RalphLoop) -> Unit {
   }
 }
 
-///| Run a single milestone through planning, execution, and verification
+///|
+/// Run a single milestone through planning, execution, and verification
 fn RalphLoop::run_milestone(
   self : RalphLoop,
   milestone : @types.Milestone,
@@ -74,9 +78,7 @@ fn RalphLoop::run_milestone(
       Some(planner) => {
         self.current_phase = Planning(milestone.id)
         emit_info(self, "Planning milestone: \{milestone.id}")
-        let planner_backend = find_backend(
-          self.backends, planner.agent_id,
-        )
+        let planner_backend = find_backend(self.backends, planner.agent_id)
         match planner_backend {
           Some(backend) => {
             let tasks = planner.plan(
@@ -104,9 +106,7 @@ fn RalphLoop::run_milestone(
           }
         }
       }
-      None => {
-        emit_info(self, "No planner configured, skipping planning")
-      }
+      None => emit_info(self, "No planner configured, skipping planning")
     }
   }
   // Execute waves
@@ -146,7 +146,8 @@ fn RalphLoop::run_milestone(
   true
 }
 
-///| Run a single wave: execute tasks, then verify
+///|
+/// Run a single wave: execute tasks, then verify
 fn RalphLoop::run_wave(
   self : RalphLoop,
   milestone : @types.Milestone,
@@ -177,11 +178,9 @@ fn RalphLoop::run_wave(
         emit_info(self, "Running task \{task.id}: \{task.description}")
         builder_tasks.push((task.description, builder_system_prompt))
       }
-      let results = @agent.run_parallel(
-        backend,
-        builder_tasks,
-        fn(e) { handle_event(self, bid, e) },
-      )
+      let results = @agent.run_parallel(backend, builder_tasks, fn(e) {
+        handle_event(self, bid, e)
+      })
       for i in 0..<tasks.length() {
         let task = tasks[i]
         let result = results[i]
@@ -205,7 +204,8 @@ fn RalphLoop::run_wave(
   true
 }
 
-///| Verify milestone after all waves are complete (all 4 perspectives)
+///|
+/// Verify milestone after all waves are complete (all 4 perspectives)
 fn RalphLoop::verify_milestone(
   self : RalphLoop,
   milestone : @types.Milestone,
@@ -221,9 +221,7 @@ fn RalphLoop::verify_milestone(
         self,
         "Verifying milestone \{milestone.id} (attempt \{attempt + 1})",
       )
-      let verifier_backend = find_backend(
-        self.backends, verifier.agent_id,
-      )
+      let verifier_backend = find_backend(self.backends, verifier.agent_id)
       match verifier_backend {
         None => {
           emit_info(self, "No verifier backend found, auto-approving")
@@ -246,8 +244,7 @@ fn RalphLoop::verify_milestone(
             NeedsRework(items) => {
               if attempt >= self.max_rework_attempts {
                 emit_info(
-                  self,
-                  "Max rework attempts reached for milestone verification, accepting as-is",
+                  self, "Max rework attempts reached for milestone verification, accepting as-is",
                 )
                 return true
               }
@@ -272,6 +269,7 @@ fn RalphLoop::verify_milestone(
   }
 }
 
+///|
 fn strip_task_feedback_prefix(item : String, task_id : String) -> String {
   let colon_prefix = task_id + ":"
   if item.has_prefix(colon_prefix) {
@@ -292,7 +290,8 @@ fn strip_task_feedback_prefix(item : String, task_id : String) -> String {
   item
 }
 
-///| Re-execute milestone tasks that need rework
+///|
+/// Re-execute milestone tasks that need rework
 fn RalphLoop::rework_milestone_tasks(
   self : RalphLoop,
   milestone : @types.Milestone,
@@ -303,6 +302,7 @@ fn RalphLoop::rework_milestone_tasks(
   collect_all_task_results(milestone)
 }
 
+///|
 fn RalphLoop::rework_task_list(
   self : RalphLoop,
   tasks : Array[@types.RalphTask],
@@ -346,8 +346,12 @@ fn RalphLoop::rework_task_list(
             task.status = InProgress(bid)
             let task_feedback = StringBuilder::new()
             for item in feedback {
-              if item.has_prefix(task.id + ":") || item.has_prefix(task.id + " ") {
-                let task_feedback_item = strip_task_feedback_prefix(item, task.id)
+              if item.has_prefix(task.id + ":") ||
+                item.has_prefix(task.id + " ") {
+                let task_feedback_item = strip_task_feedback_prefix(
+                  item,
+                  task.id,
+                )
                 task_feedback.write_string("- ")
                 task_feedback.write_string(task_feedback_item)
                 task_feedback.write_string("\n")
@@ -355,15 +359,15 @@ fn RalphLoop::rework_task_list(
             }
             let task_feedback_str = task_feedback.to_string()
             let feedback_str = if task_feedback_str.is_empty() {
-              feedback.iter().fold(
-                init="",
-                fn(acc, item) { acc + "- " + item + "\n" },
-              )
+              feedback
+              .iter()
+              .fold(init="", fn(acc, item) { acc + "- " + item + "\n" })
             } else {
               task_feedback_str
             }
             let rework_prompt = task.description +
-              "\n\nFeedback from verifier:\n" + feedback_str
+              "\n\nFeedback from verifier:\n" +
+              feedback_str
             emit_info(self, "Reworking task \{task.id}")
             rework_tasks.push(task)
             builder_tasks.push((rework_prompt, builder_system_prompt))
@@ -371,11 +375,9 @@ fn RalphLoop::rework_task_list(
           _ => ()
         }
       }
-      let results = @agent.run_parallel(
-        backend,
-        builder_tasks,
-        fn(e) { handle_event(self, bid, e) },
-      )
+      let results = @agent.run_parallel(backend, builder_tasks, fn(e) {
+        handle_event(self, bid, e)
+      })
       for i in 0..<rework_tasks.length() {
         let task = rework_tasks[i]
         let result = results[i]
@@ -396,14 +398,16 @@ fn RalphLoop::rework_task_list(
   }
 }
 
-///| Persist milestones state to disk via callback
+///|
+/// Persist milestones state to disk via callback
 fn RalphLoop::save_milestones(self : RalphLoop) -> Unit {
   (self.callbacks.on_save)()
 }
 
 // --- Internal helpers ---
 
-///| Build system prompt for Planner: brief + completed milestone summaries
+///|
+/// Build system prompt for Planner: brief + completed milestone summaries
 fn build_planner_system_prompt(
   brief : String,
   milestones : Array[@types.Milestone],
@@ -437,7 +441,8 @@ fn build_planner_system_prompt(
   buf.to_string()
 }
 
-///| Build system prompt for Builder/Rework: brief only
+///|
+/// Build system prompt for Builder/Rework: brief only
 fn build_builder_system_prompt(brief : String) -> String {
   if brief.is_empty() {
     return ""
@@ -445,7 +450,8 @@ fn build_builder_system_prompt(brief : String) -> String {
   "## Brief\n" + brief + "\n"
 }
 
-///| Generate milestone summary from completed task descriptions
+///|
+/// Generate milestone summary from completed task descriptions
 fn generate_milestone_summary(milestone : @types.Milestone) -> String {
   let parts : Array[String] = []
   for task in milestone.tasks {
@@ -459,6 +465,7 @@ fn generate_milestone_summary(milestone : @types.Milestone) -> String {
   join_strings(parts, "; ")
 }
 
+///|
 fn find_agent_id(
   config : @config.ProjectConfig,
   role : @types.AgentRole,
@@ -471,6 +478,7 @@ fn find_agent_id(
   None
 }
 
+///|
 fn find_backend(
   backends : Map[String, @agent.BoxedBackend],
   id : String,
@@ -478,6 +486,7 @@ fn find_backend(
   backends.get(id)
 }
 
+///|
 fn collect_all_task_results(
   milestone : @types.Milestone,
 ) -> Array[(String, String)] {
@@ -492,6 +501,7 @@ fn collect_all_task_results(
   results
 }
 
+///|
 fn last_wave_number(milestone : @types.Milestone) -> Int {
   let mut wave = 0
   for task in milestone.tasks {
@@ -502,6 +512,7 @@ fn last_wave_number(milestone : @types.Milestone) -> Int {
   wave
 }
 
+///|
 fn handle_event(
   rl : RalphLoop,
   agent_id : String,
@@ -514,6 +525,7 @@ fn handle_event(
   }
 }
 
+///|
 fn emit_info(rl : RalphLoop, msg : String) -> Unit {
   (rl.callbacks.on_info)(msg)
 }

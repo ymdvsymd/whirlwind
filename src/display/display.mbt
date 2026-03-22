@@ -1,4 +1,5 @@
-///| Truncate long text for display, adding "..." if truncated
+///|
+/// Truncate long text for display, adding "..." if truncated
 pub fn truncate(s : String, max : Int) -> String {
   if s.length() <= max {
     s
@@ -7,7 +8,8 @@ pub fn truncate(s : String, max : Int) -> String {
   }
 }
 
-///| Count lines in a string. An empty string has 0 lines.
+///|
+/// Count lines in a string. An empty string has 0 lines.
 pub fn count_lines(s : String) -> Int {
   if s.is_empty() {
     return 0
@@ -26,7 +28,9 @@ pub fn count_lines(s : String) -> Int {
 }
 
 ///| Format a tool call for human-readable display.
-///| Parses the JSON input to extract key fields per tool type.
+
+///|
+/// Parses the JSON input to extract key fields per tool type.
 pub fn format_tool_call(name : String, input_json : String) -> String {
   let json = @json.parse(input_json) catch {
     _ => return "\{name}(\{truncate(input_json, 100)})"
@@ -110,7 +114,9 @@ pub fn format_tool_call(name : String, input_json : String) -> String {
 }
 
 ///| Format a tool result for human-readable display.
-///| Shows line count for Read/Bash, truncated content for others.
+
+///|
+/// Shows line count for Read/Bash, truncated content for others.
 pub fn format_tool_result(name : String, output : String) -> String {
   match name {
     "Read" => {

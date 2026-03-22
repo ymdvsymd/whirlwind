@@ -1,6 +1,5 @@
-fn make_ralph_config(
-  ralph_enabled~ : Bool = true,
-) -> @config.ProjectConfig {
+///|
+fn make_ralph_config(ralph_enabled? : Bool = true) -> @config.ProjectConfig {
   let planner_agent : @types.AgentConfig = {
     id: "planner",
     kind: Mock,
@@ -41,6 +40,7 @@ fn make_ralph_config(
   }
 }
 
+///|
 test "RalphLoop full cycle with single milestone" {
   let config = make_ralph_config()
   let json =
@@ -80,6 +80,7 @@ test "RalphLoop full cycle with single milestone" {
   inspect(rl.current_phase, content="AllComplete")
 }
 
+///|
 test "planner receives system prompt with brief and completed milestone summaries" {
   let config = make_ralph_config()
   let json =
@@ -123,13 +124,18 @@ test "planner receives system prompt with brief and completed milestone summarie
     ),
   )
   assert_true(
-    system_prompt.contains("## Brief\nShip an auth service with audit logging.\n\n"),
+    system_prompt.contains(
+      "## Brief\nShip an auth service with audit logging.\n\n",
+    ),
   )
   assert_true(
-    system_prompt.contains("## Completed Milestones\n- m1: Initialized repo; added config\n"),
+    system_prompt.contains(
+      "## Completed Milestones\n- m1: Initialized repo; added config\n",
+    ),
   )
 }
 
+///|
 test "builder receives system prompt with brief" {
   let config = make_ralph_config()
   let json =
@@ -165,6 +171,7 @@ test "builder receives system prompt with brief" {
   inspect(system_prompt, content=expected)
 }
 
+///|
 test "completed milestone summary concatenates completed task descriptions" {
   let config = make_ralph_config()
   let json =
@@ -195,6 +202,7 @@ test "completed milestone summary concatenates completed task descriptions" {
   inspect(mgr.milestones[0].summary, content="Create schema; Build handlers")
 }
 
+///|
 test "RalphLoop with pre-planned tasks" {
   let config = make_ralph_config()
   let json =
@@ -210,9 +218,7 @@ test "RalphLoop with pre-planned tasks" {
     #|}
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let planner_mock = @agent.MockBackend::new(default_response="unused")
-  let builder_mock = @agent.MockBackend::new(
-    default_response="Schema created",
-  )
+  let builder_mock = @agent.MockBackend::new(default_response="Schema created")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
@@ -228,6 +234,7 @@ test "RalphLoop with pre-planned tasks" {
   assert_true(planner_mock.get_history().is_empty())
 }
 
+///|
 test "RalphLoop with rework cycle at milestone verification" {
   let config = make_ralph_config()
   let json =
@@ -240,15 +247,12 @@ test "RalphLoop with rework cycle at milestone verification" {
   let planner_mock = @agent.MockBackend::new(
     default_response="WAVE 0:\n1. Create schema",
   )
-  let builder_mock = @agent.MockBackend::new(
-    default_response="Done",
-  )
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
   verifier_mock.add_response(
-    "Security",
-    "<needs_rework>m1-t1: add validation</needs_rework>",
+    "Security", "<needs_rework>m1-t1: add validation</needs_rework>",
   )
   verifier_mock.add_response("REWORKED", "<wave_approved>")
   let backends : Map[String, @agent.BoxedBackend] = {}
@@ -261,15 +265,20 @@ test "RalphLoop with rework cycle at milestone verification" {
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Should have rework info from milestone verification
-  assert_true(infos.iter().any(fn(m) { m.contains("Rework needed") || m.contains("rework needed") }))
+  assert_true(
+    infos
+    .iter()
+    .any(fn(m) { m.contains("Rework needed") || m.contains("rework needed") }),
+  )
   // Eventually reaches max rework and accepts
   assert_true(
-    infos.iter().any(fn(m) {
-      m.contains("Max rework attempts") || m.contains("complete")
-    }),
+    infos
+    .iter()
+    .any(fn(m) { m.contains("Max rework attempts") || m.contains("complete") }),
   )
 }
 
+///|
 test "RalphLoop milestone failure at milestone verification" {
   let config = make_ralph_config()
   let json =
@@ -300,6 +309,7 @@ test "RalphLoop milestone failure at milestone verification" {
   assert_true(infos.iter().any(fn(m) { m.contains("failed") }))
 }
 
+///|
 test "RalphLoop without verifier auto-approves" {
   let builder_agent : @types.AgentConfig = {
     id: "builder",
@@ -353,6 +363,7 @@ test "RalphLoop without verifier auto-approves" {
   inspect(mgr.milestones[0].status, content="Done")
 }
 
+///|
 test "RalphLoop multiple milestones" {
   let config = make_ralph_config()
   let json =
@@ -390,6 +401,7 @@ test "RalphLoop multiple milestones" {
   inspect(rl.current_phase, content="AllComplete")
 }
 
+///|
 test "RalphLoop multi-wave execution" {
   let config = make_ralph_config()
   let json =
@@ -423,6 +435,7 @@ test "RalphLoop multi-wave execution" {
   assert_true(builder_mock.get_history().length() == 3)
 }
 
+///|
 test "RalphLoop verifies all 4 perspectives after waves complete" {
   let config = make_ralph_config()
   let json =
@@ -455,20 +468,15 @@ test "RalphLoop verifies all 4 perspectives after waves complete" {
 
   inspect(mgr.milestones[0].status, content="Done")
   assert_true(
-    infos.iter().any(fn(msg) {
-      msg.contains("Verifying milestone m1")
-    }),
+    infos.iter().any(fn(msg) { msg.contains("Verifying milestone m1") }),
   )
-  assert_true(
-    infos.iter().any(fn(msg) {
-      msg.contains("approved")
-    }),
-  )
+  assert_true(infos.iter().any(fn(msg) { msg.contains("approved") }))
   // 4 perspectives: CodeQuality, Performance, Security, GoalAlignment
   let history = verifier_mock.get_history()
   assert_true(history.length() == 4)
 }
 
+///|
 test "RalphLoop multi-wave full cycle verifies all 4 perspectives once at milestone completion" {
   let config = make_ralph_config()
   let json =
@@ -514,6 +522,7 @@ test "RalphLoop multi-wave full cycle verifies all 4 perspectives once at milest
   assert_true(first_prompt.contains("m1-t3"))
 }
 
+///|
 test "RalphLoop reworks milestone tasks during milestone verification" {
   let config = make_ralph_config()
   let json =
@@ -530,18 +539,14 @@ test "RalphLoop reworks milestone tasks during milestone verification" {
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let planner_mock = @agent.MockBackend::new(default_response="unused")
   let builder_mock = @agent.MockBackend::new(default_response="Done v1")
-  builder_mock.add_response(
-    "Feedback from verifier",
-    "Done v2 REWORKED",
-  )
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
   // First verification: Security perspective returns needs_rework
   // "Done v1" uniquely matches the first run's result content
   verifier_mock.add_response(
-    "Done v1",
-    "<needs_rework>m1-t1: missing end-to-end behavior</needs_rework>",
+    "Done v1", "<needs_rework>m1-t1: missing end-to-end behavior</needs_rework>",
   )
   let backends : Map[String, @agent.BoxedBackend] = {}
   backends["planner"] = planner_mock.boxed()
@@ -556,7 +561,9 @@ test "RalphLoop reworks milestone tasks during milestone verification" {
 
   inspect(mgr.milestones[0].status, content="Done")
   assert_true(
-    infos.iter().any(fn(msg) {
+    infos
+    .iter()
+    .any(fn(msg) {
       msg.contains("rework needed for m1") || msg.contains("Rework needed")
     }),
   )
@@ -568,6 +575,7 @@ test "RalphLoop reworks milestone tasks during milestone verification" {
   assert_true(mgr.milestones[0].tasks[0].result.unwrap().contains("REWORKED"))
 }
 
+///|
 test "RalphLoop milestone verification rework cycle retries and then completes" {
   let config = make_ralph_config()
   let json =
@@ -584,17 +592,13 @@ test "RalphLoop milestone verification rework cycle retries and then completes" 
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let planner_mock = @agent.MockBackend::new(default_response="unused")
   let builder_mock = @agent.MockBackend::new(default_response="Done v1")
-  builder_mock.add_response(
-    "Feedback from verifier",
-    "Done v2 REWORKED",
-  )
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
   // "Done v1" uniquely matches first-run results, triggers rework
   verifier_mock.add_response(
-    "Done v1",
-    "<needs_rework>m1-t1: missing end-to-end behavior</needs_rework>",
+    "Done v1", "<needs_rework>m1-t1: missing end-to-end behavior</needs_rework>",
   )
   let backends : Map[String, @agent.BoxedBackend] = {}
   backends["planner"] = planner_mock.boxed()
@@ -609,33 +613,35 @@ test "RalphLoop milestone verification rework cycle retries and then completes" 
 
   inspect(mgr.milestones[0].status, content="Done")
   assert_true(
-    infos.iter().any(fn(msg) {
-      msg.contains("Verifying milestone m1 (attempt 1)")
-    }),
+    infos
+    .iter()
+    .any(fn(msg) { msg.contains("Verifying milestone m1 (attempt 1)") }),
   )
   assert_true(
-    infos.iter().any(fn(msg) {
+    infos
+    .iter()
+    .any(fn(msg) {
       msg.contains("rework needed for m1") || msg.contains("Rework needed")
     }),
   )
   assert_true(
-    infos.iter().any(fn(msg) {
-      msg.contains("Verifying milestone m1 (attempt 2)")
-    }),
+    infos
+    .iter()
+    .any(fn(msg) { msg.contains("Verifying milestone m1 (attempt 2)") }),
   )
-  assert_true(
-    infos.iter().any(fn(msg) {
-      msg.contains("approved")
-    }),
-  )
+  assert_true(infos.iter().any(fn(msg) { msg.contains("approved") }))
 
   let builder_history = builder_mock.get_history()
   assert_true(builder_history.length() == 2)
   let (rework_task, _) = builder_history[1]
   assert_true(rework_task.contains("Implement login flow"))
-  inspect(mgr.milestones[0].tasks[0].result.unwrap(), content="Done v2 REWORKED")
+  inspect(
+    mgr.milestones[0].tasks[0].result.unwrap(),
+    content="Done v2 REWORKED",
+  )
 }
 
+///|
 test "RalphLoop fails milestone when goal alignment verification fails" {
   let config = make_ralph_config()
   let json =
@@ -656,8 +662,7 @@ test "RalphLoop fails milestone when goal alignment verification fails" {
     default_response="<wave_approved>",
   )
   verifier_mock.add_response(
-    "## Review Focus: Goal Alignment",
-    "<milestone_failed>Milestone goal was not achieved</milestone_failed>",
+    "## Review Focus: Goal Alignment", "<milestone_failed>Milestone goal was not achieved</milestone_failed>",
   )
   let backends : Map[String, @agent.BoxedBackend] = {}
   backends["planner"] = planner_mock.boxed()
@@ -675,6 +680,7 @@ test "RalphLoop fails milestone when goal alignment verification fails" {
   assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
 }
 
+///|
 test "RalphLoop marks milestone failed when milestone verification returns milestone_failed" {
   let config = make_ralph_config()
   let json =
@@ -713,6 +719,7 @@ test "RalphLoop marks milestone failed when milestone verification returns miles
   assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
 }
 
+///|
 test "rework_tasks passes targeted feedback to specific task only" {
   let config = make_ralph_config()
   let json =
@@ -730,10 +737,7 @@ test "rework_tasks passes targeted feedback to specific task only" {
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let planner_mock = @agent.MockBackend::new(default_response="unused")
   let builder_mock = @agent.MockBackend::new(default_response="Done v1")
-  builder_mock.add_response(
-    "Feedback from verifier",
-    "Done v2 REWORKED",
-  )
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
@@ -760,13 +764,16 @@ test "rework_tasks passes targeted feedback to specific task only" {
   inspect(initial_task_2, content="Add audit logging")
   assert_true(rework_task.contains("Implement login flow"))
   assert_true(
-    rework_task.contains("Feedback from verifier:\n- [Security] fix error handling"),
+    rework_task.contains(
+      "Feedback from verifier:\n- [Security] fix error handling",
+    ),
   )
   assert_true(not(rework_task.contains("Add audit logging")))
   assert_true(mgr.milestones[0].tasks[0].result.unwrap().contains("REWORKED"))
   inspect(mgr.milestones[0].tasks[1].result.unwrap(), content="Done v1")
 }
 
+///|
 test "rework_tasks resets all done tasks when feedback has no task ID (fallback)" {
   let config = make_ralph_config()
   let json =
@@ -784,10 +791,7 @@ test "rework_tasks resets all done tasks when feedback has no task ID (fallback)
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let planner_mock = @agent.MockBackend::new(default_response="unused")
   let builder_mock = @agent.MockBackend::new(default_response="Done v1")
-  builder_mock.add_response(
-    "Feedback from verifier",
-    "Done v2 REWORKED",
-  )
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
@@ -815,16 +819,21 @@ test "rework_tasks resets all done tasks when feedback has no task ID (fallback)
   inspect(initial_task_2, content="Add audit logging")
   assert_true(rework_task_1.contains("Implement login flow"))
   assert_true(
-    rework_task_1.contains("Feedback from verifier:\n- [Security] general quality issues"),
+    rework_task_1.contains(
+      "Feedback from verifier:\n- [Security] general quality issues",
+    ),
   )
   assert_true(rework_task_2.contains("Add audit logging"))
   assert_true(
-    rework_task_2.contains("Feedback from verifier:\n- [Security] general quality issues"),
+    rework_task_2.contains(
+      "Feedback from verifier:\n- [Security] general quality issues",
+    ),
   )
   assert_true(mgr.milestones[0].tasks[0].result.unwrap().contains("REWORKED"))
   assert_true(mgr.milestones[0].tasks[1].result.unwrap().contains("REWORKED"))
 }
 
+///|
 test "rework_tasks distributes per-task feedback without cross-contamination" {
   let config = make_ralph_config()
   let json =
@@ -843,12 +852,10 @@ test "rework_tasks distributes per-task feedback without cross-contamination" {
   let planner_mock = @agent.MockBackend::new(default_response="unused")
   let builder_mock = @agent.MockBackend::new(default_response="Done v1")
   builder_mock.add_response(
-    "[CodeQuality] add validation",
-    "Done v2 REWORKED-T1",
+    "[CodeQuality] add validation", "Done v2 REWORKED-T1",
   )
   builder_mock.add_response(
-    "[Security] missing edge cases",
-    "Done v2 REWORKED-T2",
+    "[Security] missing edge cases", "Done v2 REWORKED-T2",
   )
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
@@ -885,10 +892,17 @@ test "rework_tasks distributes per-task feedback without cross-contamination" {
   assert_true(rework_task_2.contains("Add audit logging"))
   assert_true(rework_task_2.contains("[Security] missing edge cases"))
   assert_true(not(rework_task_2.contains("add validation")))
-  inspect(mgr.milestones[0].tasks[0].result.unwrap(), content="Done v2 REWORKED-T1")
-  inspect(mgr.milestones[0].tasks[1].result.unwrap(), content="Done v2 REWORKED-T2")
+  inspect(
+    mgr.milestones[0].tasks[0].result.unwrap(),
+    content="Done v2 REWORKED-T1",
+  )
+  inspect(
+    mgr.milestones[0].tasks[1].result.unwrap(),
+    content="Done v2 REWORKED-T2",
+  )
 }
 
+///|
 test "rework prompt has correct format with description and feedback" {
   let config = make_ralph_config()
   let json =
@@ -905,16 +919,12 @@ test "rework prompt has correct format with description and feedback" {
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let planner_mock = @agent.MockBackend::new(default_response="unused")
   let builder_mock = @agent.MockBackend::new(default_response="Done v1")
-  builder_mock.add_response(
-    "Feedback from verifier",
-    "Done v2 REWORKED",
-  )
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
   verifier_mock.add_response(
-    "### Task: m1-t1\nDone v1\n\n## Review Focus: Code Quality",
-    "<needs_rework>m1-t1: add input validation</needs_rework>",
+    "### Task: m1-t1\nDone v1\n\n## Review Focus: Code Quality", "<needs_rework>m1-t1: add input validation</needs_rework>",
   )
   verifier_mock.add_response("REWORKED", "<wave_approved>")
   let backends : Map[String, @agent.BoxedBackend] = {}
@@ -929,12 +939,15 @@ test "rework prompt has correct format with description and feedback" {
   let history = builder_mock.get_history()
   assert_true(history.length() == 2)
   let (rework_task, _) = history[1]
-  let expected_prompt =
-    "implement feature X\n\nFeedback from verifier:\n- [CodeQuality] add input validation\n"
+  let expected_prompt = "implement feature X\n\nFeedback from verifier:\n- [CodeQuality] add input validation\n"
   inspect(rework_task, content=expected_prompt)
-  inspect(mgr.milestones[0].tasks[0].result.unwrap(), content="Done v2 REWORKED")
+  inspect(
+    mgr.milestones[0].tasks[0].result.unwrap(),
+    content="Done v2 REWORKED",
+  )
 }
 
+///|
 test "rework_tasks matches space-delimited feedback (no colon)" {
   let config = make_ralph_config()
   let json =
@@ -952,10 +965,7 @@ test "rework_tasks matches space-delimited feedback (no colon)" {
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let planner_mock = @agent.MockBackend::new(default_response="unused")
   let builder_mock = @agent.MockBackend::new(default_response="Done v1")
-  builder_mock.add_response(
-    "Feedback from verifier",
-    "Done v2 REWORKED",
-  )
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
   let verifier_mock = @agent.MockBackend::new(
     default_response="<wave_approved>",
   )
@@ -982,7 +992,9 @@ test "rework_tasks matches space-delimited feedback (no colon)" {
   inspect(initial_task_2, content="Add audit logging")
   assert_true(rework_task.contains("Implement login flow"))
   assert_true(
-    rework_task.contains("Feedback from verifier:\n- [Security] needs better validation"),
+    rework_task.contains(
+      "Feedback from verifier:\n- [Security] needs better validation",
+    ),
   )
   assert_true(not(rework_task.contains("Add audit logging")))
   assert_true(mgr.milestones[0].tasks[0].result.unwrap().contains("REWORKED"))

@@ -1,4 +1,5 @@
-///| Read a file synchronously (JS/Node.js only)
+///|
+/// Read a file synchronously (JS/Node.js only)
 pub fn read_file_sync(path : String) -> String {
   js_read_file_sync(path)
 }
@@ -14,7 +15,8 @@ extern "js" fn js_read_file_sync(path : String) -> String =
   #|  }
   #|}
 
-///| Show prompt and read a line from stdin synchronously (via readline subprocess)
+///|
+/// Show prompt and read a line from stdin synchronously (via readline subprocess)
 pub fn prompt_sync(message : String) -> String {
   js_prompt_sync(message)
 }
@@ -36,7 +38,8 @@ extern "js" fn js_prompt_sync(message : String) -> String =
   #|  }
   #|}
 
-///| Write a file synchronously
+///|
+/// Write a file synchronously
 pub fn write_file_sync(path : String, content : String) -> Unit {
   js_write_file_sync(path, content)
 }
@@ -48,7 +51,8 @@ extern "js" fn js_write_file_sync(path : String, content : String) -> Unit =
   #|  fs.writeFileSync(path, content, 'utf-8');
   #|}
 
-///| Append to a file synchronously
+///|
+/// Append to a file synchronously
 pub fn append_file_sync(path : String, content : String) -> Unit {
   js_append_file_sync(path, content)
 }
@@ -60,7 +64,8 @@ extern "js" fn js_append_file_sync(path : String, content : String) -> Unit =
   #|  fs.appendFileSync(path, content, 'utf-8');
   #|}
 
-///| Set the active log file path
+///|
+/// Set the active log file path
 pub fn set_log_file(path : String) -> Unit {
   js_set_log_file(path)
 }
@@ -71,7 +76,8 @@ extern "js" fn js_set_log_file(path : String) -> Unit =
   #|  globalThis.__tornado_log_file = path;
   #|}
 
-///| Get the active log file path
+///|
+/// Get the active log file path
 pub fn get_log_file() -> String {
   js_get_log_file()
 }
@@ -82,7 +88,8 @@ extern "js" fn js_get_log_file() -> String =
   #|  return globalThis.__tornado_log_file || "";
   #|}
 
-///| Execute a shell command synchronously, return stdout
+///|
+/// Execute a shell command synchronously, return stdout
 pub fn exec_sync(command : String) -> String {
   js_exec_sync(command)
 }
@@ -98,7 +105,8 @@ extern "js" fn js_exec_sync(command : String) -> String =
   #|  }
   #|}
 
-///| Start background stdin watcher process
+///|
+/// Start background stdin watcher process
 pub fn start_stdin_watcher() -> Unit {
   js_start_stdin_watcher()
 }
@@ -119,7 +127,8 @@ extern "js" fn js_start_stdin_watcher() -> Unit =
   #|  process.on('exit', () => { try { watcher.kill(); } catch {} });
   #|}
 
-///| Check for user interrupt input (non-blocking)
+///|
+/// Check for user interrupt input (non-blocking)
 pub fn check_interrupt() -> String {
   js_check_interrupt()
 }
@@ -139,7 +148,8 @@ extern "js" fn js_check_interrupt() -> String =
   #|  return '';
   #|}
 
-///| Sleep for given milliseconds (blocking)
+///|
+/// Sleep for given milliseconds (blocking)
 pub fn sleep_ms(ms : Int) -> Unit {
   js_sleep_ms(ms)
 }
@@ -151,7 +161,8 @@ extern "js" fn js_sleep_ms(ms : Int) -> Unit =
   #|  Atomics.wait(new Int32Array(sab), 0, 0, ms);
   #|}
 
-///| Get environment variable value (empty string if not set)
+///|
+/// Get environment variable value (empty string if not set)
 pub fn get_env(name : String) -> String {
   js_get_env(name)
 }
@@ -160,7 +171,8 @@ pub fn get_env(name : String) -> String {
 extern "js" fn js_get_env(name : String) -> String =
   #|(name) => { return process.env[name] || ""; }
 
-///| Print string to stdout without trailing newline (for streaming output)
+///|
+/// Print string to stdout without trailing newline (for streaming output)
 pub fn print_inline(s : String) -> Unit {
   js_print_inline(s)
 }
@@ -169,7 +181,8 @@ pub fn print_inline(s : String) -> Unit {
 extern "js" fn js_print_inline(s : String) -> Unit =
   #|(s) => { process.stdout.write(s); }
 
-///| Get current timestamp as "HH:MM:SS" string
+///|
+/// Get current timestamp as "HH:MM:SS" string
 pub fn now_timestamp() -> String {
   js_now_timestamp()
 }

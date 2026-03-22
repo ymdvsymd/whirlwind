@@ -1,18 +1,21 @@
-///| Planner agent for the ralph loop
+///|
+/// Planner agent for the ralph loop
 pub struct PlannerAgent {
   agent_id : String
   lang : String
 }
 
-///| Create a new planner agent
+///|
+/// Create a new planner agent
 pub fn PlannerAgent::new(
-  agent_id~ : String = "planner",
-  lang~ : String = "en",
+  agent_id? : String = "planner",
+  lang? : String = "en",
 ) -> PlannerAgent {
   { agent_id, lang }
 }
 
-///| Build the planning prompt for a milestone
+///|
+/// Build the planning prompt for a milestone
 pub fn PlannerAgent::build_plan_prompt(
   self : PlannerAgent,
   milestone : @types.Milestone,
@@ -44,7 +47,8 @@ pub fn PlannerAgent::build_plan_prompt(
   prompt.to_string()
 }
 
-///| Parse the planner output into tasks
+///|
+/// Parse the planner output into tasks
 pub fn PlannerAgent::parse_plan(
   _self : PlannerAgent,
   output : String,
@@ -54,7 +58,8 @@ pub fn PlannerAgent::parse_plan(
   mgr.parse_planner_output(output, milestone_id)
 }
 
-///| Run the planner agent to generate tasks for a milestone
+///|
+/// Run the planner agent to generate tasks for a milestone
 pub fn PlannerAgent::plan(
   self : PlannerAgent,
   milestone : @types.Milestone,
@@ -62,7 +67,7 @@ pub fn PlannerAgent::plan(
   brief : String,
   milestones : Array[@types.Milestone],
   mgr : MilestoneManager,
-  on_event~ : (@types.AgentEvent) -> Unit = fn(_e) {  },
+  on_event? : (@types.AgentEvent) -> Unit = fn(_e) {  },
 ) -> Array[@types.RalphTask] {
   let prompt = self.build_plan_prompt(milestone)
   let system_prompt = build_planner_system_prompt(brief, milestones)

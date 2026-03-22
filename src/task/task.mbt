@@ -1,15 +1,18 @@
-///| TaskManager handles task lifecycle and assignment
+///|
+/// TaskManager handles task lifecycle and assignment
 pub struct TaskManager {
   tasks : Array[@types.Task]
   mut next_id : Int
 }
 
-///| Create a new TaskManager
+///|
+/// Create a new TaskManager
 pub fn TaskManager::new() -> TaskManager {
   { tasks: [], next_id: 1 }
 }
 
-///| Add a task to the manager
+///|
+/// Add a task to the manager
 pub fn TaskManager::add_task(
   self : TaskManager,
   description : String,
@@ -22,7 +25,8 @@ pub fn TaskManager::add_task(
   task
 }
 
-///| Get a task by id
+///|
+/// Get a task by id
 pub fn TaskManager::get_task(self : TaskManager, id : String) -> @types.Task? {
   for task in self.tasks {
     if task.id == id {
@@ -32,17 +36,20 @@ pub fn TaskManager::get_task(self : TaskManager, id : String) -> @types.Task? {
   None
 }
 
-///| Get all pending tasks
+///|
+/// Get all pending tasks
 pub fn TaskManager::get_pending(self : TaskManager) -> Array[@types.Task] {
   self.tasks.filter(fn(t) { t.is_pending() })
 }
 
-///| Get all completed tasks
+///|
+/// Get all completed tasks
 pub fn TaskManager::get_completed(self : TaskManager) -> Array[@types.Task] {
   self.tasks.filter(fn(t) { t.is_done() })
 }
 
-///| Assign the next pending task to an agent
+///|
+/// Assign the next pending task to an agent
 pub fn TaskManager::assign_next(
   self : TaskManager,
   agent_id : String,
@@ -56,22 +63,26 @@ pub fn TaskManager::assign_next(
   None
 }
 
-///| Get total task count
+///|
+/// Get total task count
 pub fn TaskManager::total(self : TaskManager) -> Int {
   self.tasks.length()
 }
 
-///| Get completed task count
+///|
+/// Get completed task count
 pub fn TaskManager::completed_count(self : TaskManager) -> Int {
   self.tasks.iter().filter(fn(t) { t.is_done() }).count()
 }
 
-///| Check if all tasks are done
+///|
+/// Check if all tasks are done
 pub fn TaskManager::all_done(self : TaskManager) -> Bool {
   self.tasks.iter().all(fn(t) { t.is_done() })
 }
 
-///| Parse task descriptions from LLM output
+///|
+/// Parse task descriptions from LLM output
 /// Expects format: one task per line, possibly numbered
 pub fn TaskManager::parse_tasks(
   self : TaskManager,
@@ -94,7 +105,8 @@ pub fn TaskManager::parse_tasks(
   result
 }
 
-///| Strip leading numbering from a line
+///|
+/// Strip leading numbering from a line
 fn strip_prefix(s : String) -> String {
   let chars = s.to_array()
   let len = chars.length()

@@ -1,4 +1,5 @@
-///| Run multiple agent tasks in parallel when the backend supports SDK fan-out.
+///|
+/// Run multiple agent tasks in parallel when the backend supports SDK fan-out.
 pub fn run_parallel(
   backend : BoxedBackend,
   tasks : Array[(String, String)],
@@ -6,22 +7,13 @@ pub fn run_parallel(
   model? : String = "",
 ) -> Array[@types.AgentResult] {
   match backend.name() {
-    "claude-code" => run_parallel_sdk_backend(
-      "claude",
-      tasks,
-      on_output,
-      model,
-    )
-    "codex" => run_parallel_sdk_backend(
-      "codex",
-      tasks,
-      on_output,
-      model,
-    )
+    "claude-code" => run_parallel_sdk_backend("claude", tasks, on_output, model)
+    "codex" => run_parallel_sdk_backend("codex", tasks, on_output, model)
     _ => run_parallel_sequential(backend, tasks, on_output)
   }
 }
 
+///|
 fn run_parallel_sequential(
   backend : BoxedBackend,
   tasks : Array[(String, String)],
@@ -35,6 +27,7 @@ fn run_parallel_sequential(
   results
 }
 
+///|
 fn run_parallel_sdk_backend(
   runner : String,
   tasks : Array[(String, String)],
@@ -62,10 +55,11 @@ fn run_parallel_sdk_backend(
     return replicate_failed_result(tasks.length(), raw_output)
   }
   let parsed = @json.parse(raw_output) catch {
-    _ => return replicate_failed_result(
-      tasks.length(),
-      "ERROR: failed to parse parallel SDK output",
-    )
+    _ =>
+      return replicate_failed_result(
+        tasks.length(),
+        "ERROR: failed to parse parallel SDK output",
+      )
   }
   match parsed {
     Array(results_json) => {
@@ -74,61 +68,64 @@ fn run_parallel_sdk_backend(
         match entry {
           String(jsonl) => results.push(parse_jsonl_result(jsonl, on_output))
           _ =>
-            results.push(
-              {
-                content: "",
-                status: @types.AgentStatus::Failed(
-                  "ERROR: invalid parallel SDK result entry",
-                ),
-                error: Some("ERROR: invalid parallel SDK result entry"),
-                session_id: "",
-              },
-            )
+            results.push({
+              content: "",
+              status: @types.AgentStatus::Failed(
+                "ERROR: invalid parallel SDK result entry",
+              ),
+              error: Some("ERROR: invalid parallel SDK result entry"),
+              session_id: "",
+            })
         }
       }
       while results.length() < tasks.length() {
-        results.push(
-          {
-            content: "",
-            status: @types.AgentStatus::Failed(
-              "ERROR: missing parallel SDK result",
-            ),
-            error: Some("ERROR: missing parallel SDK result"),
-            session_id: "",
-          },
-        )
+        results.push({
+          content: "",
+          status: @types.AgentStatus::Failed(
+            "ERROR: missing parallel SDK result",
+          ),
+          error: Some("ERROR: missing parallel SDK result"),
+          session_id: "",
+        })
       }
       results
     }
-    _ => replicate_failed_result(
-      tasks.length(),
-      "ERROR: invalid parallel SDK output shape",
-    )
+    _ =>
+      replicate_failed_result(
+        tasks.length(),
+        "ERROR: invalid parallel SDK output shape",
+      )
   }
 }
 
+///|
 fn replicate_failed_result(
   count : Int,
   err : String,
 ) -> Array[@types.AgentResult] {
   let results : Array[@types.AgentResult] = []
   for _ in 0..<count {
-    results.push(
-      {
-        content: "",
-        status: @types.AgentStatus::Failed(err),
-        error: Some(err),
-        session_id: "",
-      },
-    )
+    results.push({
+      content: "",
+      status: @types.AgentStatus::Failed(err),
+      error: Some(err),
+      session_id: "",
+    })
   }
   results
 }
 
+///|
 fn failed_result(err : String) -> @types.AgentResult {
-  { content: "", status: @types.AgentStatus::Failed(err), error: Some(err), session_id: "" }
+  {
+    content: "",
+    status: @types.AgentStatus::Failed(err),
+    error: Some(err),
+    session_id: "",
+  }
 }
 
+///|
 pub fn parse_jsonl_result(
   jsonl : String,
   on_output : (@types.AgentEvent) -> Unit,
@@ -148,17 +145,10 @@ pub fn parse_jsonl_result(
     if line.is_empty() {
       continue
     }
-    if parse_sdk_event_line(
-      line,
-      buf,
-      line_buf,
-      error_buf,
-      on_output,
-      fn(sid) {
+    if parse_sdk_event_line(line, buf, line_buf, error_buf, on_output, fn(sid) {
         captured_session_id = sid
         on_output(@types.AgentEvent::SessionId(sid))
-      },
-    ) {
+      }) {
       has_error = true
     }
   }
@@ -179,6 +169,7 @@ pub fn parse_jsonl_result(
   }
 }
 
+///|
 pub fn parse_sdk_event_line(
   line : String,
   buf : StringBuilder,
@@ -189,18 +180,15 @@ pub fn parse_sdk_event_line(
 ) -> Bool {
   let json = @json.parse(line) catch { _ => return false }
   match json {
-    Object(map) => parse_sdk_event_json(
-      map,
-      buf,
-      line_buf,
-      error_buf,
-      on_output,
-      on_session_id,
-    )
+    Object(map) =>
+      parse_sdk_event_json(
+        map, buf, line_buf, error_buf, on_output, on_session_id,
+      )
     _ => false
   }
 }
 
+///|
 fn parse_sdk_event_json(
   map : Map[String, Json],
   buf : StringBuilder,
@@ -210,10 +198,7 @@ fn parse_sdk_event_json(
   on_session_id : (String) -> Unit,
 ) -> Bool {
   match map.get("session_id") {
-    Some(String(sid)) =>
-      if not(sid.is_empty()) {
-        on_session_id(sid)
-      }
+    Some(String(sid)) => if not(sid.is_empty()) { on_session_id(sid) }
     _ => ()
   }
   match map.get("type") {
@@ -221,13 +206,12 @@ fn parse_sdk_event_json(
       match event_type {
         "system" => parse_system_event(map, on_output)
         "assistant" => parse_tool_calls(map, on_output)
-        "stream_event" => {
+        "stream_event" =>
           match map.get("event") {
             Some(Object(event)) =>
               parse_sdk_stream_event(event, buf, line_buf, on_output)
             _ => ()
           }
-        }
         "tool_result" => parse_tool_result(map, on_output)
         "content_block_start" => parse_content_block_start(map, on_output)
         "result" => {
@@ -250,6 +234,7 @@ fn parse_sdk_event_json(
   false
 }
 
+///|
 fn parse_sdk_stream_event(
   event : Map[String, Json],
   buf : StringBuilder,
@@ -260,7 +245,7 @@ fn parse_sdk_stream_event(
     Some(String(event_type)) =>
       match event_type {
         "content_block_start" => parse_content_block_start(event, on_output)
-        "content_block_delta" => {
+        "content_block_delta" =>
           match event.get("delta") {
             Some(Object(delta)) =>
               match delta.get("type") {
@@ -278,7 +263,6 @@ fn parse_sdk_stream_event(
               }
             _ => ()
           }
-        }
         _ => ()
       }
     _ => ()

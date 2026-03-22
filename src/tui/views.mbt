@@ -1,25 +1,19 @@
-///| Render the header bar
+///|
+/// Render the header bar
 pub fn render_header(
   session : @types.Session,
   agent_count : Int,
 ) -> @vnode.TuiNode {
-  @vnode.row(
-    border="single",
-    border_color="rgb(100,100,255)",
-    padding_x=1.0,
-    [
-      @vnode.text("tornado", fg="rgb(100,200,255)", bold=true),
-      @vnode.text(" | Session: \{session.id}", fg="rgb(200,200,200)"),
-      @vnode.text(
-        " | Phase: \{session.current_phase}",
-        fg="rgb(255,200,100)",
-      ),
-      @vnode.text(" | \{agent_count} agents", fg="rgb(200,200,200)"),
-    ],
-  )
+  @vnode.row(border="single", border_color="rgb(100,100,255)", padding_x=1.0, [
+    @vnode.text("tornado", fg="rgb(100,200,255)", bold=true),
+    @vnode.text(" | Session: \{session.id}", fg="rgb(200,200,200)"),
+    @vnode.text(" | Phase: \{session.current_phase}", fg="rgb(255,200,100)"),
+    @vnode.text(" | \{agent_count} agents", fg="rgb(200,200,200)"),
+  ])
 }
 
-///| Render tab bar for agent selection
+///|
+/// Render tab bar for agent selection
 pub fn render_tabs(
   agents : Array[@types.AgentConfig],
   active_tab : Int,
@@ -28,11 +22,7 @@ pub fn render_tabs(
   for i, agent in agents {
     let is_active = i == active_tab
     let fg = if is_active { "rgb(255,255,255)" } else { "rgb(150,150,150)" }
-    let label = if is_active {
-      "[\{agent.id}]"
-    } else {
-      " \{agent.id} "
-    }
+    let label = if is_active { "[\{agent.id}]" } else { " \{agent.id} " }
     tabs.push(@vnode.text(label, fg~))
   }
   // Add orchestrator tab
@@ -40,7 +30,8 @@ pub fn render_tabs(
   @vnode.row(padding_x=1.0, gap=1.0, tabs)
 }
 
-///| Render agent detail panel
+///|
+/// Render agent detail panel
 pub fn render_agent_panel(
   agent : @types.AgentConfig,
   logs : Array[String],
@@ -62,10 +53,7 @@ pub fn render_agent_panel(
       InProgress(aid) =>
         if aid == agent.id {
           children.push(
-            @vnode.text(
-              "  Task: \{task.description}",
-              fg="rgb(255,200,100)",
-            ),
+            @vnode.text("  Task: \{task.description}", fg="rgb(255,200,100)"),
           )
         }
       _ => ()
@@ -88,10 +76,9 @@ pub fn render_agent_panel(
   )
 }
 
-///| Render the status bar
-pub fn render_status_bar(
-  session : @types.Session,
-) -> @vnode.TuiNode {
+///|
+/// Render the status bar
+pub fn render_status_bar(session : @types.Session) -> @vnode.TuiNode {
   let total = session.tasks.length()
   let done = session.tasks.iter().filter(fn(t) { t.is_done() }).count()
   let status_text = "Tasks: \{done}/\{total} | Status: \{session.status}"
@@ -100,7 +87,8 @@ pub fn render_status_bar(
   ])
 }
 
-///| Render the full TUI view
+///|
+/// Render the full TUI view
 pub fn render_app(state : TuiState) -> @vnode.TuiNode {
   match state.active_session() {
     Some(session) => {
@@ -122,8 +110,6 @@ pub fn render_app(state : TuiState) -> @vnode.TuiNode {
       @vnode.column(flex_grow=1.0, children)
     }
     None =>
-      @vnode.column([
-        @vnode.text("No active session", fg="rgb(200,100,100)"),
-      ])
+      @vnode.column([@vnode.text("No active session", fg="rgb(200,100,100)")])
   }
 }

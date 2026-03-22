@@ -1,4 +1,5 @@
-///| Create a BoxedBackend from AgentConfig
+///|
+/// Create a BoxedBackend from AgentConfig
 pub fn create_backend(config : @types.AgentConfig) -> BoxedBackend {
   match config.kind {
     ClaudeCode => {
@@ -18,16 +19,15 @@ pub fn create_backend(config : @types.AgentConfig) -> BoxedBackend {
     Mock =>
       match config.role {
         Planner =>
-          MockBackend::new(
-            default_response="WAVE 0:\n1. Mock planned task",
-          ).boxed()
+          MockBackend::new(default_response="WAVE 0:\n1. Mock planned task").boxed()
         Verifier => MockBackend::new(default_response="<wave_approved>").boxed()
         _ => MockBackend::new().boxed()
       }
   }
 }
 
-///| Create backends map from agent configs
+///|
+/// Create backends map from agent configs
 pub fn create_backends(
   agents : Array[@types.AgentConfig],
 ) -> Map[String, BoxedBackend] {

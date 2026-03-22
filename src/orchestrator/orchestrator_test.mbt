@@ -1,4 +1,5 @@
-///| Helper to create noop callbacks with phase tracking
+///|
+/// Helper to create noop callbacks with phase tracking
 fn make_callbacks_with_phases(
   phases : Array[String],
 ) -> @types.OrchestratorCallbacks {
@@ -6,7 +7,8 @@ fn make_callbacks_with_phases(
   { ..cb, on_phase_change: fn(_id, phase) { phases.push(phase.to_string()) } }
 }
 
-///| Helper to create a test config with dev and review agents
+///|
+/// Helper to create a test config with dev and review agents
 fn make_test_config() -> @config.ProjectConfig {
   let dev_agent : @types.AgentConfig = {
     id: "dev-1",
@@ -39,7 +41,8 @@ fn make_test_config() -> @config.ProjectConfig {
   }
 }
 
-///| Helper to create backends map
+///|
+/// Helper to create backends map
 fn make_backends(
   dev_response : String,
   review_response : String,
@@ -52,11 +55,11 @@ fn make_backends(
   backends
 }
 
+///|
 test "Orchestrator full cycle with approval" {
   let config = make_test_config()
   let backends = make_backends(
-    "1. Create schema\n2. Build handlers",
-    "<approved> great work",
+    "1. Create schema\n2. Build handlers", "<approved> great work",
   )
   let phases : Array[String] = []
   let callbacks = make_callbacks_with_phases(phases)
@@ -71,6 +74,7 @@ test "Orchestrator full cycle with approval" {
   inspect(phases[3], content="Reviewing")
 }
 
+///|
 test "Orchestrator without review agent" {
   let dev_agent : @types.AgentConfig = {
     id: "dev-1",
@@ -106,6 +110,7 @@ test "Orchestrator without review agent" {
   assert_true(not(phases.iter().any(fn(p) { p == "Reviewing" })))
 }
 
+///|
 test "Orchestrator emits agent events" {
   let config = make_test_config()
   let backends = make_backends("task done", "<approved>")
@@ -121,6 +126,7 @@ test "Orchestrator emits agent events" {
   assert_true(outputs.length() > 0)
 }
 
+///|
 test "Orchestrator calls on_session_complete" {
   let config = make_test_config()
   let backends = make_backends("done", "<approved>")
@@ -134,6 +140,7 @@ test "Orchestrator calls on_session_complete" {
   inspect(completed[0], content="s1")
 }
 
+///|
 test "Orchestrator iteration: NeedsChanges triggers rework then approval" {
   let config = make_test_config()
   // Dev returns "v1" by default, "fixed version" after rework (prompt contains "Feedback")
@@ -161,6 +168,7 @@ test "Orchestrator iteration: NeedsChanges triggers rework then approval" {
   assert_true(last_task.result is Some(_))
 }
 
+///|
 test "Orchestrator decompose failure falls back to original task" {
   let config = make_test_config()
   // Dev decomposer fails, but execution should still proceed with original task
@@ -181,6 +189,7 @@ test "Orchestrator decompose failure falls back to original task" {
   assert_true(session.tasks.length() >= 1)
 }
 
+///|
 test "Orchestrator handles missing backend for assigned task" {
   let dev_agent : @types.AgentConfig = {
     id: "dev-1",
@@ -220,6 +229,7 @@ test "Orchestrator handles missing backend for assigned task" {
   inspect(session.status, content="Completed")
 }
 
+///|
 test "Orchestrator iteration respects max_review_cycles" {
   let dev_agent : @types.AgentConfig = {
     id: "dev-1",
@@ -270,6 +280,7 @@ test "Orchestrator iteration respects max_review_cycles" {
   assert_true(review_count <= 3)
 }
 
+///|
 test "Orchestrator rework preserves review data across cycles" {
   let dev_agent : @types.AgentConfig = {
     id: "dev-1",
@@ -310,10 +321,7 @@ test "Orchestrator rework preserves review data across cycles" {
   backends["review-1"] = review_mock.boxed()
   let info_msgs : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = {
-    ..cb,
-    on_info: fn(msg) { info_msgs.push(msg) },
-  }
+  let callbacks = { ..cb, on_info: fn(msg) { info_msgs.push(msg) } }
   let orch = @orchestrator.Orchestrator::new(config, backends, callbacks)
   let session = @types.Session::new("s1", "Build feature", config.agents)
   dev_mock.add_response("Break down", "1. Build the feature")
@@ -321,19 +329,16 @@ test "Orchestrator rework preserves review data across cycles" {
   // Session completes after hitting max_review_cycles
   inspect(session.status, content="Completed")
   // Verify iteration actually happened (Re-working messages present)
-  assert_true(
-    info_msgs.iter().any(fn(msg) { msg.contains("Re-working") }),
-  )
+  assert_true(info_msgs.iter().any(fn(msg) { msg.contains("Re-working") }))
   // Verify review cycle count messages
-  assert_true(
-    info_msgs.iter().any(fn(msg) { msg.contains("Review cycle") }),
-  )
+  assert_true(info_msgs.iter().any(fn(msg) { msg.contains("Review cycle") }))
   // After max_review_cycles, tasks should still retain their last review
   for task in session.tasks {
     assert_true(task.review is Some(_))
   }
 }
 
+///|
 test "Orchestrator progress reports accurate completed count" {
   let config = make_test_config()
   let dev_mock = @agent.MockBackend::new(

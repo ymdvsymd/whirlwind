@@ -1,4 +1,5 @@
-///| AgentBackend trait for executing tasks
+///|
+/// AgentBackend trait for executing tasks
 pub(open) trait AgentBackend {
   run(
     Self,
@@ -11,17 +12,20 @@ pub(open) trait AgentBackend {
   get_session_id(Self) -> String
 }
 
-///| BoxedBackend for dynamic dispatch
+///|
+/// BoxedBackend for dynamic dispatch
 pub struct BoxedBackend {
   inner : &AgentBackend
 }
 
-///| Create a new BoxedBackend
+///|
+/// Create a new BoxedBackend
 pub fn BoxedBackend::new(backend : &AgentBackend) -> BoxedBackend {
   { inner: backend }
 }
 
-///| Run the backend
+///|
+/// Run the backend
 pub fn BoxedBackend::run(
   self : BoxedBackend,
   task : String,
@@ -31,12 +35,14 @@ pub fn BoxedBackend::run(
   self.inner.run(task, system_prompt, on_output)
 }
 
-///| Get the backend name
+///|
+/// Get the backend name
 pub fn BoxedBackend::name(self : BoxedBackend) -> String {
   self.inner.name()
 }
 
-///| Set session id for resume
+///|
+/// Set session id for resume
 pub fn BoxedBackend::set_session_id(
   self : BoxedBackend,
   session_id : String,
@@ -44,7 +50,8 @@ pub fn BoxedBackend::set_session_id(
   self.inner.set_session_id(session_id)
 }
 
-///| Get session id
+///|
+/// Get session id
 pub fn BoxedBackend::get_session_id(self : BoxedBackend) -> String {
   self.inner.get_session_id()
 }

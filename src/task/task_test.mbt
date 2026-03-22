@@ -1,9 +1,11 @@
+///|
 test "TaskManager::new starts empty" {
   let tm = @task.TaskManager::new()
   assert_true(tm.total() == 0)
   assert_true(tm.all_done())
 }
 
+///|
 test "TaskManager::add_task generates ids" {
   let tm = @task.TaskManager::new()
   let t1 = tm.add_task("task one")
@@ -13,6 +15,7 @@ test "TaskManager::add_task generates ids" {
   assert_true(tm.total() == 2)
 }
 
+///|
 test "TaskManager::get_task finds by id" {
   let tm = @task.TaskManager::new()
   ignore(tm.add_task("task one"))
@@ -23,6 +26,7 @@ test "TaskManager::get_task finds by id" {
   assert_true(missing is None)
 }
 
+///|
 test "TaskManager::get_pending returns pending tasks" {
   let tm = @task.TaskManager::new()
   let t1 = tm.add_task("task one")
@@ -33,6 +37,7 @@ test "TaskManager::get_pending returns pending tasks" {
   inspect(pending[0].id, content="task-2")
 }
 
+///|
 test "TaskManager::assign_next assigns first pending" {
   let tm = @task.TaskManager::new()
   ignore(tm.add_task("task one"))
@@ -43,6 +48,7 @@ test "TaskManager::assign_next assigns first pending" {
   inspect(assigned.unwrap().status, content="InProgress(\"agent-1\")")
 }
 
+///|
 test "TaskManager::completed_count" {
   let tm = @task.TaskManager::new()
   let t1 = tm.add_task("task one")
@@ -55,6 +61,7 @@ test "TaskManager::completed_count" {
   assert_true(tm.all_done())
 }
 
+///|
 test "TaskManager::parse_tasks numbered list" {
   let tm = @task.TaskManager::new()
   let output = "1. Create database schema\n2. Implement API handlers\n3. Write tests"
@@ -65,6 +72,7 @@ test "TaskManager::parse_tasks numbered list" {
   inspect(tasks[2].description, content="Write tests")
 }
 
+///|
 test "TaskManager::parse_tasks bullet list" {
   let tm = @task.TaskManager::new()
   let output = "- Setup project\n- Add dependencies\n- Configure CI"
@@ -73,6 +81,7 @@ test "TaskManager::parse_tasks bullet list" {
   inspect(tasks[0].description, content="Setup project")
 }
 
+///|
 test "TaskManager::parse_tasks skips empty lines" {
   let tm = @task.TaskManager::new()
   let output = "task one\n\ntask two\n  \n"
@@ -80,6 +89,7 @@ test "TaskManager::parse_tasks skips empty lines" {
   assert_true(tasks.length() == 2)
 }
 
+///|
 test "TaskManager::parse_tasks with parent_id" {
   let tm = @task.TaskManager::new()
   let tasks = tm.parse_tasks("sub-task", parent_id=Some("parent-1"))

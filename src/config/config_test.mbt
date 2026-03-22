@@ -1,3 +1,4 @@
+///|
 test "ProjectConfig::from_json_string parses basic config" {
   let json =
     #|{
@@ -23,6 +24,7 @@ test "ProjectConfig::from_json_string parses basic config" {
   inspect(config.agents[1].model, content="Some(\"claude-sonnet\")")
 }
 
+///|
 test "ProjectConfig::from_json_string with defaults" {
   let json =
     #|{ "agents": [] }
@@ -33,12 +35,14 @@ test "ProjectConfig::from_json_string with defaults" {
   inspect(config.review_interval, content="1")
 }
 
+///|
 test "ProjectConfig::default" {
   let config = @config.ProjectConfig::default()
   inspect(config.project_dir, content=".")
   assert_true(config.agents.is_empty())
 }
 
+///|
 test "ProjectConfig::validate detects no agents" {
   let config = @config.ProjectConfig::default()
   let errors = config.validate()
@@ -46,6 +50,7 @@ test "ProjectConfig::validate detects no agents" {
   assert_true(errors[0].contains("No agents"))
 }
 
+///|
 test "ProjectConfig::validate detects duplicate ids" {
   let json =
     #|{
@@ -59,6 +64,7 @@ test "ProjectConfig::validate detects duplicate ids" {
   assert_true(errors.iter().any(fn(e) { e.contains("Duplicate") }))
 }
 
+///|
 test "ProjectConfig::validate passes with valid config" {
   let json =
     #|{
@@ -71,16 +77,16 @@ test "ProjectConfig::validate passes with valid config" {
   assert_true(errors.is_empty())
 }
 
+///|
 test "ProjectConfig::from_json_string invalid json" {
   let mut caught = false
-  try {
-    ignore(@config.ProjectConfig::from_json_string("not json"))
-  } catch {
+  ignore(@config.ProjectConfig::from_json_string("not json")) catch {
     _ => caught = true
   }
   assert_true(caught)
 }
 
+///|
 test "parse warns on unknown agent kind" {
   let json =
     #|{
@@ -97,6 +103,7 @@ test "parse warns on unknown agent kind" {
   inspect(config.agents[0].kind, content="Mock")
 }
 
+///|
 test "parse warns on unknown agent role" {
   let json =
     #|{
@@ -113,6 +120,7 @@ test "parse warns on unknown agent role" {
   inspect(config.agents[0].role, content="Dev")
 }
 
+///|
 test "parse warns on both unknown kind and role" {
   let json =
     #|{
@@ -126,6 +134,7 @@ test "parse warns on both unknown kind and role" {
   assert_true(config.parse_warnings[1].contains("unknown role"))
 }
 
+///|
 test "validate includes parse warnings" {
   let json =
     #|{
@@ -140,6 +149,7 @@ test "validate includes parse warnings" {
   assert_true(errors.iter().any(fn(e) { e.contains("typo") }))
 }
 
+///|
 test "valid kind and role produce no warnings" {
   let json =
     #|{
@@ -154,6 +164,7 @@ test "valid kind and role produce no warnings" {
   assert_true(config.parse_warnings.is_empty())
 }
 
+///|
 test "ProjectConfig::from_json_string parses review_interval" {
   let json =
     #|{
@@ -166,6 +177,7 @@ test "ProjectConfig::from_json_string parses review_interval" {
   inspect(config.review_interval, content="3")
 }
 
+///|
 test "ProjectConfig::validate rejects review_interval < 1" {
   let json =
     #|{
@@ -179,6 +191,7 @@ test "ProjectConfig::validate rejects review_interval < 1" {
   assert_true(errors.iter().any(fn(e) { e.contains("review_interval") }))
 }
 
+///|
 test "valid config parse_warnings is empty" {
   let json =
     #|{
@@ -192,6 +205,7 @@ test "valid config parse_warnings is empty" {
   assert_true(errors.is_empty())
 }
 
+///|
 test "parse planner and verifier roles" {
   let json =
     #|{
@@ -208,6 +222,7 @@ test "parse planner and verifier roles" {
   inspect(config.agents[2].role, content="Verifier")
 }
 
+///|
 test "parse ralph_enabled and milestones_path" {
   let json =
     #|{
@@ -221,13 +236,11 @@ test "parse ralph_enabled and milestones_path" {
     #|}
   let config = @config.ProjectConfig::from_json_string(json)
   assert_true(config.ralph_enabled)
-  inspect(
-    config.milestones_path,
-    content="Some(\".tornado/milestones.json\")",
-  )
+  inspect(config.milestones_path, content="Some(\".tornado/milestones.json\")")
   inspect(config.max_rework_attempts, content="5")
 }
 
+///|
 test "ralph_enabled defaults to false" {
   let json =
     #|{
@@ -241,6 +254,7 @@ test "ralph_enabled defaults to false" {
   inspect(config.max_rework_attempts, content="3")
 }
 
+///|
 test "validate ralph requires planner" {
   let json =
     #|{
@@ -254,6 +268,7 @@ test "validate ralph requires planner" {
   assert_true(errors.iter().any(fn(e) { e.contains("planner") }))
 }
 
+///|
 test "validate ralph with planner and dev passes" {
   let json =
     #|{
@@ -268,6 +283,7 @@ test "validate ralph with planner and dev passes" {
   assert_true(errors.is_empty())
 }
 
+///|
 test "ProjectConfig::preset_ralph" {
   let config = @config.ProjectConfig::preset_ralph()
   assert_true(config.ralph_enabled)

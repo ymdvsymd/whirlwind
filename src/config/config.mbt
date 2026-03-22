@@ -1,4 +1,5 @@
-///| Project configuration
+///|
+/// Project configuration
 pub(all) struct ProjectConfig {
   project_dir : String
   review_dir : String
@@ -11,17 +12,18 @@ pub(all) struct ProjectConfig {
   max_rework_attempts : Int
 }
 
-///| Known valid agent kind strings
-let valid_agent_kinds : Array[String] = [
-  "claude-code", "codex", "api", "mock",
-]
+///|
+/// Known valid agent kind strings
+let valid_agent_kinds : Array[String] = ["claude-code", "codex", "api", "mock"]
 
-///| Known valid agent role strings
+///|
+/// Known valid agent role strings
 let valid_agent_roles : Array[String] = [
   "dev", "builder", "review", "orchestrator", "planner", "verifier",
 ]
 
-///| Parse AgentKind from string
+///|
+/// Parse AgentKind from string
 fn parse_agent_kind(s : String) -> @types.AgentKind {
   match s {
     "claude-code" => ClaudeCode
@@ -31,7 +33,8 @@ fn parse_agent_kind(s : String) -> @types.AgentKind {
   }
 }
 
-///| Parse AgentRole from string
+///|
+/// Parse AgentRole from string
 fn parse_agent_role(s : String) -> @types.AgentRole {
   match s {
     "dev" | "builder" => Dev
@@ -43,7 +46,8 @@ fn parse_agent_role(s : String) -> @types.AgentRole {
   }
 }
 
-///| Get a string from a JSON object
+///|
+/// Get a string from a JSON object
 fn get_string(json : Json, key : String, default : String) -> String {
   match json {
     Object(map) =>
@@ -55,7 +59,8 @@ fn get_string(json : Json, key : String, default : String) -> String {
   }
 }
 
-///| Get an int from a JSON object
+///|
+/// Get an int from a JSON object
 fn get_int(json : Json, key : String, default : Int) -> Int {
   match json {
     Object(map) =>
@@ -67,7 +72,8 @@ fn get_int(json : Json, key : String, default : Int) -> Int {
   }
 }
 
-///| Get a bool from a JSON object
+///|
+/// Get a bool from a JSON object
 fn get_bool(json : Json, key : String, default : Bool) -> Bool {
   match json {
     Object(map) =>
@@ -80,7 +86,8 @@ fn get_bool(json : Json, key : String, default : Bool) -> Bool {
   }
 }
 
-///| Get an optional string from a JSON object
+///|
+/// Get an optional string from a JSON object
 fn get_string_opt(json : Json, key : String) -> String? {
   match json {
     Object(map) =>
@@ -92,7 +99,8 @@ fn get_string_opt(json : Json, key : String) -> String? {
   }
 }
 
-///| Parse a single agent config from JSON, collecting warnings for unknown values
+///|
+/// Parse a single agent config from JSON, collecting warnings for unknown values
 fn parse_agent_config(
   json : Json,
   warnings : Array[String],
@@ -119,7 +127,8 @@ fn parse_agent_config(
   { id, kind, role, model, system_prompt, working_dir, max_iterations }
 }
 
-///| Parse project config from JSON string
+///|
+/// Parse project config from JSON string
 pub fn ProjectConfig::from_json_string(
   s : String,
 ) -> ProjectConfig raise Failure {
@@ -129,7 +138,8 @@ pub fn ProjectConfig::from_json_string(
   ProjectConfig::from_json(json)
 }
 
-///| Parse project config from Json value
+///|
+/// Parse project config from Json value
 pub fn ProjectConfig::from_json(json : Json) -> ProjectConfig raise Failure {
   match json {
     Object(map) => {
@@ -165,7 +175,8 @@ pub fn ProjectConfig::from_json(json : Json) -> ProjectConfig raise Failure {
   }
 }
 
-///| Create a default config (empty agents)
+///|
+/// Create a default config (empty agents)
 pub fn ProjectConfig::default() -> ProjectConfig {
   {
     project_dir: ".",
@@ -180,7 +191,8 @@ pub fn ProjectConfig::default() -> ProjectConfig {
   }
 }
 
-///| Preset: dev=claude-code, review=codex
+///|
+/// Preset: dev=claude-code, review=codex
 pub fn ProjectConfig::preset_default() -> ProjectConfig {
   let dev : @types.AgentConfig = {
     id: "dev",
@@ -213,7 +225,8 @@ pub fn ProjectConfig::preset_default() -> ProjectConfig {
   }
 }
 
-///| Preset for ralph loop: planner=claude-code, builder=claude-code, verifier=codex
+///|
+/// Preset for ralph loop: planner=claude-code, builder=claude-code, verifier=codex
 pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
   let planner : @types.AgentConfig = {
     id: "planner",
@@ -255,7 +268,8 @@ pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
   }
 }
 
-///| Validate the config. Returns errors and parse warnings.
+///|
+/// Validate the config. Returns errors and parse warnings.
 pub fn ProjectConfig::validate(self : ProjectConfig) -> Array[String] {
   let errors : Array[String] = []
   // Include any parse warnings (unknown kind/role values)

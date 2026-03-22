@@ -1,3 +1,4 @@
+///|
 test "PlannerAgent::build_plan_prompt includes milestone info" {
   let planner = @ralph.PlannerAgent::new()
   let milestone : @types.Milestone = {
@@ -14,6 +15,7 @@ test "PlannerAgent::build_plan_prompt includes milestone info" {
   assert_true(prompt.contains("WAVE"))
 }
 
+///|
 test "PlannerAgent::build_plan_prompt lang=ja" {
   let planner = @ralph.PlannerAgent::new(lang="ja")
   let milestone : @types.Milestone = {
@@ -28,6 +30,7 @@ test "PlannerAgent::build_plan_prompt lang=ja" {
   assert_true(prompt.contains("Japanese"))
 }
 
+///|
 test "PlannerAgent::parse_plan delegates to MilestoneManager" {
   let planner = @ralph.PlannerAgent::new()
   let mgr = @ralph.MilestoneManager::new()
@@ -43,6 +46,7 @@ test "PlannerAgent::parse_plan delegates to MilestoneManager" {
   inspect(tasks[1].wave, content="1")
 }
 
+///|
 test "PlannerAgent::plan with mock backend" {
   let planner = @ralph.PlannerAgent::new()
   let mgr = @ralph.MilestoneManager::new()

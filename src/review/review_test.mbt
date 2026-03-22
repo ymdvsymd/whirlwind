@@ -1,9 +1,11 @@
+///|
 test "ReviewAgent::parse_verdict approved" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let verdict = ra.parse_verdict("The code looks great! <approved>")
   inspect(verdict, content="Approved")
 }
 
+///|
 test "ReviewAgent::parse_verdict needs_changes" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let verdict = ra.parse_verdict(
@@ -19,18 +21,21 @@ test "ReviewAgent::parse_verdict needs_changes" {
   }
 }
 
+///|
 test "ReviewAgent::parse_verdict rejected" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let verdict = ra.parse_verdict("<rejected>security vulnerability</rejected>")
   inspect(verdict, content="Rejected(\"security vulnerability\")")
 }
 
+///|
 test "ReviewAgent::parse_verdict defaults to approved" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let verdict = ra.parse_verdict("no tags here")
   inspect(verdict, content="Approved")
 }
 
+///|
 test "ReviewAgent::build_prompt includes perspective-specific content" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
@@ -45,6 +50,7 @@ test "ReviewAgent::build_prompt includes perspective-specific content" {
   assert_true(prompt.contains("<approved>"))
 }
 
+///|
 test "ReviewAgent::build_prompt performance perspective" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
@@ -57,6 +63,7 @@ test "ReviewAgent::build_prompt performance perspective" {
   assert_true(prompt.contains("Algorithmic complexity"))
 }
 
+///|
 test "ReviewAgent::build_prompt security perspective" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
@@ -69,6 +76,7 @@ test "ReviewAgent::build_prompt security perspective" {
   assert_true(prompt.contains("Injection vulnerabilities"))
 }
 
+///|
 test "ReviewAgent::build_prompt includes context when provided" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
@@ -81,10 +89,9 @@ test "ReviewAgent::build_prompt includes context when provided" {
   assert_true(prompt.contains("abc123 fix bug"))
 }
 
+///|
 test "ReviewAgent::review merges 3 perspectives - all approved" {
-  let mock = @agent.MockBackend::new(
-    default_response="<approved> looks good",
-  )
+  let mock = @agent.MockBackend::new(default_response="<approved> looks good")
   let backend = mock.boxed()
   let ra = @review.ReviewAgent::new("r1", "en")
   let task = @types.Task::new("t1", "implement feature")
@@ -95,6 +102,7 @@ test "ReviewAgent::review merges 3 perspectives - all approved" {
   assert_true(task.review is Some(_))
 }
 
+///|
 test "ReviewAgent::review merges needs_changes with perspective tags" {
   let mock = @agent.MockBackend::new(
     default_response="<needs_changes>fix this</needs_changes>",
@@ -116,6 +124,7 @@ test "ReviewAgent::review merges needs_changes with perspective tags" {
   }
 }
 
+///|
 test "ReviewAgent::review keeps first rejected after parallel execution" {
   let mock = @agent.MockBackend::new(
     default_response="<rejected>critical flaw</rejected>",
@@ -136,11 +145,13 @@ test "ReviewAgent::review keeps first rejected after parallel execution" {
   }
 }
 
+///|
 test "ReviewAgent::perspectives returns 3" {
   let ra = @review.ReviewAgent::new("r1", "en")
   assert_true(ra.perspectives().length() == 3)
 }
 
+///|
 test "ReviewAgent::format_review approved" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let task = @types.Task::new("t1", "build API")
@@ -156,6 +167,7 @@ test "ReviewAgent::format_review approved" {
   assert_true(md.contains("Good work"))
 }
 
+///|
 test "ReviewAgent::format_review needs_changes" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let task = @types.Task::new("t1", "build API")
@@ -171,6 +183,7 @@ test "ReviewAgent::format_review needs_changes" {
   assert_true(md.contains("- add docs"))
 }
 
+///|
 test "ReviewAgent::parse_verdict prefers approved over needs_changes" {
   let ra = @review.ReviewAgent::new("r1", "en")
   // <approved> appears before <needs_changes>, so approved wins
@@ -180,6 +193,7 @@ test "ReviewAgent::parse_verdict prefers approved over needs_changes" {
   inspect(verdict, content="Approved")
 }
 
+///|
 test "ReviewAgent::parse_verdict handles malformed close tag" {
   let ra = @review.ReviewAgent::new("r1", "en")
   // Open tag without matching close tag
@@ -188,6 +202,7 @@ test "ReviewAgent::parse_verdict handles malformed close tag" {
   inspect(verdict, content="Approved")
 }
 
+///|
 test "ReviewAgent::parse_verdict treats empty needs_changes as approved" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let verdict = ra.parse_verdict("<needs_changes></needs_changes>")
@@ -195,6 +210,7 @@ test "ReviewAgent::parse_verdict treats empty needs_changes as approved" {
   inspect(verdict, content="Approved")
 }
 
+///|
 test "ReviewAgent::parse_verdict treats whitespace-only needs_changes as approved" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let verdict = ra.parse_verdict("<needs_changes>   ,  , </needs_changes>")
@@ -202,16 +218,16 @@ test "ReviewAgent::parse_verdict treats whitespace-only needs_changes as approve
   inspect(verdict, content="Approved")
 }
 
+///|
 test "extract_tag_content with close before open" {
   let ra = @review.ReviewAgent::new("r1", "en")
   // close tag appears but no proper open/close pair
-  let verdict = ra.parse_verdict(
-    "</needs_changes>content<needs_changes>",
-  )
+  let verdict = ra.parse_verdict("</needs_changes>content<needs_changes>")
   // No valid tag extraction, falls to default
   inspect(verdict, content="Approved")
 }
 
+///|
 test "extract_tag_content finds close tag after open, not before" {
   let ra = @review.ReviewAgent::new("r1", "en")
   // Close tag first, then a real open/close pair — should extract from the real pair
@@ -227,6 +243,7 @@ test "extract_tag_content finds close tag after open, not before" {
   }
 }
 
+///|
 test "extract_tag_content with rejected tag nested in text" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let verdict = ra.parse_verdict(
@@ -239,6 +256,7 @@ test "extract_tag_content with rejected tag nested in text" {
   }
 }
 
+///|
 test "parse_verdict with surrounding noise extracts correctly" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let input = "I reviewed the code carefully.\n\n<needs_changes>add error handling, improve naming</needs_changes>\n\nOverall the code needs work."
@@ -253,11 +271,14 @@ test "parse_verdict with surrounding noise extracts correctly" {
   }
 }
 
+///|
 test "review_perspective propagates backend failure instead of silent approval" {
   // When the review backend fails, review_perspective should NOT return Approved.
   // Previously, a failing backend returned empty content, and parse_verdict("")
   // defaulted to Approved — silently approving without any actual review.
-  let failing = @agent.FailingMockBackend::new(error_msg="API rate limit exceeded")
+  let failing = @agent.FailingMockBackend::new(
+    error_msg="API rate limit exceeded",
+  )
   let backend = failing.boxed()
   let ra = @review.ReviewAgent::new("r1", "en")
   let task = @types.Task::new("t1", "implement auth")
@@ -270,13 +291,13 @@ test "review_perspective propagates backend failure instead of silent approval" 
   )
   // The verdict should indicate failure, NOT silently approve
   match result.verdict {
-    @types.ReviewVerdict::Rejected(reason) => {
+    @types.ReviewVerdict::Rejected(reason) =>
       assert_true(reason.contains("API rate limit exceeded"))
-    }
     other => fail("Expected Rejected on backend failure, got \{other}")
   }
 }
 
+///|
 test "review merges correctly when one perspective backend fails" {
   // When a backend fails during multi-perspective review, the merged result
   // should reflect the failure rather than silently approving.
@@ -288,13 +309,13 @@ test "review merges correctly when one perspective backend fails" {
   let result = ra.review(task, backend)
   // Should be Rejected since the review backend failed, not silently Approved
   match result.verdict {
-    @types.ReviewVerdict::Rejected(reason) => {
+    @types.ReviewVerdict::Rejected(reason) =>
       assert_true(reason.contains("connection timeout"))
-    }
     other => fail("Expected Rejected on backend failure, got \{other}")
   }
 }
 
+///|
 test "ReviewAgent::build_prompt ja includes Japanese text" {
   let ra = @review.ReviewAgent::new("r1", "ja")
   let prompt = ra.build_prompt(
@@ -303,12 +324,17 @@ test "ReviewAgent::build_prompt ja includes Japanese text" {
     "完了",
     "",
   )
-  assert_true(prompt.contains("以下の開発作業をレビューしてください"))
+  assert_true(
+    prompt.contains("以下の開発作業をレビューしてください"),
+  )
   assert_true(prompt.contains("レビュー観点: コード品質"))
-  assert_true(prompt.contains("TODO リストとして書き出すことです"))
+  assert_true(
+    prompt.contains("TODO リストとして書き出すことです"),
+  )
   assert_true(not(prompt.contains("Review the following")))
 }
 
+///|
 test "ReviewAgent::build_prompt en includes English text" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
@@ -323,6 +349,7 @@ test "ReviewAgent::build_prompt en includes English text" {
   assert_true(not(prompt.contains("以下の開発作業")))
 }
 
+///|
 test "ReviewAgent::build_prompt ja performance perspective" {
   let ra = @review.ReviewAgent::new("r1", "ja")
   let prompt = ra.build_prompt(
@@ -335,6 +362,7 @@ test "ReviewAgent::build_prompt ja performance perspective" {
   assert_true(prompt.contains("アルゴリズムの計算量"))
 }
 
+///|
 test "ReviewAgent::build_prompt ja security perspective" {
   let ra = @review.ReviewAgent::new("r1", "ja")
   let prompt = ra.build_prompt(

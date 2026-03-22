@@ -1,9 +1,11 @@
+///|
 test "MilestoneManager::new creates empty manager" {
   let mgr = @ralph.MilestoneManager::new()
   assert_true(mgr.milestones.is_empty())
   assert_true(mgr.all_milestones_done())
 }
 
+///|
 test "MilestoneManager::load_from_json parses brief when present and defaults when absent" {
   let with_brief =
     #|{
@@ -20,6 +22,7 @@ test "MilestoneManager::load_from_json parses brief when present and defaults wh
   inspect(mgr2.brief, content="")
 }
 
+///|
 test "MilestoneManager::load_from_json roundtrip" {
   let json =
     #|{
@@ -49,6 +52,7 @@ test "MilestoneManager::load_from_json roundtrip" {
   assert_true(mgr2.milestones[0].tasks.length() == 2)
 }
 
+///|
 test "MilestoneManager::to_json includes brief" {
   let json =
     #|{
@@ -58,12 +62,11 @@ test "MilestoneManager::to_json includes brief" {
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   let serialized = mgr.to_json()
   assert_true(
-    serialized.contains(
-      "\"brief\":\"Keep the API backwards compatible\"",
-    ),
+    serialized.contains("\"brief\":\"Keep the API backwards compatible\""),
   )
 }
 
+///|
 test "Milestone summary parsing and serialization" {
   let json =
     #|{
@@ -93,6 +96,7 @@ test "Milestone summary parsing and serialization" {
   assert_true(serialized.contains("\"summary\":\"\""))
 }
 
+///|
 test "next_pending_milestone returns first pending" {
   let json =
     #|{
@@ -108,6 +112,7 @@ test "next_pending_milestone returns first pending" {
   inspect(next.unwrap().id, content="m2")
 }
 
+///|
 test "next_pending_milestone returns None when all done" {
   let json =
     #|{
@@ -119,6 +124,7 @@ test "next_pending_milestone returns None when all done" {
   assert_true(mgr.next_pending_milestone() is None)
 }
 
+///|
 test "get_wave_tasks filters by wave" {
   let json =
     #|{
@@ -141,6 +147,7 @@ test "get_wave_tasks filters by wave" {
   inspect(wave1[0].id, content="m1-t3")
 }
 
+///|
 test "has_undone_tasks detects pending tasks" {
   let json =
     #|{
@@ -158,6 +165,7 @@ test "has_undone_tasks detects pending tasks" {
   assert_true(mgr.has_undone_tasks(mgr.milestones[0]))
 }
 
+///|
 test "has_undone_tasks returns false when all done" {
   let json =
     #|{
@@ -174,6 +182,7 @@ test "has_undone_tasks returns false when all done" {
   assert_true(not(mgr.has_undone_tasks(mgr.milestones[0])))
 }
 
+///|
 test "next_wave_number finds lowest pending wave" {
   let json =
     #|{
@@ -192,6 +201,7 @@ test "next_wave_number finds lowest pending wave" {
   inspect(mgr.next_wave_number(mgr.milestones[0]), content="Some(1)")
 }
 
+///|
 test "parse_planner_output parses WAVE format" {
   let mgr = @ralph.MilestoneManager::new()
   let output =
@@ -214,6 +224,7 @@ test "parse_planner_output parses WAVE format" {
   inspect(tasks[3].description, content="Add authentication")
 }
 
+///|
 test "parse_planner_output with dash items" {
   let mgr = @ralph.MilestoneManager::new()
   let output =
@@ -225,6 +236,7 @@ test "parse_planner_output with dash items" {
   inspect(tasks[0].description, content="Set up project structure")
 }
 
+///|
 test "parse_planner_output handles markdown bold WAVE headers" {
   let mgr = @ralph.MilestoneManager::new()
   let output =
@@ -242,6 +254,7 @@ test "parse_planner_output handles markdown bold WAVE headers" {
   inspect(tasks[2].description, content="Build API handlers")
 }
 
+///|
 test "parse_planner_output stops at --- separator after tasks" {
   let mgr = @ralph.MilestoneManager::new()
   let output =
@@ -257,6 +270,7 @@ test "parse_planner_output stops at --- separator after tasks" {
   inspect(tasks[0].description, content="Create database schema")
 }
 
+///|
 test "parse_planner_output ignores --- before tasks" {
   let mgr = @ralph.MilestoneManager::new()
   let output =
@@ -279,6 +293,7 @@ test "parse_planner_output ignores --- before tasks" {
   inspect(tasks[1].wave, content="1")
 }
 
+///|
 test "parse_planner_output handles ## WAVE headers" {
   let mgr = @ralph.MilestoneManager::new()
   let output =
@@ -293,6 +308,7 @@ test "parse_planner_output handles ## WAVE headers" {
   inspect(tasks[1].wave, content="1")
 }
 
+///|
 test "gen_task_id generates unique ids" {
   let mgr = @ralph.MilestoneManager::new()
   let id1 = mgr.gen_task_id("m1")
@@ -302,6 +318,7 @@ test "gen_task_id generates unique ids" {
   inspect(id2, content="m1-t2")
 }
 
+///|
 test "all_milestones_done with mixed statuses" {
   let json =
     #|{
@@ -314,6 +331,7 @@ test "all_milestones_done with mixed statuses" {
   assert_true(not(mgr.all_milestones_done()))
 }
 
+///|
 test "load_from_json sets next_task_id correctly" {
   let json =
     #|{

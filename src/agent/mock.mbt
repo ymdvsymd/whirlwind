@@ -1,18 +1,21 @@
-///| MockBackend for testing with deterministic responses
+///|
+/// MockBackend for testing with deterministic responses
 pub struct MockBackend {
   responses : Map[String, String] // task pattern -> response
   default_response : String
   call_history : Array[(String, String)] // (task, system_prompt)
 }
 
-///| Create a new MockBackend with default response
+///|
+/// Create a new MockBackend with default response
 pub fn MockBackend::new(
   default_response? : String = "mock response",
 ) -> MockBackend {
   { responses: {}, default_response, call_history: [] }
 }
 
-///| Add a response for a specific task pattern
+///|
+/// Add a response for a specific task pattern
 pub fn MockBackend::add_response(
   self : MockBackend,
   task_pattern : String,
@@ -21,14 +24,14 @@ pub fn MockBackend::add_response(
   self.responses[task_pattern] = response
 }
 
-///| Get the call history
-pub fn MockBackend::get_history(
-  self : MockBackend,
-) -> Array[(String, String)] {
+///|
+/// Get the call history
+pub fn MockBackend::get_history(self : MockBackend) -> Array[(String, String)] {
   self.call_history
 }
 
-///| Find matching response for the task
+///|
+/// Find matching response for the task
 fn MockBackend::find_response(self : MockBackend, task : String) -> String {
   // Simple prefix matching
   for entry in self.responses {
@@ -40,7 +43,8 @@ fn MockBackend::find_response(self : MockBackend, task : String) -> String {
   self.default_response
 }
 
-///| AgentBackend implementation for MockBackend
+///|
+/// AgentBackend implementation for MockBackend
 impl AgentBackend for MockBackend with run(self, task, system_prompt, on_output) {
   self.call_history.push((task, system_prompt))
   on_output(@types.AgentEvent::StatusChange(@types.AgentStatus::Running))
@@ -50,25 +54,30 @@ impl AgentBackend for MockBackend with run(self, task, system_prompt, on_output)
   { content: response, status: Completed, error: None, session_id: "" }
 }
 
-///| AgentBackend implementation for MockBackend
+///|
+/// AgentBackend implementation for MockBackend
 impl AgentBackend for MockBackend with name(_self) {
   "mock"
 }
 
 ///|
-impl AgentBackend for MockBackend with set_session_id(_self, _sid) {  }
+impl AgentBackend for MockBackend with set_session_id(_self, _sid) {
+
+}
 
 ///|
 impl AgentBackend for MockBackend with get_session_id(_self) {
   ""
 }
 
-///| Wrap in BoxedBackend for dynamic dispatch
+///|
+/// Wrap in BoxedBackend for dynamic dispatch
 pub fn MockBackend::boxed(self : MockBackend) -> BoxedBackend {
   BoxedBackend::new(self)
 }
 
-///| Create a MockBackend that always fails
+///|
+/// Create a MockBackend that always fails
 pub fn MockBackend::failing(error_msg : String) -> MockBackend {
   {
     responses: { "": error_msg },
@@ -77,20 +86,23 @@ pub fn MockBackend::failing(error_msg : String) -> MockBackend {
   }
 }
 
-///| FailingMockBackend always returns a failure
+///|
+/// FailingMockBackend always returns a failure
 pub struct FailingMockBackend {
   error_msg : String
   mut call_count : Int
 }
 
-///| Create a new FailingMockBackend
+///|
+/// Create a new FailingMockBackend
 pub fn FailingMockBackend::new(
   error_msg? : String = "mock error",
 ) -> FailingMockBackend {
   { error_msg, call_count: 0 }
 }
 
-///| AgentBackend implementation for FailingMockBackend
+///|
+/// AgentBackend implementation for FailingMockBackend
 impl AgentBackend for FailingMockBackend with run(
   self,
   _task,
@@ -110,22 +122,24 @@ impl AgentBackend for FailingMockBackend with run(
   }
 }
 
-///| AgentBackend implementation for FailingMockBackend
+///|
+/// AgentBackend implementation for FailingMockBackend
 impl AgentBackend for FailingMockBackend with name(_self) {
   "failing-mock"
 }
 
 ///|
-impl AgentBackend for FailingMockBackend with set_session_id(_self, _sid) {  }
+impl AgentBackend for FailingMockBackend with set_session_id(_self, _sid) {
+
+}
 
 ///|
 impl AgentBackend for FailingMockBackend with get_session_id(_self) {
   ""
 }
 
-///| Wrap in BoxedBackend for dynamic dispatch
-pub fn FailingMockBackend::boxed(
-  self : FailingMockBackend,
-) -> BoxedBackend {
+///|
+/// Wrap in BoxedBackend for dynamic dispatch
+pub fn FailingMockBackend::boxed(self : FailingMockBackend) -> BoxedBackend {
   BoxedBackend::new(self)
 }

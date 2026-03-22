@@ -1,3 +1,4 @@
+///|
 pub(all) enum CliCommand {
   Run(
     config_path~ : String?,
@@ -9,7 +10,7 @@ pub(all) enum CliCommand {
     ralph~ : Bool,
     lang~ : String?,
     log_path~ : String?,
-    warnings~ : Array[String],
+    warnings~ : Array[String]
   )
   Validate(String?)
   Help
@@ -17,7 +18,9 @@ pub(all) enum CliCommand {
 }
 
 ///| Parse top-level CLI args.
-///| file_exists is injected for testability.
+
+///|
+/// file_exists is injected for testability.
 pub fn parse_cli_args(
   args : Array[String],
   file_exists : (String) -> Bool,
@@ -41,23 +44,23 @@ pub fn parse_cli_args(
   match first {
     "help" | "--help" | "-h" => Help
     "version" | "--version" | "-v" => Version
-    "validate" => {
+    "validate" =>
       if args.length() >= 3 {
         Validate(Some(args[2]))
       } else {
         Validate(None)
       }
-    }
     _ => parse_run_args(drop_prefix(args, 1), file_exists)
   }
 }
 
-///| Apply --dev/--review kind overrides and --review-interval to config.
+///|
+/// Apply --dev/--review kind overrides and --review-interval to config.
 pub fn apply_overrides(
   config : @config.ProjectConfig,
-  dev_kind~ : @types.AgentKind? = None,
-  review_kind~ : @types.AgentKind? = None,
-  review_interval~ : Int? = None,
+  dev_kind? : @types.AgentKind? = None,
+  review_kind? : @types.AgentKind? = None,
+  review_interval? : Int? = None,
 ) -> @config.ProjectConfig {
   let agents : Array[@types.AgentConfig] = []
   for agent in config.agents {
@@ -74,17 +77,15 @@ pub fn apply_overrides(
         }
       _ => agent.kind
     }
-    agents.push(
-      {
-        id: agent.id,
-        kind,
-        role: agent.role,
-        model: agent.model,
-        system_prompt: agent.system_prompt,
-        working_dir: agent.working_dir,
-        max_iterations: agent.max_iterations,
-      },
-    )
+    agents.push({
+      id: agent.id,
+      kind,
+      role: agent.role,
+      model: agent.model,
+      system_prompt: agent.system_prompt,
+      working_dir: agent.working_dir,
+      max_iterations: agent.max_iterations,
+    })
   }
   let ri = match review_interval {
     Some(n) => n
@@ -103,16 +104,18 @@ pub fn apply_overrides(
   }
 }
 
-///| Backward-compatible alias
+///|
+/// Backward-compatible alias
 pub fn apply_kind_overrides(
   config : @config.ProjectConfig,
-  dev_kind~ : @types.AgentKind? = None,
-  review_kind~ : @types.AgentKind? = None,
+  dev_kind? : @types.AgentKind? = None,
+  review_kind? : @types.AgentKind? = None,
 ) -> @config.ProjectConfig {
   apply_overrides(config, dev_kind~, review_kind~)
 }
 
-///| Human-readable kind label for logs/usage.
+///|
+/// Human-readable kind label for logs/usage.
 pub fn kind_name(kind : @types.AgentKind) -> String {
   match kind {
     ClaudeCode => "claude-code"
@@ -122,6 +125,7 @@ pub fn kind_name(kind : @types.AgentKind) -> String {
   }
 }
 
+///|
 fn parse_run_args(
   args : Array[String],
   file_exists : (String) -> Bool,
@@ -286,6 +290,7 @@ fn parse_run_args(
   )
 }
 
+///|
 fn parse_kind_alias(raw : String) -> @types.AgentKind? {
   match raw {
     "claude" | "claude-code" | "claudecode" => Some(ClaudeCode)
@@ -296,6 +301,7 @@ fn parse_kind_alias(raw : String) -> @types.AgentKind? {
   }
 }
 
+///|
 fn parse_positive_int(s : String) -> Int? {
   if s.is_empty() {
     return None
@@ -314,6 +320,7 @@ fn parse_positive_int(s : String) -> Int? {
   Some(result)
 }
 
+///|
 fn drop_prefix(args : Array[String], start : Int) -> Array[String] {
   let result : Array[String] = []
   let len = args.length()

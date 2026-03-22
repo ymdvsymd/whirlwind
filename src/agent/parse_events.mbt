@@ -1,4 +1,5 @@
-///| Parse tool_use blocks from an assistant message JSON object
+///|
+/// Parse tool_use blocks from an assistant message JSON object
 pub fn parse_tool_calls(
   map : Map[String, Json],
   on_output : (@types.AgentEvent) -> Unit,
@@ -48,10 +49,7 @@ pub fn parse_tool_calls(
                   _ => ""
                 }
                 on_output(
-                  @types.AgentEvent::SubAgentStart(
-                    agent_type=agent_type,
-                    task=task_desc,
-                  ),
+                  @types.AgentEvent::SubAgentStart(agent_type~, task=task_desc),
                 )
               }
             }
@@ -62,7 +60,8 @@ pub fn parse_tool_calls(
   }
 }
 
-///| Parse tool_result events from a JSON object
+///|
+/// Parse tool_result events from a JSON object
 pub fn parse_tool_result(
   map : Map[String, Json],
   on_output : (@types.AgentEvent) -> Unit,
@@ -80,14 +79,15 @@ pub fn parse_tool_result(
     Some(other) => other.stringify()
     _ => ""
   }
-  on_output(@types.AgentEvent::ToolResult(name=tool_name, output=output))
+  on_output(@types.AgentEvent::ToolResult(name=tool_name, output~))
   // Detect subagent completion
   if tool_name == "Task" {
     on_output(@types.AgentEvent::SubAgentEnd(agent_type="Task"))
   }
 }
 
-///| Parse system init event (model, tools, session)
+///|
+/// Parse system init event (model, tools, session)
 pub fn parse_system_event(
   map : Map[String, Json],
   on_output : (@types.AgentEvent) -> Unit,
@@ -113,7 +113,8 @@ pub fn parse_system_event(
   }
 }
 
-///| Parse content_block_start (tool_use start, text start, thinking)
+///|
+/// Parse content_block_start (tool_use start, text start, thinking)
 pub fn parse_content_block_start(
   map : Map[String, Json],
   on_output : (@types.AgentEvent) -> Unit,
@@ -133,11 +134,9 @@ pub fn parse_content_block_start(
           on_output(@types.AgentEvent::Info("Using tool: \{name}"))
         }
         "thinking" => on_output(@types.AgentEvent::Info("Thinking..."))
-        "text" =>
-          on_output(@types.AgentEvent::Info("Generating response..."))
+        "text" => on_output(@types.AgentEvent::Info("Generating response..."))
         _ => ()
       }
     _ => ()
   }
 }
-

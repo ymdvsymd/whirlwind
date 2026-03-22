@@ -1,3 +1,4 @@
+///|
 pub fn code_quality_checklist(lang : String) -> String {
   let buf = StringBuilder::new()
   if lang == "ja" {
@@ -8,7 +9,9 @@ pub fn code_quality_checklist(lang : String) -> String {
     buf.write_string("- エラーハンドリングの網羅性\n")
     buf.write_string("- テストカバレッジと正確性\n")
     buf.write_string("- コードの重複と不必要な複雑さ\n")
-    buf.write_string("- API 設計と公開インターフェースの明確さ\n")
+    buf.write_string(
+      "- API 設計と公開インターフェースの明確さ\n",
+    )
   } else {
     buf.write_string("## Review Focus: Code Quality\n")
     buf.write_string("Evaluate the following aspects:\n")
@@ -22,6 +25,7 @@ pub fn code_quality_checklist(lang : String) -> String {
   buf.to_string()
 }
 
+///|
 pub fn performance_checklist(lang : String) -> String {
   let buf = StringBuilder::new()
   if lang == "ja" {
@@ -44,15 +48,20 @@ pub fn performance_checklist(lang : String) -> String {
   buf.to_string()
 }
 
+///|
 pub fn security_checklist(lang : String) -> String {
   let buf = StringBuilder::new()
   if lang == "ja" {
     buf.write_string("## レビュー観点: セキュリティ\n")
     buf.write_string("以下の観点で評価してください:\n")
     buf.write_string("- 入力値のバリデーションとサニタイズ\n")
-    buf.write_string("- インジェクション脆弱性（コマンド、SQL、XSS）\n")
+    buf.write_string(
+      "- インジェクション脆弱性（コマンド、SQL、XSS）\n",
+    )
     buf.write_string("- 認証・認可の不備\n")
-    buf.write_string("- 機密データの露出（シークレット、トークン、個人情報）\n")
+    buf.write_string(
+      "- 機密データの露出（シークレット、トークン、個人情報）\n",
+    )
     buf.write_string("- 依存関係の安全性\n")
   } else {
     buf.write_string("## Review Focus: Security\n")

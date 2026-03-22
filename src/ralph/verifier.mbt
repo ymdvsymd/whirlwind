@@ -1,9 +1,11 @@
-///| Verifier agent for the ralph loop
+///|
+/// Verifier agent for the ralph loop
 pub struct VerifierAgent {
   agent_id : String
   lang : String
 }
 
+///|
 pub(all) enum VerifierPerspective {
   CodeQuality
   Performance
@@ -11,25 +13,31 @@ pub(all) enum VerifierPerspective {
   GoalAlignment
 } derive(Eq, Show)
 
-///| Create a new verifier agent
+///|
+/// Create a new verifier agent
 pub fn VerifierAgent::new(
-  agent_id~ : String = "verifier",
-  lang~ : String = "en",
+  agent_id? : String = "verifier",
+  lang? : String = "en",
 ) -> VerifierAgent {
   { agent_id, lang }
 }
 
+///|
 fn goal_alignment_checklist(lang : String) -> String {
   let buf = StringBuilder::new()
   if lang == "ja" {
     buf.write_string("## レビュー観点: ゴール整合性\n")
     buf.write_string("以下の観点で評価してください:\n")
-    buf.write_string("- 出力はマイルストーンで定義された目標を達成しているか\n")
+    buf.write_string(
+      "- 出力はマイルストーンで定義された目標を達成しているか\n",
+    )
     buf.write_string("- すべてのタスク出力に一貫性があるか\n")
     buf.write_string(
       "- 不足している成果物や未完了の実装がないか\n",
     )
-    buf.write_string("- 全体の方向性がプロジェクトの意図と一致しているか\n")
+    buf.write_string(
+      "- 全体の方向性がプロジェクトの意図と一致しているか\n",
+    )
   } else {
     buf.write_string("## Review Focus: Goal Alignment\n")
     buf.write_string("Evaluate the following aspects:\n")
@@ -38,11 +46,14 @@ fn goal_alignment_checklist(lang : String) -> String {
     buf.write_string(
       "- Are there missing deliverables or incomplete implementations?\n",
     )
-    buf.write_string("- Does the overall direction match the project's intent?\n")
+    buf.write_string(
+      "- Does the overall direction match the project's intent?\n",
+    )
   }
   buf.to_string()
 }
 
+///|
 pub fn VerifierAgent::build_perspective_prompt(
   self : VerifierAgent,
   perspective : VerifierPerspective,
@@ -90,8 +101,7 @@ pub fn VerifierAgent::build_perspective_prompt(
   match perspective {
     GoalAlignment =>
       buf.write_string(
-        "\n## Instructions\n" +
-        "Verify ALL tasks across all waves.\n\n",
+        "\n## Instructions\n" + "Verify ALL tasks across all waves.\n\n",
       )
     _ =>
       buf.write_string(
@@ -112,7 +122,8 @@ pub fn VerifierAgent::build_perspective_prompt(
   buf.to_string()
 }
 
-///| Parse verifier output into a verdict
+///|
+/// Parse verifier output into a verdict
 pub fn VerifierAgent::parse_verdict(
   _self : VerifierAgent,
   output : String,
@@ -136,7 +147,8 @@ pub fn VerifierAgent::parse_verdict(
   MilestoneFailed("Verifier output did not contain expected verdict tags")
 }
 
-///| Run the verifier agent
+///|
+/// Run the verifier agent
 pub fn VerifierAgent::verify(
   self : VerifierAgent,
   milestone : @types.Milestone,
@@ -144,55 +156,51 @@ pub fn VerifierAgent::verify(
   wave_results : Array[(String, String)],
   backend : @agent.BoxedBackend,
   project_context : String,
-  perspectives~ : Array[VerifierPerspective] = [
+  perspectives? : Array[VerifierPerspective] = [
     CodeQuality,
     Performance,
     Security,
     GoalAlignment,
   ],
-  on_event~ : (@types.AgentEvent) -> Unit = fn(_e) {  },
+  on_event? : (@types.AgentEvent) -> Unit = fn(_e) {  },
 ) -> @types.VerifierVerdict {
   let tasks : Array[(String, String)] = []
   for perspective in perspectives {
     on_event(Info("Verifying perspective: " + perspective.to_string()))
     let prompt = self.build_perspective_prompt(
-      perspective,
-      milestone,
-      wave,
-      wave_results,
-      project_context,
+      perspective, milestone, wave, wave_results, project_context,
     )
-    let system_prompt =
-      "You are a verification agent focusing on " +
+    let system_prompt = "You are a verification agent focusing on " +
       perspective.to_string() +
       ". Be concise and actionable."
     tasks.push((prompt, system_prompt))
   }
   let results = @agent.run_parallel(backend, tasks, on_event)
-  let perspective_verdicts : Array[(VerifierPerspective, @types.VerifierVerdict)] = []
+  let perspective_verdicts : Array[
+    (VerifierPerspective, @types.VerifierVerdict),
+  ] = []
   for i in 0..<perspectives.length() {
     let perspective = perspectives[i]
     let result = results[i]
     let verdict = match result.status {
       Failed(err) =>
-        @types.VerifierVerdict::NeedsRework(
-          ["[" + perspective.to_string() + "] Verification failed: " + err],
-        )
+        @types.VerifierVerdict::NeedsRework([
+          "[" + perspective.to_string() + "] Verification failed: " + err,
+        ])
       Completed => self.parse_verdict(result.content)
       _ =>
-        @types.VerifierVerdict::NeedsRework(
-          [
-            "[" +
-            perspective.to_string() +
-            "] Verification failed: unexpected verifier status",
-          ],
-        )
+        @types.VerifierVerdict::NeedsRework([
+          "[" +
+          perspective.to_string() +
+          "] Verification failed: unexpected verifier status",
+        ])
     }
     perspective_verdicts.push((perspective, verdict))
   }
   self.merge_verdicts(perspective_verdicts)
 }
 
+///|
 pub fn inject_perspective_tag(
   item : String,
   perspective : VerifierPerspective,
@@ -219,6 +227,7 @@ pub fn inject_perspective_tag(
   }
 }
 
+///|
 pub fn VerifierAgent::merge_verdicts(
   _self : VerifierAgent,
   verdicts : Array[(VerifierPerspective, @types.VerifierVerdict)],
@@ -243,7 +252,8 @@ pub fn VerifierAgent::merge_verdicts(
 
 // --- Internal helpers ---
 
-///| Extract content between <tag> and </tag>
+///|
+/// Extract content between <tag> and </tag>
 fn extract_tag(s : String, tag : String) -> String {
   let open = "<" + tag + ">"
   let close = "</" + tag + ">"
@@ -260,7 +270,8 @@ fn extract_tag(s : String, tag : String) -> String {
   trim(substring(s, start, close_idx))
 }
 
-///| Split rework items by newline
+///|
+/// Split rework items by newline
 fn split_rework_items(s : String) -> Array[String] {
   let items : Array[String] = []
   let lines = split_lines(s)
@@ -276,6 +287,7 @@ fn split_rework_items(s : String) -> Array[String] {
   items
 }
 
+///|
 fn find_substring(haystack : String, needle : String) -> Int {
   let h = haystack.to_array()
   let n = needle.to_array()
@@ -297,6 +309,7 @@ fn find_substring(haystack : String, needle : String) -> Int {
   -1
 }
 
+///|
 fn find_substring_from(haystack : String, needle : String, from : Int) -> Int {
   let h = haystack.to_array()
   let n = needle.to_array()
@@ -318,6 +331,7 @@ fn find_substring_from(haystack : String, needle : String, from : Int) -> Int {
   -1
 }
 
+///|
 fn substring(s : String, start : Int, end : Int) -> String {
   let chars = s.to_array()
   let actual_start = if start < 0 { 0 } else { start }

@@ -1,9 +1,11 @@
+///|
 test "VerifierAgent::parse_verdict approved" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.parse_verdict("All looks good. <wave_approved>")
   inspect(verdict, content="Approved")
 }
 
+///|
 test "VerifierAgent::parse_verdict needs_rework" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.parse_verdict(
@@ -19,6 +21,7 @@ test "VerifierAgent::parse_verdict needs_rework" {
   }
 }
 
+///|
 test "VerifierAgent::parse_verdict milestone_failed" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.parse_verdict(
@@ -30,15 +33,18 @@ test "VerifierAgent::parse_verdict milestone_failed" {
   }
 }
 
+///|
 test "VerifierAgent::parse_verdict rejects unrecognized output" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.parse_verdict("Everything looks fine")
   match verdict {
-    MilestoneFailed(reason) => assert_true(reason.contains("expected verdict tags"))
+    MilestoneFailed(reason) =>
+      assert_true(reason.contains("expected verdict tags"))
     _ => panic()
   }
 }
 
+///|
 test "VerifierAgent::parse_verdict rejects empty output" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.parse_verdict("")
@@ -48,6 +54,7 @@ test "VerifierAgent::parse_verdict rejects empty output" {
   }
 }
 
+///|
 test "VerifierAgent::build_perspective_prompt includes code quality checklist" {
   let v = @ralph.VerifierAgent::new()
   let milestone : @types.Milestone = {
@@ -59,10 +66,13 @@ test "VerifierAgent::build_perspective_prompt includes code quality checklist" {
     summary: "",
   }
   let prompt = v.build_perspective_prompt(CodeQuality, milestone, 0, [], "")
-  assert_true(prompt.contains("Code Quality") || prompt.contains("コード品質"))
+  assert_true(
+    prompt.contains("Code Quality") || prompt.contains("コード品質"),
+  )
   assert_true(prompt.contains("<wave_approved>"))
 }
 
+///|
 test "VerifierAgent::build_perspective_prompt includes performance checklist" {
   let v = @ralph.VerifierAgent::new()
   let milestone : @types.Milestone = {
@@ -74,10 +84,13 @@ test "VerifierAgent::build_perspective_prompt includes performance checklist" {
     summary: "",
   }
   let prompt = v.build_perspective_prompt(Performance, milestone, 0, [], "")
-  assert_true(prompt.contains("Performance") || prompt.contains("パフォーマンス"))
+  assert_true(
+    prompt.contains("Performance") || prompt.contains("パフォーマンス"),
+  )
   assert_true(prompt.contains("<wave_approved>"))
 }
 
+///|
 test "VerifierAgent::build_perspective_prompt includes security checklist" {
   let v = @ralph.VerifierAgent::new()
   let milestone : @types.Milestone = {
@@ -89,10 +102,13 @@ test "VerifierAgent::build_perspective_prompt includes security checklist" {
     summary: "",
   }
   let prompt = v.build_perspective_prompt(Security, milestone, 0, [], "")
-  assert_true(prompt.contains("Security") || prompt.contains("セキュリティ"))
+  assert_true(
+    prompt.contains("Security") || prompt.contains("セキュリティ"),
+  )
   assert_true(prompt.contains("<wave_approved>"))
 }
 
+///|
 test "VerifierAgent::build_perspective_prompt goal alignment includes milestone goal" {
   let v = @ralph.VerifierAgent::new()
   let milestone : @types.Milestone = {
@@ -108,6 +124,7 @@ test "VerifierAgent::build_perspective_prompt goal alignment includes milestone 
   assert_true(prompt.contains("<wave_approved>"))
 }
 
+///|
 test "VerifierAgent::build_perspective_prompt includes goal alignment instructions" {
   let v = @ralph.VerifierAgent::new()
   let milestone : @types.Milestone = {
@@ -125,6 +142,7 @@ test "VerifierAgent::build_perspective_prompt includes goal alignment instructio
   assert_false(prompt.contains("other waves"))
 }
 
+///|
 test "VerifierAgent::merge_verdicts returns approved when all perspectives approve" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.merge_verdicts([
@@ -136,6 +154,7 @@ test "VerifierAgent::merge_verdicts returns approved when all perspectives appro
   inspect(verdict, content="Approved")
 }
 
+///|
 test "VerifierAgent::merge_verdicts tags single rework item with perspective" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.merge_verdicts([
@@ -153,6 +172,7 @@ test "VerifierAgent::merge_verdicts tags single rework item with perspective" {
   }
 }
 
+///|
 test "VerifierAgent::merge_verdicts returns milestone failed immediately" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.merge_verdicts([
@@ -166,6 +186,7 @@ test "VerifierAgent::merge_verdicts returns milestone failed immediately" {
   }
 }
 
+///|
 test "VerifierAgent::merge_verdicts accumulates rework items from multiple perspectives" {
   let v = @ralph.VerifierAgent::new()
   let verdict = v.merge_verdicts([
@@ -183,19 +204,19 @@ test "VerifierAgent::merge_verdicts accumulates rework items from multiple persp
   }
 }
 
+///|
 test "inject_perspective_tag inserts perspective after task id" {
-  let tagged = @ralph.inject_perspective_tag(
-    "m1-t1: fix validation",
-    Security,
-  )
+  let tagged = @ralph.inject_perspective_tag("m1-t1: fix validation", Security)
   inspect(tagged, content="m1-t1: [Security] fix validation")
 }
 
+///|
 test "inject_perspective_tag prefixes non task item" {
   let tagged = @ralph.inject_perspective_tag("general issue", Performance)
   inspect(tagged, content="[Performance] general issue")
 }
 
+///|
 test "VerifierAgent::verify with mock backend approved calls all four perspectives" {
   let v = @ralph.VerifierAgent::new()
   let mock = @agent.MockBackend::new(default_response="<wave_approved>")
@@ -214,6 +235,7 @@ test "VerifierAgent::verify with mock backend approved calls all four perspectiv
   inspect(verdict, content="Approved")
 }
 
+///|
 test "VerifierAgent::verify with explicit perspectives skips goal alignment" {
   let v = @ralph.VerifierAgent::new()
   let mock = @agent.MockBackend::new(default_response="<wave_approved>")
@@ -226,19 +248,17 @@ test "VerifierAgent::verify with explicit perspectives skips goal alignment" {
     current_wave: 0,
     summary: "",
   }
-  let verdict = v.verify(
-    milestone,
-    0,
-    [],
-    backend,
-    "",
-    perspectives=[CodeQuality, Performance, Security],
-  )
+  let verdict = v.verify(milestone, 0, [], backend, "", perspectives=[
+    CodeQuality,
+    Performance,
+    Security,
+  ])
   let history = mock.get_history()
   assert_true(history.length() == 3)
   inspect(verdict, content="Approved")
 }
 
+///|
 test "VerifierAgent::verify with goal alignment only calls backend once" {
   let v = @ralph.VerifierAgent::new()
   let mock = @agent.MockBackend::new(default_response="<wave_approved>")
@@ -251,19 +271,15 @@ test "VerifierAgent::verify with goal alignment only calls backend once" {
     current_wave: 0,
     summary: "",
   }
-  let verdict = v.verify(
-    milestone,
-    0,
-    [],
-    backend,
-    "",
-    perspectives=[GoalAlignment],
-  )
+  let verdict = v.verify(milestone, 0, [], backend, "", perspectives=[
+    GoalAlignment,
+  ])
   let history = mock.get_history()
   assert_true(history.length() == 1)
   inspect(verdict, content="Approved")
 }
 
+///|
 test "VerifierAgent::verify with failing mock backend is not approved" {
   let v = @ralph.VerifierAgent::new()
   let mock = @agent.FailingMockBackend::new(error_msg="backend failed")

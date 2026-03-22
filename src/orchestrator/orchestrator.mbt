@@ -1,4 +1,5 @@
-///| Orchestrator manages the full session lifecycle
+///|
+/// Orchestrator manages the full session lifecycle
 pub struct Orchestrator {
   config : @config.ProjectConfig
   task_manager : @task.TaskManager
@@ -8,12 +9,13 @@ pub struct Orchestrator {
   mut review_cycles : Int
 }
 
-///| Create a new Orchestrator
+///|
+/// Create a new Orchestrator
 pub fn Orchestrator::new(
   config : @config.ProjectConfig,
   backends : Map[String, @agent.BoxedBackend],
   callbacks : @types.OrchestratorCallbacks,
-  lang~ : String = "en",
+  lang? : String = "en",
 ) -> Orchestrator {
   let review_agent : @types.AgentConfig? = config.agents
     .iter()
@@ -32,11 +34,9 @@ pub fn Orchestrator::new(
   }
 }
 
-///| Run the full orchestration cycle
-pub fn Orchestrator::run(
-  self : Orchestrator,
-  session : @types.Session,
-) -> Unit {
+///|
+/// Run the full orchestration cycle
+pub fn Orchestrator::run(self : Orchestrator, session : @types.Session) -> Unit {
   // Phase: Decomposing
   self.transition(session, @types.OrchestratorPhase::Decomposing)
   self.decompose_tasks(session)
@@ -65,7 +65,8 @@ pub fn Orchestrator::run(
   (self.callbacks.on_session_complete)(session.id)
 }
 
-///| Transition to a new phase
+///|
+/// Transition to a new phase
 fn Orchestrator::transition(
   self : Orchestrator,
   session : @types.Session,
@@ -75,7 +76,8 @@ fn Orchestrator::transition(
   (self.callbacks.on_phase_change)(session.id, phase)
 }
 
-///| Decompose the user task into sub-tasks
+///|
+/// Decompose the user task into sub-tasks
 fn Orchestrator::decompose_tasks(
   self : Orchestrator,
   session : @types.Session,
@@ -84,8 +86,7 @@ fn Orchestrator::decompose_tasks(
   match decomposer {
     Some((id, backend)) => {
       (self.callbacks.on_info)("Decomposing task with agent \{id}...")
-      let prompt =
-        "Break down the following task into concrete sub-tasks (one per line):\n\n\{session.user_task}"
+      let prompt = "Break down the following task into concrete sub-tasks (one per line):\n\n\{session.user_task}"
       let result = backend.run(prompt, "You are a task decomposer.", fn(event) {
         match event {
           @types.AgentEvent::OutputLine(line) =>
@@ -95,21 +96,15 @@ fn Orchestrator::decompose_tasks(
       })
       match result.status {
         Failed(err) => {
-          (self.callbacks.on_info)(
-            "Decomposition failed: \{err}",
-          )
-          (self.callbacks.on_info)(
-            "Falling back to single task",
-          )
+          (self.callbacks.on_info)("Decomposition failed: \{err}")
+          (self.callbacks.on_info)("Falling back to single task")
           let task = self.task_manager.add_task(session.user_task)
           session.tasks.push(task)
         }
         _ => {
           let tasks = self.task_manager.parse_tasks(result.content)
           if tasks.is_empty() {
-            (self.callbacks.on_info)(
-              "No sub-tasks parsed, using original task",
-            )
+            (self.callbacks.on_info)("No sub-tasks parsed, using original task")
             let task = self.task_manager.add_task(session.user_task)
             session.tasks.push(task)
           } else {
@@ -132,7 +127,8 @@ fn Orchestrator::decompose_tasks(
   }
 }
 
-///| Assign tasks to dev agents using round-robin
+///|
+/// Assign tasks to dev agents using round-robin
 fn Orchestrator::assign_tasks(
   self : Orchestrator,
   session : @types.Session,
@@ -156,7 +152,8 @@ fn Orchestrator::assign_tasks(
   }
 }
 
-///| Run a single task on a backend and handle result/callbacks
+///|
+/// Run a single task on a backend and handle result/callbacks
 fn Orchestrator::run_task(
   self : Orchestrator,
   task : @types.Task,
@@ -193,7 +190,8 @@ fn Orchestrator::run_task(
   }
 }
 
-///| Execute all assigned tasks
+///|
+/// Execute all assigned tasks
 fn Orchestrator::execute_tasks(
   self : Orchestrator,
   session : @types.Session,
@@ -205,9 +203,7 @@ fn Orchestrator::execute_tasks(
         self.run_task(task, task.description, agent_id)
         if task.is_done() {
           let done = self.task_manager.completed_count()
-          (self.callbacks.on_info)(
-            "Progress: \{done}/\{total} tasks completed",
-          )
+          (self.callbacks.on_info)("Progress: \{done}/\{total} tasks completed")
         }
       }
       _ => ()
@@ -215,7 +211,8 @@ fn Orchestrator::execute_tasks(
   }
 }
 
-///| Review all completed tasks
+///|
+/// Review all completed tasks
 fn Orchestrator::review_tasks(
   self : Orchestrator,
   session : @types.Session,
@@ -252,12 +249,15 @@ fn Orchestrator::review_tasks(
   }
 }
 
-///| Check if any tasks need rework
+///|
+/// Check if any tasks need rework
 fn Orchestrator::needs_iteration(
   _self : Orchestrator,
   session : @types.Session,
 ) -> Bool {
-  session.tasks.iter().any(fn(t) {
+  session.tasks
+  .iter()
+  .any(fn(t) {
     match t.review {
       Some(r) => r.verdict is NeedsChanges(_)
       None => false
@@ -266,8 +266,11 @@ fn Orchestrator::needs_iteration(
 }
 
 ///| Re-execute tasks that need changes.
+
 ///| Preserves original agent assignment for rework and only clears review
-///| data after successful rework (so review feedback isn't lost on failure).
+
+///|
+/// data after successful rework (so review feedback isn't lost on failure).
 fn Orchestrator::iterate_tasks(
   self : Orchestrator,
   session : @types.Session,
@@ -286,9 +289,9 @@ fn Orchestrator::iterate_tasks(
       Some(r) =>
         match r.verdict {
           NeedsChanges(items) => {
-            let feedback = items.iter().fold(init="", fn(acc, item) {
-              acc + "- " + item + "\n"
-            })
+            let feedback = items
+              .iter()
+              .fold(init="", fn(acc, item) { acc + "- " + item + "\n" })
             (self.callbacks.on_info)("Re-working \{task.id} with feedback")
             let new_desc = "\{task.description}\n\nFeedback from review:\n\{feedback}"
             // Save review data before rework attempt
@@ -315,7 +318,8 @@ fn Orchestrator::iterate_tasks(
   }
 }
 
-///| Find a backend for a given role
+///|
+/// Find a backend for a given role
 fn Orchestrator::find_backend_for_role(
   self : Orchestrator,
   role : @types.AgentRole,
@@ -331,7 +335,8 @@ fn Orchestrator::find_backend_for_role(
   None
 }
 
-///| Find the review backend id
+///|
+/// Find the review backend id
 fn Orchestrator::find_review_backend_id(self : Orchestrator) -> String? {
   for agent in self.config.agents {
     if agent.role == Review {

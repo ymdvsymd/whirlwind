@@ -1,4 +1,5 @@
-///| Agent kind - which provider/tool to use
+///|
+/// Agent kind - which provider/tool to use
 pub(all) enum AgentKind {
   ClaudeCode
   Codex
@@ -6,7 +7,8 @@ pub(all) enum AgentKind {
   Mock
 } derive(Eq, Show)
 
-///| Agent role in the orchestration
+///|
+/// Agent role in the orchestration
 pub(all) enum AgentRole {
   Dev
   Review
@@ -15,7 +17,8 @@ pub(all) enum AgentRole {
   Verifier
 } derive(Eq, Show)
 
-///| Runtime status of an agent
+///|
+/// Runtime status of an agent
 pub(all) enum AgentStatus {
   Idle
   Running
@@ -24,7 +27,8 @@ pub(all) enum AgentStatus {
   Aborted
 } derive(Eq, Show)
 
-///| Configuration for a single agent
+///|
+/// Configuration for a single agent
 pub(all) struct AgentConfig {
   id : String
   kind : AgentKind
@@ -35,7 +39,8 @@ pub(all) struct AgentConfig {
   max_iterations : Int
 }
 
-///| Status of a task in the pipeline
+///|
+/// Status of a task in the pipeline
 pub(all) enum TaskStatus {
   Pending
   InProgress(String) // agent_id
@@ -43,7 +48,8 @@ pub(all) enum TaskStatus {
   Failed(String)
 } derive(Eq, Show)
 
-///| A unit of work assigned to an agent
+///|
+/// A unit of work assigned to an agent
 pub(all) struct Task {
   id : String
   description : String
@@ -53,14 +59,16 @@ pub(all) struct Task {
   mut review : ReviewResult?
 }
 
-///| Review verdict from the review agent
+///|
+/// Review verdict from the review agent
 pub(all) enum ReviewVerdict {
   Approved
   NeedsChanges(Array[String])
   Rejected(String)
 } derive(Eq, Show)
 
-///| Result of a code review
+///|
+/// Result of a code review
 pub(all) struct ReviewResult {
   reviewer_id : String
   verdict : ReviewVerdict
@@ -68,14 +76,16 @@ pub(all) struct ReviewResult {
   file_path : String
 } derive(Show)
 
-///| Status of the overall session
+///|
+/// Status of the overall session
 pub(all) enum SessionStatus {
   Active
   Completed
   Failed(String)
 } derive(Eq, Show)
 
-///| Phase of the orchestrator
+///|
+/// Phase of the orchestrator
 pub(all) enum OrchestratorPhase {
   Decomposing
   Assigning
@@ -85,7 +95,8 @@ pub(all) enum OrchestratorPhase {
   Finalizing
 } derive(Eq, Show)
 
-///| A session represents a single orchestration run
+///|
+/// A session represents a single orchestration run
 pub(all) struct Session {
   id : String
   user_task : String
@@ -95,7 +106,8 @@ pub(all) struct Session {
   tasks : Array[Task]
 }
 
-///| Callbacks for the orchestrator to notify the UI
+///|
+/// Callbacks for the orchestrator to notify the UI
 pub(all) struct OrchestratorCallbacks {
   on_agent_output : (String, String) -> Unit // (agent_id, line)
   on_agent_complete : (String, String) -> Unit // (agent_id, result)
@@ -110,7 +122,8 @@ pub(all) struct OrchestratorCallbacks {
   on_save : () -> Unit // persist milestones state
 }
 
-///| Create noop callbacks for testing
+///|
+/// Create noop callbacks for testing
 pub fn OrchestratorCallbacks::noop() -> OrchestratorCallbacks {
   {
     on_agent_output: fn(_agent_id, _line) {  },
@@ -127,7 +140,8 @@ pub fn OrchestratorCallbacks::noop() -> OrchestratorCallbacks {
   }
 }
 
-///| Events emitted by an agent during execution
+///|
+/// Events emitted by an agent during execution
 pub(all) enum AgentEvent {
   OutputLine(String)
   Info(String)
@@ -142,11 +156,12 @@ pub(all) enum AgentEvent {
     output_tokens~ : Int,
     cache_read~ : Int,
     cache_write~ : Int,
-    cost_usd~ : Double,
+    cost_usd~ : Double
   )
 }
 
-///| Result of an agent's execution
+///|
+/// Result of an agent's execution
 pub(all) struct AgentResult {
   content : String
   status : AgentStatus
@@ -154,7 +169,8 @@ pub(all) struct AgentResult {
   session_id : String
 }
 
-///| Create a new session
+///|
+/// Create a new session
 pub fn Session::new(
   id : String,
   user_task : String,
@@ -170,7 +186,8 @@ pub fn Session::new(
   }
 }
 
-///| Create a new task
+///|
+/// Create a new task
 pub fn Task::new(
   id : String,
   description : String,
@@ -179,35 +196,41 @@ pub fn Task::new(
   { id, description, parent_id, status: Pending, result: None, review: None }
 }
 
-///| Mark task as in-progress with assigned agent
+///|
+/// Mark task as in-progress with assigned agent
 pub fn Task::assign(self : Task, agent_id : String) -> Unit {
   self.status = InProgress(agent_id)
 }
 
-///| Mark task as done with result
+///|
+/// Mark task as done with result
 pub fn Task::complete(self : Task, result : String) -> Unit {
   self.status = Done
   self.result = Some(result)
 }
 
-///| Mark task as failed
+///|
+/// Mark task as failed
 pub fn Task::fail(self : Task, error : String) -> Unit {
   self.status = Failed(error)
 }
 
-///| Check if task is pending
+///|
+/// Check if task is pending
 pub fn Task::is_pending(self : Task) -> Bool {
   self.status == Pending
 }
 
-///| Check if task is done
+///|
+/// Check if task is done
 pub fn Task::is_done(self : Task) -> Bool {
   self.status == Done
 }
 
 // --- Ralph Loop types ---
 
-///| Status of a milestone in the ralph loop
+///|
+/// Status of a milestone in the ralph loop
 pub(all) enum MilestoneStatus {
   Pending
   InProgress
@@ -215,7 +238,8 @@ pub(all) enum MilestoneStatus {
   Failed(String)
 } derive(Eq, Show)
 
-///| A milestone containing grouped tasks
+///|
+/// A milestone containing grouped tasks
 pub(all) struct Milestone {
   id : String
   goal : String
@@ -225,7 +249,8 @@ pub(all) struct Milestone {
   mut summary : String
 }
 
-///| A task within the ralph loop
+///|
+/// A task within the ralph loop
 pub(all) struct RalphTask {
   id : String
   description : String
@@ -235,7 +260,8 @@ pub(all) struct RalphTask {
   mut plan_doc : String?
 }
 
-///| Phase of the ralph loop state machine
+///|
+/// Phase of the ralph loop state machine
 pub(all) enum RalphPhase {
   LoadingMilestones
   Planning(String)
@@ -246,7 +272,8 @@ pub(all) enum RalphPhase {
   AllComplete
 } derive(Eq, Show)
 
-///| Verdict from the verifier agent
+///|
+/// Verdict from the verifier agent
 pub(all) enum VerifierVerdict {
   Approved
   NeedsRework(Array[String])
