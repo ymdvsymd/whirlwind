@@ -54,7 +54,6 @@ test "OrchestratorCallbacks::noop does not panic" {
 test "AgentKind show" {
   inspect(@types.AgentKind::ClaudeCode, content="ClaudeCode")
   inspect(@types.AgentKind::Codex, content="Codex")
-  inspect(@types.AgentKind::Api, content="Api")
   inspect(@types.AgentKind::Mock, content="Mock")
 }
 

@@ -10,12 +10,6 @@ pub fn create_backend(config : @types.AgentConfig) -> BoxedBackend {
       let model = config.model.unwrap_or("")
       SubprocessBackend::new(Codex, model~).boxed()
     }
-    Api => {
-      // API backend needs env var for key
-      let api_key = @ffi.get_env("ANTHROPIC_API_KEY")
-      let model = config.model.unwrap_or(@llm.default_anthropic_model)
-      ApiBackend::anthropic(api_key, model~).boxed()
-    }
     Mock =>
       match config.role {
         Planner =>

@@ -7,7 +7,7 @@ test "ProjectConfig::from_json_string parses basic config" {
     #|  "max_review_cycles": 5,
     #|  "agents": [
     #|    { "id": "dev-1", "kind": "claude-code", "role": "dev" },
-    #|    { "id": "review-1", "kind": "api", "role": "review", "model": "claude-sonnet" }
+    #|    { "id": "review-1", "kind": "codex", "role": "review", "model": "claude-sonnet" }
     #|  ]
     #|}
   let config = @config.ProjectConfig::from_json_string(json)
@@ -19,7 +19,7 @@ test "ProjectConfig::from_json_string parses basic config" {
   inspect(config.agents[0].kind, content="ClaudeCode")
   inspect(config.agents[0].role, content="Dev")
   inspect(config.agents[1].id, content="review-1")
-  inspect(config.agents[1].kind, content="Api")
+  inspect(config.agents[1].kind, content="Codex")
   inspect(config.agents[1].role, content="Review")
   inspect(config.agents[1].model, content="Some(\"claude-sonnet\")")
 }
@@ -156,7 +156,7 @@ test "valid kind and role produce no warnings" {
     #|  "agents": [
     #|    { "id": "dev-1", "kind": "claude-code", "role": "dev" },
     #|    { "id": "rev-1", "kind": "codex", "role": "review" },
-    #|    { "id": "api-1", "kind": "api", "role": "orchestrator" },
+    #|    { "id": "mock-1", "kind": "mock", "role": "orchestrator" },
     #|    { "id": "test-1", "kind": "mock", "role": "dev" }
     #|  ]
     #|}

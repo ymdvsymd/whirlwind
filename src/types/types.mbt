@@ -3,7 +3,6 @@
 pub(all) enum AgentKind {
   ClaudeCode
   Codex
-  Api
   Mock
 } derive(Eq, Show)
 

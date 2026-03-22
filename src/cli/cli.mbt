@@ -120,7 +120,6 @@ pub fn kind_name(kind : @types.AgentKind) -> String {
   match kind {
     ClaudeCode => "claude-code"
     Codex => "codex"
-    Api => "api"
     Mock => "mock"
   }
 }
@@ -295,7 +294,6 @@ fn parse_kind_alias(raw : String) -> @types.AgentKind? {
   match raw {
     "claude" | "claude-code" | "claudecode" => Some(ClaudeCode)
     "codex" => Some(Codex)
-    "api" => Some(Api)
     "mock" => Some(Mock)
     _ => None
   }

@@ -14,7 +14,7 @@ pub(all) struct ProjectConfig {
 
 ///|
 /// Known valid agent kind strings
-let valid_agent_kinds : Array[String] = ["claude-code", "codex", "api", "mock"]
+let valid_agent_kinds : Array[String] = ["claude-code", "codex", "mock"]
 
 ///|
 /// Known valid agent role strings
@@ -28,7 +28,6 @@ fn parse_agent_kind(s : String) -> @types.AgentKind {
   match s {
     "claude-code" => ClaudeCode
     "codex" => Codex
-    "api" => Api
     _ => Mock
   }
 }
