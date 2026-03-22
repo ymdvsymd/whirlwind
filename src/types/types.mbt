@@ -31,9 +31,6 @@ pub(all) struct AgentConfig {
   kind : AgentKind
   role : AgentRole
   model : String?
-  system_prompt : String?
-  working_dir : String
-  max_iterations : Int
 }
 
 ///|

@@ -140,9 +140,6 @@ test "create_backend uses parseable planner mock response" {
     kind: @types.AgentKind::Mock,
     role: @types.AgentRole::Planner,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   })
   let result = backend.run("plan milestone", "", fn(_) {  })
   inspect(result.content, content="WAVE 0:\n1. Mock planned task")

@@ -64,10 +64,7 @@ fn parse_agent_config(
   }
   let role = parse_agent_role(role_str)
   let model = @util.get_string_opt(json, "model")
-  let system_prompt = @util.get_string_opt(json, "system_prompt")
-  let working_dir = @util.get_string(json, "working_dir", ".")
-  let max_iterations = @util.get_int(json, "max_iterations", 10)
-  { id, kind, role, model, system_prompt, working_dir, max_iterations }
+  { id, kind, role, model }
 }
 
 ///|
@@ -136,18 +133,12 @@ pub fn ProjectConfig::preset_default() -> ProjectConfig {
     kind: ClaudeCode,
     role: Dev,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let reviewer : @types.AgentConfig = {
     id: "reviewer",
     kind: Codex,
     role: Review,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 5,
   }
   {
     max_review_cycles: 2,
@@ -168,27 +159,18 @@ pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
     kind: ClaudeCode,
     role: Planner,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let builder : @types.AgentConfig = {
     id: "builder",
     kind: ClaudeCode,
     role: Dev,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let verifier : @types.AgentConfig = {
     id: "verifier",
     kind: Codex,
     role: Verifier,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 5,
   }
   {
     max_review_cycles: 3,

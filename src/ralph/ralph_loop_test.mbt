@@ -5,27 +5,18 @@ fn make_ralph_config(ralph_enabled? : Bool = true) -> @config.ProjectConfig {
     kind: Mock,
     role: Planner,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let builder_agent : @types.AgentConfig = {
     id: "builder",
     kind: Mock,
     role: Dev,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let verifier_agent : @types.AgentConfig = {
     id: "verifier",
     kind: Mock,
     role: Verifier,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   {
     max_review_cycles: 3,
@@ -561,18 +552,12 @@ test "RalphLoop without verifier auto-approves" {
     kind: Mock,
     role: Dev,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let planner_agent : @types.AgentConfig = {
     id: "planner",
     kind: Mock,
     role: Planner,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let config : @config.ProjectConfig = {
     max_review_cycles: 3,
@@ -1531,27 +1516,18 @@ test "verify_milestone reaches max rework attempts and accepts as-is" {
     kind: Mock,
     role: Planner,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let builder_agent : @types.AgentConfig = {
     id: "builder",
     kind: Mock,
     role: Dev,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let verifier_agent : @types.AgentConfig = {
     id: "verifier",
     kind: Mock,
     role: Verifier,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let config : @config.ProjectConfig = {
     max_review_cycles: 3,
@@ -1680,18 +1656,12 @@ test "run_wave returns false when no builder backend is available" {
     kind: Mock,
     role: Planner,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let verifier_agent : @types.AgentConfig = {
     id: "verifier",
     kind: Mock,
     role: Verifier,
     model: None,
-    system_prompt: None,
-    working_dir: ".",
-    max_iterations: 10,
   }
   let config : @config.ProjectConfig = {
     max_review_cycles: 3,

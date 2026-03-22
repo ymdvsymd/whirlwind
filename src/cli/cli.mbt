@@ -77,15 +77,7 @@ pub fn apply_overrides(
         }
       _ => agent.kind
     }
-    agents.push({
-      id: agent.id,
-      kind,
-      role: agent.role,
-      model: agent.model,
-      system_prompt: agent.system_prompt,
-      working_dir: agent.working_dir,
-      max_iterations: agent.max_iterations,
-    })
+    agents.push({ id: agent.id, kind, role: agent.role, model: agent.model })
   }
   let ri = match review_interval {
     Some(n) => n
