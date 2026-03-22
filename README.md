@@ -2,19 +2,57 @@
 
 Multi-agent development orchestrator — milestone-driven autonomous development with Planner, Builder, and Verifier agents.
 
+## Quick start
+
+1. Create a `milestones.json` (see format below)
+2. Run whirlwind:
+
+```bash
+npx -y @ymdvsymd/whirlwind --milestones=./milestones.json
+```
+
+## milestones.json
+
+whirlwind requires a `milestones.json` file that defines what to build. Without it, the tool exits immediately.
+
+```json
+{
+  "brief": "Background context for the project and what needs to be done",
+  "milestones": [
+    {
+      "id": "m1",
+      "goal": "Implement feature X\n\n### Step 1: ...\n### Step 2: ...",
+      "status": "pending",
+      "summary": "",
+      "tasks": []
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `brief` | string | Project context — background, target files, design decisions |
+| `milestones[].id` | string | Milestone ID (`m1`, `m2`, ...) |
+| `milestones[].goal` | string | Full implementation details — file paths, code examples, steps |
+| `milestones[].status` | string | `"pending"` / `"done"` |
+| `milestones[].summary` | string | Populated by whirlwind on completion |
+| `milestones[].tasks` | array | Populated by whirlwind during execution |
+
+Default path: `.whirlwind/milestones.json` (override with `--milestones=PATH`).
+
 ## Usage
 
 ### Pattern 1: Run with `npx`
 
 ```bash
-# run with default preset (Planner=claude-code, Builder=claude-code, Verifier=codex)
-npx -y @ymdvsymd/whirlwind
+npx -y @ymdvsymd/whirlwind --milestones=./milestones.json
 
-# run with config file
-npx -y @ymdvsymd/whirlwind --config=./whirlwind.json
+# with config file
+npx -y @ymdvsymd/whirlwind --config=./whirlwind.json --milestones=./milestones.json
 
 # override agent kinds
-npx -y @ymdvsymd/whirlwind --builder=codex --verifier=claude-code
+npx -y @ymdvsymd/whirlwind --milestones=./milestones.json --builder=codex --verifier=claude-code
 
 # validate config
 npx -y @ymdvsymd/whirlwind validate ./whirlwind.json
@@ -25,14 +63,13 @@ npx -y @ymdvsymd/whirlwind validate ./whirlwind.json
 ```bash
 npm i -g @ymdvsymd/whirlwind
 
-# run with default preset
-whirlwind
+whirlwind --milestones=./milestones.json
 
-# run with config file
-whirlwind --config=./whirlwind.json
+# with config file
+whirlwind --config=./whirlwind.json --milestones=./milestones.json
 
 # override agent kinds
-whirlwind --builder=codex --lang=ja
+whirlwind --milestones=./milestones.json --builder=codex --lang=ja
 
 # validate config
 whirlwind validate ./whirlwind.json
@@ -42,11 +79,11 @@ whirlwind validate ./whirlwind.json
 
 | Flag | Description |
 |------|-------------|
+| `--milestones=PATH` | Milestones JSON file path (default: `.whirlwind/milestones.json`) |
 | `--config=PATH` | Config file path |
 | `--planner=KIND` | Override planner agent kind |
 | `--builder=KIND` | Override builder agent kind |
 | `--verifier=KIND` | Override verifier agent kind |
-| `--milestones=PATH` | Milestones JSON file path |
 | `--lang=LANG` | Review language (`auto`/`ja`/`en`) |
 | `--log=PATH` | Log file path |
 

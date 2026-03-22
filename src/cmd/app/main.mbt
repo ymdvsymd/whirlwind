@@ -229,8 +229,6 @@ fn run_validate(config_path : String) -> Unit {
   let errors = config.validate()
   if errors.is_empty() {
     println("Config is valid.")
-    println("  max_review_cycles: \{config.max_review_cycles}")
-    println("  review_interval: \{config.review_interval}")
     println("  agents: \{config.agents.length()}")
     for agent in config.agents {
       println("    - \{agent.id} (\{agent.kind}, \{agent.role})")

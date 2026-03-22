@@ -19,8 +19,6 @@ fn make_ralph_config() -> @config.ProjectConfig {
     model: None,
   }
   {
-    max_review_cycles: 3,
-    review_interval: 1,
     agents: [planner_agent, builder_agent, verifier_agent],
     parse_warnings: [],
     milestones_path: None,
@@ -559,8 +557,6 @@ test "RalphLoop without verifier auto-approves" {
     model: None,
   }
   let config : @config.ProjectConfig = {
-    max_review_cycles: 3,
-    review_interval: 1,
     agents: [planner_agent, builder_agent],
     parse_warnings: [],
     milestones_path: None,
@@ -1528,8 +1524,6 @@ test "verify_milestone reaches max rework attempts and accepts as-is" {
     model: None,
   }
   let config : @config.ProjectConfig = {
-    max_review_cycles: 3,
-    review_interval: 1,
     agents: [planner_agent, builder_agent, verifier_agent],
     parse_warnings: [],
     milestones_path: None,
@@ -1661,8 +1655,6 @@ test "run_wave returns false when no builder backend is available" {
     model: None,
   }
   let config : @config.ProjectConfig = {
-    max_review_cycles: 3,
-    review_interval: 1,
     agents: [planner_agent, verifier_agent],
     parse_warnings: [],
     milestones_path: None,

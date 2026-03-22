@@ -1,8 +1,6 @@
 ///|
 /// Project configuration
 pub(all) struct ProjectConfig {
-  max_review_cycles : Int
-  review_interval : Int
   agents : Array[@types.AgentConfig]
   parse_warnings : Array[String]
   milestones_path : String?
@@ -82,8 +80,6 @@ pub fn ProjectConfig::from_json_string(
 pub fn ProjectConfig::from_json(json : Json) -> ProjectConfig raise Failure {
   match json {
     Object(map) => {
-      let max_review_cycles = @util.get_int(json, "max_review_cycles", 3)
-      let review_interval = @util.get_int(json, "review_interval", 1)
       let agents : Array[@types.AgentConfig] = []
       let parse_warnings : Array[String] = []
       match map.get("agents") {
@@ -96,8 +92,6 @@ pub fn ProjectConfig::from_json(json : Json) -> ProjectConfig raise Failure {
       let milestones_path = @util.get_string_opt(json, "milestones_path")
       let max_rework_attempts = @util.get_int(json, "max_rework_attempts", 3)
       {
-        max_review_cycles,
-        review_interval,
         agents,
         parse_warnings,
         milestones_path,
@@ -112,34 +106,7 @@ pub fn ProjectConfig::from_json(json : Json) -> ProjectConfig raise Failure {
 /// Create a default config (empty agents)
 pub fn ProjectConfig::default() -> ProjectConfig {
   {
-    max_review_cycles: 3,
-    review_interval: 1,
     agents: [],
-    parse_warnings: [],
-    milestones_path: None,
-    max_rework_attempts: 3,
-  }
-}
-
-///|
-/// Preset: dev=claude-code, review=codex
-pub fn ProjectConfig::preset_default() -> ProjectConfig {
-  let dev : @types.AgentConfig = {
-    id: "dev",
-    kind: ClaudeCode,
-    role: Builder,
-    model: None,
-  }
-  let reviewer : @types.AgentConfig = {
-    id: "reviewer",
-    kind: Codex,
-    role: Review,
-    model: None,
-  }
-  {
-    max_review_cycles: 2,
-    review_interval: 1,
-    agents: [dev, reviewer],
     parse_warnings: [],
     milestones_path: None,
     max_rework_attempts: 3,
@@ -168,8 +135,6 @@ pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
     model: None,
   }
   {
-    max_review_cycles: 3,
-    review_interval: 1,
     agents: [planner, builder, verifier],
     parse_warnings: [],
     milestones_path: None,
@@ -184,9 +149,6 @@ pub fn ProjectConfig::validate(self : ProjectConfig) -> Array[String] {
   // Include any parse warnings (unknown kind/role values)
   for w in self.parse_warnings {
     errors.push(w)
-  }
-  if self.review_interval < 1 {
-    errors.push("review_interval must be >= 1, got \{self.review_interval}")
   }
   if self.agents.is_empty() {
     errors.push("No agents configured")
