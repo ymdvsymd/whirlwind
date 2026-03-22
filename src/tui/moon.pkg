@@ -1,8 +1,0 @@
-import {
-  "mizchi/tornado/types",
-  "mizchi/tui/vnode",
-}
-
-options(
-  "supported-targets": "all-wasm",
-)
