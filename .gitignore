@@ -18,3 +18,6 @@ settings.local.json
 .claude/.build-log.jsonl
 .claude/.pre-compact-state.json
 .claude/worktrees/
+
+# Beads / Dolt files (added by bd init)
+.beads-credential-key
