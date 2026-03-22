@@ -28,3 +28,36 @@ export function createLogger(
     stream.write(`[${tag}] ${message}\n`);
   };
 }
+
+export type ResultLogInfo = {
+  subtype: string;
+  costUsd?: number;
+  durationMs?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cachedTokens?: number;
+};
+
+export function formatResultLog({
+  subtype,
+  costUsd,
+  durationMs,
+  inputTokens,
+  outputTokens,
+  cachedTokens,
+}: ResultLogInfo): string {
+  const parts = [`Result: ${subtype}`];
+  if (costUsd) {
+    parts.push(`cost=$${costUsd.toFixed(4)}`);
+  }
+  if (durationMs) {
+    parts.push(`${(durationMs / 1000).toFixed(1)}s`);
+  }
+  if (inputTokens || outputTokens) {
+    parts.push(`${inputTokens || 0}in/${outputTokens || 0}out`);
+    if (cachedTokens) {
+      parts.push(`cached=${cachedTokens}`);
+    }
+  }
+  return parts.join(", ");
+}

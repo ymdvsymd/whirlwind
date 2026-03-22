@@ -19,3 +19,26 @@ export function createLogger(tag, stream = process.stderr) {
     stream.write(`[${tag}] ${message}\n`);
   };
 }
+export function formatResultLog({
+  subtype,
+  costUsd,
+  durationMs,
+  inputTokens,
+  outputTokens,
+  cachedTokens,
+}) {
+  const parts = [`Result: ${subtype}`];
+  if (costUsd) {
+    parts.push(`cost=$${costUsd.toFixed(4)}`);
+  }
+  if (durationMs) {
+    parts.push(`${(durationMs / 1000).toFixed(1)}s`);
+  }
+  if (inputTokens || outputTokens) {
+    parts.push(`${inputTokens || 0}in/${outputTokens || 0}out`);
+    if (cachedTokens) {
+      parts.push(`cached=${cachedTokens}`);
+    }
+  }
+  return parts.join(", ");
+}

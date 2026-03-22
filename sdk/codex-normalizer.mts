@@ -1,3 +1,5 @@
+import { formatResultLog } from "./runner-io.mjs";
+
 type UnknownRecord = Record<string, unknown>;
 
 type CodexItem = {
@@ -171,14 +173,12 @@ export function normalizeTurnFailed(
 
 export function formatTurnCompletedLog(event: CodexTurnEvent): string {
   const usage = event?.usage || {};
-  const parts = ["Result: success"];
-  if (usage.input_tokens || usage.output_tokens) {
-    parts.push(`${usage.input_tokens || 0}in/${usage.output_tokens || 0}out`);
-    if (usage.cached_input_tokens) {
-      parts.push(`cached=${usage.cached_input_tokens}`);
-    }
-  }
-  return parts.join(", ");
+  return formatResultLog({
+    subtype: "success",
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cachedTokens: usage.cached_input_tokens,
+  });
 }
 
 export function formatTurnFailedLog(event: CodexTurnEvent): string {

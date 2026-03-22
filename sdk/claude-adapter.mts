@@ -1,4 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { formatResultLog } from "./runner-io.mjs";
 import type {
   AdapterEmission,
   AdapterStartResult,
@@ -81,7 +82,7 @@ function extractLogs(message: ClaudeMessage): string[] {
     case "assistant":
       return extractToolUseLog(message);
     case "result":
-      return [formatResultLog(message)];
+      return [claudeResultLog(message)];
     default:
       return [];
   }
@@ -125,21 +126,12 @@ function extractToolUseLog(message: ClaudeMessage): string[] {
   return logs;
 }
 
-function formatResultLog(message: ClaudeMessage): string {
-  const parts = [`Result: ${message.subtype}`];
-
-  if (message.total_cost_usd) {
-    parts.push(`cost=$${message.total_cost_usd.toFixed(4)}`);
-  }
-  if (message.duration_ms) {
-    parts.push(`${(message.duration_ms / 1000).toFixed(1)}s`);
-  }
-  if (message.usage) {
-    const { input_tokens, output_tokens } = message.usage;
-    if (input_tokens || output_tokens) {
-      parts.push(`${input_tokens || 0}in/${output_tokens || 0}out`);
-    }
-  }
-
-  return parts.join(", ");
+function claudeResultLog(message: ClaudeMessage): string {
+  return formatResultLog({
+    subtype: message.subtype || "unknown",
+    costUsd: message.total_cost_usd,
+    durationMs: message.duration_ms,
+    inputTokens: message.usage?.input_tokens,
+    outputTokens: message.usage?.output_tokens,
+  });
 }
