@@ -1,5 +1,1 @@
-## Plan Mode 出力規約
-
-- Plan modeで計画を作成する際は、計画ファイルのパスを必ず明示すること。
-- 例: `計画ファイル: ~/.claude/plans/xxx.md`
-  （`~` はユーザーのホームディレクトリの絶対パスに展開して出力すること）
+(project-specific rules are in `.claude/rules/` directory)
