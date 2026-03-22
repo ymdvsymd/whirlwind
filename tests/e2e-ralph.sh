@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
-MODE="${1:-mock}"   # "mock" or "live"
+MODE="${1:-mock}"   # "mock", "live", "mock-flags", "live-flags"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 case "$MODE" in
-  mock)
+  mock|mock-flags)
     PLANNER_KIND="mock"
     BUILDER_KIND="mock"
     VERIFIER_KIND="mock"
     BRIEF='Fix bugs and add tests'
     ;;
-  live)
+  live|live-flags)
     PLANNER_KIND="claude-code"
     BUILDER_KIND="codex"
     VERIFIER_KIND="claude-code"
     ;;
   *)
-    echo "Usage: $0 [mock|live]" >&2
+    echo "Usage: $0 [mock|live|mock-flags|live-flags]" >&2
     exit 1
     ;;
 esac
@@ -66,7 +66,7 @@ LOG_FILE="$TMP_DIR/whirlwind.log"
 # Initialize git repo in temp dir (required by Codex SDK for file operations)
 git init -q "$TMP_DIR"
 
-if [ "$MODE" = "live" ]; then
+if [ "$MODE" = "live" ] || [ "$MODE" = "live-flags" ]; then
   cat >"$TMP_DIR/plan.md" <<'EOF'
 # Ralph e2e plan
 
@@ -79,7 +79,9 @@ EOF
   BRIEF="$(build_live_brief "$TMP_DIR/plan.md")"
 fi
 
-cat >"$TMP_DIR/whirlwind.json" <<EOF
+# Config file is only needed for config-based modes (mock, live)
+if [ "$MODE" = "mock" ] || [ "$MODE" = "live" ]; then
+  cat >"$TMP_DIR/whirlwind.json" <<EOF
 {
   "max_review_cycles": 3,
   "review_interval": 1,
@@ -104,6 +106,7 @@ cat >"$TMP_DIR/whirlwind.json" <<EOF
   ]
 }
 EOF
+fi
 
 cat >"$TMP_DIR/milestones.json" <<EOF
 {
@@ -131,11 +134,14 @@ cd "$TMP_DIR"
 # Unset CLAUDECODE to allow Claude Agent SDK to spawn Claude Code subprocesses
 # (prevents "nested session" error when running inside a Claude Code session)
 unset CLAUDECODE
-if [ "$MODE" = "mock" ]; then
-  OUTPUT="$(node "$ROOT_DIR/bin/whirlwind.js" --config=whirlwind.json --log="$LOG_FILE" 2>&1)"
-else
-  OUTPUT="$(node "$ROOT_DIR/bin/whirlwind.js" --config=whirlwind.json --log="$LOG_FILE" 2>&1)"
-fi
+case "$MODE" in
+  mock|live)
+    OUTPUT="$(node "$ROOT_DIR/bin/whirlwind.js" --config=whirlwind.json --log="$LOG_FILE" 2>&1)"
+    ;;
+  mock-flags|live-flags)
+    OUTPUT="$(node "$ROOT_DIR/bin/whirlwind.js" --planner="$PLANNER_KIND" --builder="$BUILDER_KIND" --verifier="$VERIFIER_KIND" --milestones=milestones.json --log="$LOG_FILE" 2>&1)"
+    ;;
+esac
 
 printf '%s\n' "$OUTPUT"
 

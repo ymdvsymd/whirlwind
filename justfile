@@ -15,8 +15,14 @@ test:
 mock: pack
   bash tests/e2e-ralph.sh mock
 
+mock-flags: pack
+  bash tests/e2e-ralph.sh mock-flags
+
 live: pack
   bash tests/e2e-ralph.sh live
+
+live-flags: pack
+  bash tests/e2e-ralph.sh live-flags
 
 build:
   npm run -s build:sdk
