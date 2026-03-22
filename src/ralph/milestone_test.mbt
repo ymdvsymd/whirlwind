@@ -53,6 +53,28 @@ test "MilestoneManager::load_from_json roundtrip" {
 }
 
 ///|
+test "MilestoneManager::load_from_json converts in-progress tasks back to pending" {
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1",
+    #|      "goal": "Build auth",
+    #|      "status": "in_progress",
+    #|      "current_wave": 1,
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done" },
+    #|        { "id": "m1-t2", "description": "Build handlers", "wave": 1, "status": "in_progress" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  inspect(mgr.milestones[0].status, content="InProgress")
+  inspect(mgr.milestones[0].tasks[1].status, content="Pending")
+}
+
+///|
 test "MilestoneManager::to_json includes brief" {
   let json =
     #|{

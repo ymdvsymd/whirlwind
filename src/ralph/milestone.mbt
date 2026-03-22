@@ -197,7 +197,7 @@ fn parse_ralph_task(json : Json) -> @types.RalphTask {
   let wave = get_num(json, "wave", 0)
   let status_str = get_str(json, "status", "pending")
   let status : @types.TaskStatus = match status_str {
-    "in_progress" => InProgress("")
+    "in_progress" => Pending
     "done" => Done
     "failed" => Failed("unknown")
     _ => Pending

@@ -120,8 +120,11 @@ test "planner receives system prompt with brief and completed milestone summarie
   let (_, system_prompt) = planner_mock.get_history()[0]
   assert_true(
     system_prompt.contains(
-      "You are a planning agent that breaks down milestones into executable tasks.\n\n",
+      "You are a planning agent that breaks down milestones into executable tasks.\n",
     ),
+  )
+  assert_true(
+    system_prompt.contains("Do NOT write to or modify files under .claude/plans/"),
   )
   assert_true(
     system_prompt.contains(
@@ -232,6 +235,188 @@ test "RalphLoop with pre-planned tasks" {
   inspect(mgr.milestones[0].status, content="Done")
   // Planner should not have been called since tasks were pre-planned
   assert_true(planner_mock.get_history().is_empty())
+}
+
+///|
+test "RalphLoop logs resume progress for partially completed milestone" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "in_progress",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done" },
+    #|        { "id": "m1-t2", "description": "Write tests", "wave": 0, "status": "done" },
+    #|        { "id": "m1-t3", "description": "Add handlers", "wave": 1, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  assert_true(
+    infos.iter().any(fn(msg) {
+      msg.contains("Resuming milestone m1: 2 of 3 tasks already done")
+    }),
+  )
+}
+
+///|
+test "run_wave skips already-done tasks before submitting to builder" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Resume auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done", "result": "already finished" },
+    #|        { "id": "m1-t2", "description": "Write tests", "wave": 0, "status": "done", "result": "already finished" },
+    #|        { "id": "m1-t3", "description": "Write handlers", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="fresh result")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  let history = builder_mock.get_history()
+  assert_true(history.length() == 1)
+  inspect(history[0].0, content="Write handlers")
+  inspect(mgr.milestones[0].tasks[0].result.unwrap(), content="already finished")
+  inspect(mgr.milestones[0].tasks[1].result.unwrap(), content="already finished")
+  inspect(mgr.milestones[0].tasks[2].result.unwrap(), content="fresh result")
+  assert_true(
+    infos
+    .iter()
+    .any(fn(msg) { msg.contains("Wave 0: skipping 2 already-done tasks") }),
+  )
+}
+
+///|
+test "run_wave does not emit running logs for already-done tasks" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Resume auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done", "result": "already finished" },
+    #|        { "id": "m1-t2", "description": "Write handlers", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="fresh result")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  assert_true(
+    not(infos.iter().any(fn(msg) { msg.contains("Running task m1-t1") })),
+  )
+  assert_true(infos.iter().any(fn(msg) { msg.contains("Running task m1-t2") }))
+}
+
+///|
+test "resume skips already-done milestones" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Completed milestone", "status": "done",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done", "result": "already finished" }
+    #|      ]
+    #|    },
+    #|    {
+    #|      "id": "m2", "goal": "Pending milestone", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m2-t1", "description": "Write handlers", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="fresh result")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  assert_true(planner_mock.get_history().is_empty())
+  let history = builder_mock.get_history()
+  assert_true(history.length() == 1)
+  inspect(history[0].0, content="Write handlers")
+  inspect(mgr.milestones[0].tasks[0].result.unwrap(), content="already finished")
+  inspect(mgr.milestones[1].tasks[0].result.unwrap(), content="fresh result")
+  assert_true(
+    not(infos.iter().any(fn(msg) { msg.contains("Planning milestone: m1") })),
+  )
+  assert_true(
+    not(infos.iter().any(fn(msg) { msg.contains("Executing wave 0 of m1") })),
+  )
+  assert_true(
+    not(infos.iter().any(fn(msg) {
+      msg.contains("Resuming milestone m1:")
+    })),
+  )
+  assert_true(
+    not(infos.iter().any(fn(msg) { msg.contains("Running task m1-t1") })),
+  )
+  assert_true(infos.iter().any(fn(msg) { msg.contains("Executing wave 0 of m2") }))
 }
 
 ///|

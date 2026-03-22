@@ -29,11 +29,14 @@ extern "js" fn js_run_sdk(runner : String, opts_json : String) -> String =
   #|    const { spawnSync } = require('child_process');
   #|    const path = require('path');
   #|    const runnerPath = path.join(__dirname, '..', 'sdk', runner);
+  #|    const env = Object.assign({}, process.env);
+  #|    delete env.CLAUDECODE;
   #|    const result = spawnSync(process.execPath, [runnerPath, optsJson], {
   #|      encoding: 'utf-8',
   #|      stdio: ['pipe', 'pipe', 'inherit'],
   #|      maxBuffer: 100 * 1024 * 1024,
   #|      timeout: 600000,
+  #|      env,
   #|    });
   #|    if (result.error) return 'ERROR: ' + (result.error.message || String(result.error));
   #|    if (result.status !== 0 && !result.stdout) return 'ERROR: exit code ' + result.status;

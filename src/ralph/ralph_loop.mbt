@@ -110,6 +110,14 @@ fn RalphLoop::run_milestone(
     }
   }
   // Execute waves
+  let completed_tasks =
+    milestone.tasks.iter().filter(fn(task) { task.status == Done }).count()
+  if completed_tasks > 0 {
+    emit_info(
+      self,
+      "Resuming milestone \{milestone.id}: \{completed_tasks} of \{milestone.tasks.length()} tasks already done",
+    )
+  }
   milestone.status = @types.MilestoneStatus::InProgress
   self.save_milestones()
   while self.milestone_manager.has_undone_tasks(milestone) {
@@ -156,6 +164,21 @@ fn RalphLoop::run_wave(
   self.current_phase = ExecutingWave(milestone.id, wave)
   emit_info(self, "Executing wave \{wave} of \{milestone.id}")
   let tasks = self.milestone_manager.get_wave_tasks(milestone, wave)
+  let pending_tasks : Array[@types.RalphTask] = []
+  let mut done_count = 0
+  for task in tasks {
+    match task.status {
+      Done => done_count += 1
+      _ => pending_tasks.push(task)
+    }
+  }
+  if done_count > 0 {
+    emit_info(self, "Wave \{wave}: skipping \{done_count} already-done tasks")
+  }
+  if pending_tasks.is_empty() {
+    emit_info(self, "Wave \{wave}: all tasks already done, skipping")
+    return true
+  }
   // Find builder backend (first Dev agent)
   let builder_id = find_agent_id(self.config, @types.AgentRole::Dev)
   let builder_backend = match builder_id {
@@ -173,7 +196,7 @@ fn RalphLoop::run_wave(
         self.milestone_manager.brief,
       )
       let builder_tasks : Array[(String, String)] = []
-      for task in tasks {
+      for task in pending_tasks {
         task.status = InProgress(bid)
         emit_info(self, "Running task \{task.id}: \{task.description}")
         builder_tasks.push((task.description, builder_system_prompt))
@@ -181,8 +204,8 @@ fn RalphLoop::run_wave(
       let results = @agent.run_parallel(backend, builder_tasks, fn(e) {
         handle_event(self, bid, e)
       })
-      for i in 0..<tasks.length() {
-        let task = tasks[i]
+      for i in 0..<pending_tasks.length() {
+        let task = pending_tasks[i]
         let result = results[i]
         match result.status {
           Completed => {
@@ -414,7 +437,9 @@ fn build_planner_system_prompt(
 ) -> String {
   let buf = StringBuilder::new()
   buf.write_string(
-    "You are a planning agent that breaks down milestones into executable tasks.\n\n",
+    "You are a planning agent that breaks down milestones into executable tasks.\n" +
+    "IMPORTANT: Do NOT write to or modify files under .claude/plans/. " +
+    "Output your plan as plain text only using the WAVE format specified in the prompt.\n\n",
   )
   if not(brief.is_empty()) {
     buf.write_string("## Brief\n")
