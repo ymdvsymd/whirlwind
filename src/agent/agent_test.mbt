@@ -645,16 +645,16 @@ test "parse_sdk_event_line accumulates Codex text_delta in buf" {
   inspect(buf.to_string(), content="Codex result content")
 }
 
-// ── tornado-5r4: timestamp propagation from _tornado_ts ──
+// ── tornado-5r4: timestamp propagation from _whirlwind_ts ──
 
 ///|
-test "tornado-5r4: _tornado_ts propagated into Info events" {
+test "tornado-5r4: _whirlwind_ts propagated into Info events" {
   let buf = StringBuilder::new()
   let lb = @agent.OutputLineBuffer::new()
   let err_buf = StringBuilder::new()
   let ec = EventCollector::new()
   let line =
-    #|{"type":"system","subtype":"init","model":"claude-test","tools":[],"_tornado_ts":"14:30:45"}
+    #|{"type":"system","subtype":"init","model":"claude-test","tools":[],"_whirlwind_ts":"14:30:45"}
   let _has_error = @agent.parse_sdk_event_line(
     line,
     buf,
@@ -668,13 +668,13 @@ test "tornado-5r4: _tornado_ts propagated into Info events" {
 }
 
 ///|
-test "tornado-5r4: _tornado_ts propagated into OutputLine events" {
+test "tornado-5r4: _whirlwind_ts propagated into OutputLine events" {
   let buf = StringBuilder::new()
   let lb = @agent.OutputLineBuffer::new()
   let err_buf = StringBuilder::new()
   let lines : Array[String] = []
   let line =
-    #|{"type":"stream_event","_tornado_ts":"09:15:30","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hello world\n"}}}
+    #|{"type":"stream_event","_whirlwind_ts":"09:15:30","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hello world\n"}}}
   let _has_error = @agent.parse_sdk_event_line(
     line,
     buf,
@@ -725,7 +725,7 @@ test "check_ffi_error returns Ok for string containing ERROR: in middle" {
 }
 
 ///|
-test "tornado-5r4: backward compat without _tornado_ts" {
+test "tornado-5r4: backward compat without _whirlwind_ts" {
   let buf = StringBuilder::new()
   let lb = @agent.OutputLineBuffer::new()
   let err_buf = StringBuilder::new()

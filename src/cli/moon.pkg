@@ -1,4 +1,4 @@
 import {
-  "mizchi/tornado/types",
-  "mizchi/tornado/config",
+  "ymdvsymd/whirlwind/types",
+  "ymdvsymd/whirlwind/config",
 }

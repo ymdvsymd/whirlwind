@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "mizchi/tornado/cmd/helpers"
+package "ymdvsymd/whirlwind/cmd/helpers"
 
 // Values
 pub fn build_cycle_summary(Int, Array[String], String) -> String

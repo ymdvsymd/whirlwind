@@ -1,4 +1,4 @@
-# ralph-tornado スキル: 計画ファイルから Ralph モード起動
+# ralph-whirlwind スキル: 計画ファイルから Ralph モード起動
 
 **追加日**: 2026-03-07 (コマンド版)
 **最終更新**: 2026-03-20 (スキル版に移行)
@@ -7,37 +7,37 @@
 
 ## 1. 概要
 
-`ralph-tornado` は Markdown 形式の計画ファイルを tornado Ralph モードの入力に変換し、
+`ralph-whirlwind` は Markdown 形式の計画ファイルを whirlwind Ralph モードの入力に変換し、
 バックグラウンドで起動・監視するオーケストレーションスキルである。
 
-Claude Code の `/ralph-tornado` スキルとして動作し、以下の5フェーズパイプラインを実行する:
+Claude Code の `/ralph-whirlwind` スキルとして動作し、以下の5フェーズパイプラインを実行する:
 
 ```
 計画ファイル (Markdown)
   → Phase 1: 入力検証
   → Phase 2: 計画→マイルストーン変換
-  → Phase 3: 出力ファイル生成 (milestones.json + tornado.json)
+  → Phase 3: 出力ファイル生成 (milestones.json + whirlwind.json)
   → Phase 4: 検証・起動
   → Phase 5: 進捗モニタリング
 ```
 
-### tornado ランタイムとの関係
+### whirlwind ランタイムとの関係
 
 | 層 | 担当 | 説明 |
 |----|------|------|
-| ralph-tornado スキル | Claude Code | 計画の変換・起動・監視 |
-| tornado Ralph モード | tornado ランタイム | マイルストーン駆動の自律開発ループ |
+| ralph-whirlwind スキル | Claude Code | 計画の変換・起動・監視 |
+| whirlwind Ralph モード | whirlwind ランタイム | マイルストーン駆動の自律開発ループ |
 | Agent バックエンド | Claude/Codex | 実際のコード生成・検証 |
 
-ralph-tornado は tornado の**外側**で動作し、入力データの準備と起動・監視を担う。
-tornado のランタイム（`RalphLoop::run()`）とは直接の依存関係はない。
+ralph-whirlwind は whirlwind の**外側**で動作し、入力データの準備と起動・監視を担う。
+whirlwind のランタイム（`RalphLoop::run()`）とは直接の依存関係はない。
 
 ---
 
 ## 2. CLI 引数
 
 ```
-/ralph-tornado <plan-file.md> [--dev=<kind>] [--verifier=<kind>]
+/ralph-whirlwind <plan-file.md> [--dev=<kind>] [--verifier=<kind>]
 ```
 
 | 引数 | 説明 | デフォルト |
@@ -87,7 +87,7 @@ tornado のランタイム（`RalphLoop::run()`）とは直接の依存関係は
 #### 3-2. milestones.json（Plan Context 注入）
 
 ```bash
-node .claude/skills/ralph-tornado/scripts/inject-plan-context.js <output_dir>
+node .claude/skills/ralph-whirlwind/scripts/inject-plan-context.js <output_dir>
 ```
 
 `inject-plan-context.js` スクリプトが以下を自動処理:
@@ -97,14 +97,14 @@ node .claude/skills/ralph-tornado/scripts/inject-plan-context.js <output_dir>
 3. **Plan Context を各タスクの `description` に追加**: Builder に計画全体の文脈を提供
 4. **中間ファイル `milestones-skeleton.json` を削除**
 
-> **設計意図:** tornado ランタイムの Builder は `task.description` のみを prompt として受け取り、
+> **設計意図:** whirlwind ランタイムの Builder は `task.description` のみを prompt として受け取り、
 > milestone の goal やプロジェクトコンテキストは渡されない。
 > このスクリプトで Plan Context を各タスクの description に直接注入することで、
 > ランタイムの制約を回避している。
 
-#### 3-3. tornado.json
+#### 3-3. whirlwind.json
 
-`references/tornado-config.md` のテンプレートに従い、エージェント設定を生成。
+`references/whirlwind-config.md` のテンプレートに従い、エージェント設定を生成。
 
 Planner は `mock` に設定（タスクは事前定義済みのため Planning フェーズをスキップ）:
 
@@ -128,7 +128,7 @@ Planner は `mock` に設定（タスクは事前定義済みのため Planning 
 3. **バックグラウンド起動**:
 
 ```bash
-npx -y @ymdvsymd/tornado@latest --ralph --config=<tornado.json> --lang=ja
+npx -y @ymdvsymd/whirlwind@latest --ralph --config=<whirlwind.json> --lang=ja
 ```
 
 ### Phase 5: 進捗モニタリング
@@ -143,12 +143,12 @@ npx -y @ymdvsymd/tornado@latest --ralph --config=<tornado.json> --lang=ja
 ## 4. ファイル構成
 
 ```
-.claude/skills/ralph-tornado/
+.claude/skills/ralph-whirlwind/
   SKILL.md                         # スキル定義（5フェーズパイプライン）
   references/
     milestones-schema.md           # milestones.json のスキーマ定義
     parse-rules.md                 # Markdown → マイルストーン パース規則
-    tornado-config.md              # tornado.json テンプレート
+    whirlwind-config.md              # whirlwind.json テンプレート
   scripts/
     inject-plan-context.js         # Plan Context + Verification Scope 注入
 ```
@@ -157,12 +157,12 @@ npx -y @ymdvsymd/tornado@latest --ralph --config=<tornado.json> --lang=ja
 
 | 日付 | 変更 |
 |------|------|
-| 2026-03-07 | `.claude/commands/ralph-tornado.md` として作成 |
+| 2026-03-07 | `.claude/commands/ralph-whirlwind.md` として作成 |
 | 2026-03-07 | 引数サポート、受容基準、Plan Context 注入追加 |
 | 2026-03-07 | トークン最適化（~40%削減）、plan-en.md 注入 |
 | 2026-03-19 | Phase 5 進捗モニタリング追加 |
 | 2026-03-20 | Verification Scope 指示追加 |
-| 2026-03-20 | `.claude/skills/ralph-tornado/` にスキル化（参照ドキュメント分離） |
+| 2026-03-20 | `.claude/skills/ralph-whirlwind/` にスキル化（参照ドキュメント分離） |
 
 ---
 
@@ -170,7 +170,7 @@ npx -y @ymdvsymd/tornado@latest --ralph --config=<tornado.json> --lang=ja
 
 ### 問題
 
-tornado ランタイムの Builder は `task.description` のみを prompt として受け取る:
+whirlwind ランタイムの Builder は `task.description` のみを prompt として受け取る:
 
 ```moonbit
 // ralph_loop.mbt — Builder 呼び出し
@@ -226,21 +226,21 @@ or milestones that haven't been implemented yet.
 .runs/<timestamp>_<plan-name>/
   plan-en.md                # 計画ファイルの英訳版
   milestones.json           # Plan Context 注入済みマイルストーン定義
-  tornado.json              # tornado 設定ファイル
+  whirlwind.json              # whirlwind 設定ファイル
 ```
 
 ---
 
-## 8. ralph-tornado と tornado ランタイムの連携
+## 8. ralph-whirlwind と whirlwind ランタイムの連携
 
 ```
-/ralph-tornado plan.md --dev=codex
+/ralph-whirlwind plan.md --dev=codex
   |
   +-- Phase 1-3: 変換パイプライン
-  |     plan.md → plan-en.md + milestones.json + tornado.json
+  |     plan.md → plan-en.md + milestones.json + whirlwind.json
   |
-  +-- Phase 4: tornado 起動 (バックグラウンド)
-  |     npx -y @ymdvsymd/tornado@latest --ralph --config=<絶対パス>/tornado.json --lang=ja
+  +-- Phase 4: whirlwind 起動 (バックグラウンド)
+  |     npx -y @ymdvsymd/whirlwind@latest --ralph --config=<絶対パス>/whirlwind.json --lang=ja
   |       |
   |       +-- RalphLoop::run()
   |       |     milestones.json をロード

@@ -24,10 +24,10 @@ build:
 
 pack: build
   mkdir -p bin
-  printf '\x23\x21/usr/bin/env node\n' > bin/tornado.js
-  cat _build/js/debug/build/cmd/app/app.js >> bin/tornado.js
-  sed -i '' "s/__VERSION__/$(node -p "require('./package.json').version")/" bin/tornado.js
-  chmod +x bin/tornado.js
+  printf '\x23\x21/usr/bin/env node\n' > bin/whirlwind.js
+  cat _build/js/debug/build/cmd/app/app.js >> bin/whirlwind.js
+  sed -i '' "s/__VERSION__/$(node -p "require('./package.json').version")/" bin/whirlwind.js
+  chmod +x bin/whirlwind.js
 
 publish: pack
   npm publish --access public

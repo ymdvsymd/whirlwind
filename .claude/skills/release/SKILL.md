@@ -77,4 +77,4 @@ just publish
 
 以下を表示:
 - 旧バージョン → 新バージョン
-- npm パッケージ URL: `https://www.npmjs.com/package/@ymdvsymd/tornado`
+- npm パッケージ URL: `https://www.npmjs.com/package/@ymdvsymd/whirlwind`

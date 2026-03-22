@@ -310,7 +310,7 @@ pub struct ProjectConfig {
   agents: Array[AgentConfig]
   parse_warnings: Array[String]
   ralph_enabled: Bool          // default: false
-  milestones_path: String?     // default: ".tornado/milestones.json"
+  milestones_path: String?     // default: ".whirlwind/milestones.json"
   max_rework_attempts: Int     // default: 3
 }
 ```

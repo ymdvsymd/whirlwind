@@ -86,7 +86,7 @@ test("normalizeItemComplete: Task result keeps tool_name Task", () => {
   assert.equal(event.content, "done");
 });
 
-test("normalizeTurnCompleted maps usage fields to tornado format", () => {
+test("normalizeTurnCompleted maps usage fields to whirlwind format", () => {
   const event = normalizeTurnCompleted(
     {
       usage: {

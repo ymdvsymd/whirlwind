@@ -1,4 +1,4 @@
-# tornado.json テンプレート
+# whirlwind.json テンプレート
 
 ## テンプレート
 
@@ -18,7 +18,7 @@
 
 ## 重要事項
 
-- `milestones_path` は**絶対パス**で指定すること（tornado は process.cwd() で動作するため）
+- `milestones_path` は**絶対パス**で指定すること（whirlwind は process.cwd() で動作するため）
 - `review_dir` は相対パスで指定
 
 ## 有効な agent kind 値

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "mizchi/tornado/util"
+package "ymdvsymd/whirlwind/util"
 
 // Values
 pub fn extract_tag_content(String, String) -> String?

@@ -1,7 +1,7 @@
 _build/
 bin/
 .mooncakes/
-.tornado/
+.whirlwind/
 target
 node_modules/
 scheduled_tasks.lock

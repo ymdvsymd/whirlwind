@@ -227,7 +227,7 @@ test "parse ralph_enabled and milestones_path" {
   let json =
     #|{
     #|  "ralph_enabled": true,
-    #|  "milestones_path": ".tornado/milestones.json",
+    #|  "milestones_path": ".whirlwind/milestones.json",
     #|  "max_rework_attempts": 5,
     #|  "agents": [
     #|    { "id": "p1", "kind": "claude-code", "role": "planner" },
@@ -236,7 +236,10 @@ test "parse ralph_enabled and milestones_path" {
     #|}
   let config = @config.ProjectConfig::from_json_string(json)
   assert_true(config.ralph_enabled)
-  inspect(config.milestones_path, content="Some(\".tornado/milestones.json\")")
+  inspect(
+    config.milestones_path,
+    content="Some(\".whirlwind/milestones.json\")",
+  )
   inspect(config.max_rework_attempts, content="5")
 }
 

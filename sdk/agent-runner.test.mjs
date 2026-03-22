@@ -38,16 +38,16 @@ test("runAdapter emits init events and mapped stream events in order", async () 
     },
   );
 
-  // Strip dynamic _tornado_ts for structural comparison
-  const stripped = events.map(({ _tornado_ts, ...rest }) => rest);
+  // Strip dynamic _whirlwind_ts for structural comparison
+  const stripped = events.map(({ _whirlwind_ts, ...rest }) => rest);
   assert.deepEqual(stripped, [
     { type: "system", subtype: "init", session_id: "s-1" },
     { type: "assistant", raw: "one", session_id: "s-1" },
     { type: "assistant", raw: "two", session_id: "s-1" },
   ]);
-  // Verify each event carries _tornado_ts
+  // Verify each event carries _whirlwind_ts
   for (const event of events) {
-    assert.match(event._tornado_ts, /^\d{2}:\d{2}:\d{2}$/);
+    assert.match(event._whirlwind_ts, /^\d{2}:\d{2}:\d{2}$/);
   }
   assert.deepEqual(logs, ["booted", "saw:one", "saw:two"]);
 });
@@ -97,19 +97,22 @@ test("nowTimestamp is exported and returns HH:MM:SS format (tornado-80h)", () =>
   );
 });
 
-// tornado-5r4: stampEvent adds _tornado_ts at call time
-test("stampEvent adds _tornado_ts to each event object (tornado-5r4)", () => {
+// tornado-5r4: stampEvent adds _whirlwind_ts at call time
+test("stampEvent adds _whirlwind_ts to each event object (tornado-5r4)", () => {
   const e1 = stampEvent({ type: "system", subtype: "init" });
   const e2 = stampEvent({ type: "assistant", message: {} });
 
-  assert.ok(typeof e1._tornado_ts === "string", "_tornado_ts must be a string");
-  assert.match(
-    e1._tornado_ts,
-    /^\d{2}:\d{2}:\d{2}$/,
-    "_tornado_ts must be HH:MM:SS format",
+  assert.ok(
+    typeof e1._whirlwind_ts === "string",
+    "_whirlwind_ts must be a string",
   );
-  assert.ok(typeof e2._tornado_ts === "string");
-  assert.match(e2._tornado_ts, /^\d{2}:\d{2}:\d{2}$/);
+  assert.match(
+    e1._whirlwind_ts,
+    /^\d{2}:\d{2}:\d{2}$/,
+    "_whirlwind_ts must be HH:MM:SS format",
+  );
+  assert.ok(typeof e2._whirlwind_ts === "string");
+  assert.match(e2._whirlwind_ts, /^\d{2}:\d{2}:\d{2}$/);
 });
 
 // tornado-5r4: events stamped at different times get different timestamps
@@ -120,14 +123,14 @@ test("stampEvent captures distinct timestamps for delayed events (tornado-5r4)",
   const e2 = stampEvent({ type: "second" });
 
   assert.notEqual(
-    e1._tornado_ts,
-    e2._tornado_ts,
+    e1._whirlwind_ts,
+    e2._whirlwind_ts,
     "timestamps must differ for events 1s apart",
   );
 });
 
-// tornado-5r4: runAdapter preserves _tornado_ts through the pipeline
-test("runAdapter stream events carry _tornado_ts from emit (tornado-5r4)", async () => {
+// tornado-5r4: runAdapter preserves _whirlwind_ts through the pipeline
+test("runAdapter stream events carry _whirlwind_ts from emit (tornado-5r4)", async () => {
   const events = [];
 
   const adapter = {
@@ -154,10 +157,10 @@ test("runAdapter stream events carry _tornado_ts from emit (tornado-5r4)", async
 
   for (const event of events) {
     assert.ok(
-      typeof event._tornado_ts === "string",
-      "streamed event must have _tornado_ts",
+      typeof event._whirlwind_ts === "string",
+      "streamed event must have _whirlwind_ts",
     );
-    assert.match(event._tornado_ts, /^\d{2}:\d{2}:\d{2}$/);
+    assert.match(event._whirlwind_ts, /^\d{2}:\d{2}:\d{2}$/);
   }
 });
 

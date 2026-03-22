@@ -3,7 +3,7 @@ const require = createRequire(import.meta.url);
 export const { nowTimestamp } = require("./now-timestamp.cjs");
 export function stampEvent(event) {
   if (event != null && typeof event === "object") {
-    return { ...event, _tornado_ts: nowTimestamp() };
+    return { ...event, _whirlwind_ts: nowTimestamp() };
   }
   return event;
 }

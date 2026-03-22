@@ -131,7 +131,7 @@ struct EventCollector {
 | check | - | npm run build:sdk && moon check --target js | 型チェック |
 | test | - | npm run build:sdk && node --test && moon test | テスト実行 |
 | build | - | npm run build:sdk && moon build --target js | アプリビルド |
-| pack | build | bin/tornado.js 生成 | shebang付き実行可能ファイル |
+| pack | build | bin/whirlwind.js 生成 | shebang付き実行可能ファイル |
 | publish | pack | npm publish --access public | npm公開 |
 | run | build | node app.js | ローカル実行 |
 | clean | - | moon clean | キャッシュクリア |
@@ -152,7 +152,7 @@ struct EventCollector {
    出力: _build/js/debug/build/cmd/app/app.js
 
 4. pack
-   shebang (#!/usr/bin/env node) + app.js -> bin/tornado.js
+   shebang (#!/usr/bin/env node) + app.js -> bin/whirlwind.js
 
 5. npm publish
    files: [bin/, sdk/] を npm に公開
@@ -161,7 +161,7 @@ struct EventCollector {
 ### バージョン情報
 
 - `moon.mod.json`: 0.5.0 (MoonBit パッケージ)
-- `package.json`: 0.9.1 (npm パッケージ: @ymdvsymd/tornado)
+- `package.json`: 0.9.1 (npm パッケージ: @ymdvsymd/whirlwind)
 - 注: MoonBit パッケージと npm パッケージのバージョンが異なる
 
 ---
@@ -191,7 +191,7 @@ just fmt
 _build/           # MoonBit build artifacts
 bin/              # Compiled executables
 .mooncakes/       # MoonBit package cache
-.tornado/         # Runtime state/cache
+.whirlwind/       # Runtime state/cache
 target/           # Build output
 node_modules/     # NPM dependencies
 ```

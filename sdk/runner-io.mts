@@ -6,7 +6,7 @@ export const {
 
 export function stampEvent(event: unknown): unknown {
   if (event != null && typeof event === "object") {
-    return { ...event, _tornado_ts: nowTimestamp() };
+    return { ...event, _whirlwind_ts: nowTimestamp() };
   }
   return event;
 }

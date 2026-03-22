@@ -73,7 +73,7 @@ pub fn set_log_file(path : String) -> Unit {
 ///|
 extern "js" fn js_set_log_file(path : String) -> Unit =
   #|(path) => {
-  #|  globalThis.__tornado_log_file = path;
+  #|  globalThis.__whirlwind_log_file = path;
   #|}
 
 ///|
@@ -85,7 +85,7 @@ pub fn get_log_file() -> String {
 ///|
 extern "js" fn js_get_log_file() -> String =
   #|() => {
-  #|  return globalThis.__tornado_log_file || "";
+  #|  return globalThis.__whirlwind_log_file || "";
   #|}
 
 ///|
@@ -117,7 +117,7 @@ extern "js" fn js_start_stdin_watcher() -> Unit =
   #|  const { spawn } = require('child_process');
   #|  const path = require('path');
   #|  const { mkdirSync } = require('fs');
-  #|  try { mkdirSync('.tornado', { recursive: true }); } catch {}
+  #|  try { mkdirSync('.whirlwind', { recursive: true }); } catch {}
   #|  const watcherPath = path.join(__dirname, '..', 'sdk', 'stdin-watcher.mjs');
   #|  const watcher = spawn(process.execPath, [watcherPath], {
   #|    stdio: ['inherit', 'pipe', 'inherit'],
@@ -137,7 +137,7 @@ pub fn check_interrupt() -> String {
 extern "js" fn js_check_interrupt() -> String =
   #|() => {
   #|  const fs = require('fs');
-  #|  const file = '.tornado/interrupt.txt';
+  #|  const file = '.whirlwind/interrupt.txt';
   #|  try {
   #|    const content = fs.readFileSync(file, 'utf-8').trim();
   #|    if (content) {

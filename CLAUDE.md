@@ -1,4 +1,4 @@
-# Tornado — AI Agent Instructions
+# Whirlwind — AI Agent Instructions
 
 ## Architecture
 - **MoonBit** core: `src/` (build: `moon build/test/fmt`)

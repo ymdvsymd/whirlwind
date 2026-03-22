@@ -1,9 +1,9 @@
 {
-  "name": "@ymdvsymd/tornado",
+  "name": "@ymdvsymd/whirlwind",
   "version": "0.9.1",
   "description": "Multi-agent development orchestrator with TUI",
   "bin": {
-    "tornado": "bin/tornado.js"
+    "whirlwind": "bin/whirlwind.js"
   },
   "files": [
     "bin/",
@@ -15,11 +15,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ymdvsymd/tornado"
+    "url": "https://github.com/ymdvsymd/whirlwind"
   },
-  "homepage": "https://github.com/ymdvsymd/tornado",
+  "homepage": "https://github.com/ymdvsymd/whirlwind",
   "bugs": {
-    "url": "https://github.com/ymdvsymd/tornado/issues"
+    "url": "https://github.com/ymdvsymd/whirlwind/issues"
   },
   "keywords": [
     "moonbit",

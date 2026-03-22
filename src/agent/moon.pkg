@@ -1,4 +1,4 @@
 import {
-  "mizchi/tornado/types",
+  "ymdvsymd/whirlwind/types",
   "moonbitlang/core/json",
 }

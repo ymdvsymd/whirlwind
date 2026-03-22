@@ -3,10 +3,10 @@
 import { createInterface } from "readline";
 import { appendFileSync, mkdirSync, writeFileSync } from "fs";
 
-const INTERRUPT_FILE = ".tornado/interrupt.txt";
+const INTERRUPT_FILE = ".whirlwind/interrupt.txt";
 
 try {
-  mkdirSync(".tornado", { recursive: true });
+  mkdirSync(".whirlwind", { recursive: true });
 } catch {}
 // Clear stale interrupt
 try {

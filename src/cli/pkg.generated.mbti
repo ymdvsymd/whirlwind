@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "mizchi/tornado/cli"
+package "ymdvsymd/whirlwind/cli"
 
 import {
-  "mizchi/tornado/config",
-  "mizchi/tornado/types",
+  "ymdvsymd/whirlwind/config",
+  "ymdvsymd/whirlwind/types",
 }
 
 // Values

@@ -55,13 +55,13 @@ else
   {
     echo '#!/usr/bin/env node'
     cat _build/js/debug/build/cmd/app/app.js
-  } >bin/tornado.js
-  chmod +x bin/tornado.js
+  } >bin/whirlwind.js
+  chmod +x bin/whirlwind.js
 fi
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
-LOG_FILE="$TMP_DIR/tornado.log"
+LOG_FILE="$TMP_DIR/whirlwind.log"
 
 # Initialize git repo in temp dir (required by Codex SDK for file operations)
 git init -q "$TMP_DIR"
@@ -79,7 +79,7 @@ EOF
   BRIEF="$(build_live_brief "$TMP_DIR/plan.md")"
 fi
 
-cat >"$TMP_DIR/tornado.json" <<EOF
+cat >"$TMP_DIR/whirlwind.json" <<EOF
 {
   "project_dir": ".",
   "review_dir": "docs/reviews",
@@ -141,9 +141,9 @@ cd "$TMP_DIR"
 # (prevents "nested session" error when running inside a Claude Code session)
 unset CLAUDECODE
 if [ "$MODE" = "mock" ]; then
-  OUTPUT="$(node "$ROOT_DIR/bin/tornado.js" --ralph --config=tornado.json --log="$LOG_FILE" 2>&1)"
+  OUTPUT="$(node "$ROOT_DIR/bin/whirlwind.js" --ralph --config=whirlwind.json --log="$LOG_FILE" 2>&1)"
 else
-  OUTPUT="$(node "$ROOT_DIR/bin/tornado.js" --ralph --config=tornado.json --log="$LOG_FILE" 2>&1)"
+  OUTPUT="$(node "$ROOT_DIR/bin/whirlwind.js" --ralph --config=whirlwind.json --log="$LOG_FILE" 2>&1)"
 fi
 
 printf '%s\n' "$OUTPUT"

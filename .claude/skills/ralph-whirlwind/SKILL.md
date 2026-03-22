@@ -1,18 +1,18 @@
 ---
-name: ralph-tornado
+name: ralph-whirlwind
 description: >
-  Markdown計画ファイルをtornado Ralphモードの入力に変換し、バックグラウンドで起動・監視するオーケストレーター。
-  計画 → milestones.json + tornado.json 変換、起動、進捗監視を実行。
-  "ralph", "計画ファイルから開発開始", "マイルストーン開発", "tornado起動", "plan file", "launch tornado".
+  Markdown計画ファイルをwhirlwind Ralphモードの入力に変換し、バックグラウンドで起動・監視するオーケストレーター。
+  計画 → milestones.json + whirlwind.json 変換、起動、進捗監視を実行。
+  "ralph", "計画ファイルから開発開始", "マイルストーン開発", "whirlwind起動", "plan file", "launch whirlwind".
 arguments: plan_file:計画ファイル(Markdown)のパス
 ---
 
-# ralph-tornado: 計画ファイル → tornado Ralph モード起動
+# ralph-whirlwind: 計画ファイル → whirlwind Ralph モード起動
 
 ## 引数
 
 ```
-/ralph-tornado <plan-file.md> [--planner=<kind>] [--dev=<kind>] [--verifier=<kind>]
+/ralph-whirlwind <plan-file.md> [--planner=<kind>] [--dev=<kind>] [--verifier=<kind>]
 ```
 
 - `--planner=<kind>`: Planner agent kind。デフォルトは `claude-code`
@@ -25,7 +25,7 @@ arguments: plan_file:計画ファイル(Markdown)のパス
 
 1. **入力検証** — 引数解析、ファイル確認、リポジトリルート取得
 2. **計画→マイルストーン変換** — 英訳、brief 抽出、`##` 見出しから milestone 配列を直接生成
-3. **出力ファイル生成** — tornado.json 生成
+3. **出力ファイル生成** — whirlwind.json 生成
 4. **検証・起動** — JSON 検証、サマリー表示、バックグラウンド起動
 5. **進捗モニタリング** — `/loop 1m` で定期監視
 
@@ -95,7 +95,7 @@ Markdown を **`references/parse-rules.md`** の規則でパースし、`##` 見
 
 ### Phase 3: 出力ファイル生成
 
-最終成果物は `plan-en.md`, `milestones.json`, `tornado.json` の3つ。
+最終成果物は `plan-en.md`, `milestones.json`, `whirlwind.json` の3つ。
 
 #### 3-1. milestones.json
 
@@ -103,15 +103,15 @@ Markdown を **`references/parse-rules.md`** の規則でパースし、`##` 見
 
 スキーマの詳細は `references/milestones-schema.md` を Read して参照すること。
 
-#### 3-2. tornado.json
+#### 3-2. whirlwind.json
 
-**`references/tornado-config.md`** のテンプレートに従い生成する。
+**`references/whirlwind-config.md`** のテンプレートに従い生成する。
 
 - Planner kind には `PLANNER_KIND` を使う
 - Builder kind には `DEV_KIND` を使う
 - Verifier kind には `VERIFIER_KIND` を使う
 
-テンプレートとエージェント設定の詳細は `references/tornado-config.md` を Read して参照すること。
+テンプレートとエージェント設定の詳細は `references/whirlwind-config.md` を Read して参照すること。
 
 ---
 
@@ -121,12 +121,12 @@ Markdown を **`references/parse-rules.md`** の規則でパースし、`##` 見
 
 2. **サマリー表示**: Plan file, Output dir, Milestones数, Planner/Builder/Verifier種別, 各マイルストーンの goal先頭行を表示する。
 
-3. **tornado 起動**（バックグラウンド）:
+3. **whirlwind 起動**（バックグラウンド）:
 
    Bash ツールで以下のコマンドを `run_in_background: true` で実行する。`--log` は出力ディレクトリに ANSI エスケープコードを含まないプレーンテキストのログファイルを書き出し、実行後のレビューに使う:
 
    ```bash
-   bin/tornado.js --ralph --config=<tornado.json の絶対パス> --log=<出力ディレクトリの絶対パス>/tornado.log --lang=en
+   bin/whirlwind.js --ralph --config=<whirlwind.json の絶対パス> --log=<出力ディレクトリの絶対パス>/whirlwind.log --lang=en
    ```
 
    起動後、ユーザーにタスク ID を共有する。
@@ -135,14 +135,14 @@ Markdown を **`references/parse-rules.md`** の規則でパースし、`##` 見
 
 ### Phase 5: 進捗モニタリング
 
-tornado がバックグラウンドで実行中の間、`/loop` スキルを使って **1 分間隔** で進捗を監視する。
+whirlwind がバックグラウンドで実行中の間、`/loop` スキルを使って **1 分間隔** で進捗を監視する。
 
 1. `/loop 1m` を起動し、以下のプロンプトを実行する:
-   - `TaskOutput` でバックグラウンドの tornado タスク出力を取得
+   - `TaskOutput` でバックグラウンドの whirlwind タスク出力を取得
    - 最新の出力から進捗状況を要約してユーザーに共有
    - タスクが完了していたら `/loop` を停止
 
-2. tornado 完了通知を受けたら最終結果を報告する。
+2. whirlwind 完了通知を受けたら最終結果を報告する。
 
 ---
 

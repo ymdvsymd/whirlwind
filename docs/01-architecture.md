@@ -5,7 +5,7 @@
 ### 1.1 全モジュール構成（12パッケージ）
 
 ```
-mizchi/tornado (root)  ※ npm は @ymdvsymd/tornado v0.9.1
+ymdvsymd/whirlwind (root)  ※ npm は @ymdvsymd/whirlwind v0.9.1
   types          (基本型定義、no import)
   config         (-> types)
   cli            (-> types, config)
@@ -92,7 +92,7 @@ Layer 4: CLI・エントリーポイント
 | `js_exec_sync` | シェルコマンド | `execSync()` |
 | `js_run_sdk` | SDK実行 | `spawnSync(runner.mjs)` |
 | `js_start_stdin_watcher` | stdin監視開始 | stdin-watcher.mjs 起動 |
-| `js_check_interrupt` | 割り込み確認 | `.tornado/interrupt.txt` |
+| `js_check_interrupt` | 割り込み確認 | `.whirlwind/interrupt.txt` |
 | `js_sleep_ms` | スリープ | `SharedArrayBuffer + Atomics.wait` |
 | `js_get_env` | 環境変数 | `process.env[]` |
 | `js_now_timestamp` | 時刻取得 | `new Date()` |

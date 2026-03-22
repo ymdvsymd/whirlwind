@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-test("bin/tornado.js has valid shebang without backslash escaping", () => {
-  const buf = readFileSync("bin/tornado.js");
+test("bin/whirlwind.js has valid shebang without backslash escaping", () => {
+  const buf = readFileSync("bin/whirlwind.js");
   // 先頭2バイトが #! (0x23 0x21) であること
   assert.equal(buf[0], 0x23, "first byte should be # (0x23)");
   assert.equal(

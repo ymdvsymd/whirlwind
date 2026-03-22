@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "mizchi/tornado/cmd/app"
+package "ymdvsymd/whirlwind/cmd/app"
 
 // Values
 pub fn append_file_sync(String, String) -> Unit

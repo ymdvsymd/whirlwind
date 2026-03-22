@@ -200,7 +200,7 @@ const result = spawnSync(process.execPath, [runnerPath, optsJson], {
 - `watcher.unref()` で親プロセス終了時も動作
 
 **interrupt チェック:**
-- `.tornado/interrupt.txt` を読み込み
+- `.whirlwind/interrupt.txt` を読み込み
 - 内容があれば消費済みマークしてreturn
 
 ### 5.3 ストリーミング FFI (spawn/ffi_js.mbt)
@@ -257,7 +257,7 @@ rl.on('line', (line) => {
 });
 ```
 
-interrupt ファイル: `.tornado/interrupt.txt`
+interrupt ファイル: `.whirlwind/interrupt.txt`
 
 ---
 

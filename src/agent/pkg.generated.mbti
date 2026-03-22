@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "mizchi/tornado/agent"
+package "ymdvsymd/whirlwind/agent"
 
 import {
-  "mizchi/tornado/types",
+  "ymdvsymd/whirlwind/types",
 }
 
 // Values

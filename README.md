@@ -1,4 +1,4 @@
-# tornado
+# whirlwind
 
 Multi-agent development orchestrator with TUI.
 
@@ -8,41 +8,41 @@ Multi-agent development orchestrator with TUI.
 
 ```bash
 # run from a plan file (first positional arg must be an existing file)
-npx -y @ymdvsymd/tornado ./plan.md --dev=codex --review=claude
+npx -y @ymdvsymd/whirlwind ./plan.md --dev=codex --review=claude
 
 # run with explicit config
-npx -y @ymdvsymd/tornado --config=./tornado.json --dev=codex --review=claude
+npx -y @ymdvsymd/whirlwind --config=./whirlwind.json --dev=codex --review=claude
 
 # validate config
-npx -y @ymdvsymd/tornado validate ./tornado.json
+npx -y @ymdvsymd/whirlwind validate ./whirlwind.json
 ```
 
 ### Pattern 2: Install globally with `npm i -g`
 
 ```bash
-npm i -g @ymdvsymd/tornado
+npm i -g @ymdvsymd/whirlwind
 
 # run from a plan file
-tornado ./plan.md --dev=codex --review=claude
+whirlwind ./plan.md --dev=codex --review=claude
 
 # run with explicit config
-tornado --config=./tornado.json --dev=codex --review=claude
+whirlwind --config=./whirlwind.json --dev=codex --review=claude
 
 # validate config
-tornado validate ./tornado.json
+whirlwind validate ./whirlwind.json
 ```
 
 ### Pattern 3: Ralph mode (milestone-driven autonomous development)
 
 ```bash
 # run with default preset (Planner + Builder + Verifier)
-tornado --ralph
+whirlwind --ralph
 
 # run with config file
-tornado --ralph --config=./tornado.json
+whirlwind --ralph --config=./whirlwind.json
 
 # override builder kind
-tornado --ralph --dev=codex --lang=ja
+whirlwind --ralph --dev=codex --lang=ja
 ```
 
 ## Agent kind options

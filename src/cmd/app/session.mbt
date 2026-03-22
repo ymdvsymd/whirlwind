@@ -1,13 +1,13 @@
 // ── Session persistence ──────────────────────────────────────
 
 ///|
-let session_file : String = ".tornado/session.json"
+let session_file : String = ".whirlwind/session.json"
 
 ///|
-/// Save session state to .tornado/session.json
+/// Save session state to .whirlwind/session.json
 fn save_session(state : @helpers.SessionState) -> Unit {
   let json = @helpers.session_to_json(state)
-  ignore(exec_sync("mkdir -p .tornado"))
+  ignore(exec_sync("mkdir -p .whirlwind"))
   write_file_sync(session_file, json)
 }
 

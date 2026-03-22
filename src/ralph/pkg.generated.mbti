@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "mizchi/tornado/ralph"
+package "ymdvsymd/whirlwind/ralph"
 
 import {
-  "mizchi/tornado/agent",
-  "mizchi/tornado/config",
-  "mizchi/tornado/prompts",
-  "mizchi/tornado/types",
+  "ymdvsymd/whirlwind/agent",
+  "ymdvsymd/whirlwind/config",
+  "ymdvsymd/whirlwind/prompts",
+  "ymdvsymd/whirlwind/types",
 }
 
 // Values

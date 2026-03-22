@@ -53,34 +53,34 @@ fn main {
     @cli.CliCommand::Validate(path) =>
       match path {
         Some(config_path) => run_validate(config_path)
-        None => println("Usage: tornado validate <config.json>")
+        None => println("Usage: whirlwind validate <config.json>")
       }
     @cli.CliCommand::Help => print_usage()
-    @cli.CliCommand::Version => println("tornado v__VERSION__")
+    @cli.CliCommand::Version => println("whirlwind v__VERSION__")
   }
 }
 
 ///|
 fn print_usage() -> Unit {
-  println("tornado - multi-agent development orchestrator")
+  println("whirlwind - multi-agent development orchestrator")
   println("")
   println("Usage:")
   println(
-    "  tornado <plan.md> [--dev=codex] [--review=claude]  # start from plan file",
+    "  whirlwind <plan.md> [--dev=codex] [--review=claude]  # start from plan file",
   )
-  println("  tornado --config=tornado.json [--dev=codex] [--review=claude]")
+  println("  whirlwind --config=whirlwind.json [--dev=codex] [--review=claude]")
   println(
-    "  tornado                    # start with preset (dev:claude-code, review:codex)",
+    "  whirlwind                    # start with preset (dev:claude-code, review:codex)",
   )
-  println("  tornado --dev=codex --review=claude")
+  println("  whirlwind --dev=codex --review=claude")
   println(
-    "  tornado --review-interval=3          # review every 3 dev iterations",
+    "  whirlwind --review-interval=3          # review every 3 dev iterations",
   )
-  println("  tornado --rlm TODO.md                # improvement loop mode")
+  println("  whirlwind --rlm TODO.md                # improvement loop mode")
   println(
-    "  tornado --ralph                      # ralph loop (milestone-based autonomous dev)",
+    "  whirlwind --ralph                      # ralph loop (milestone-based autonomous dev)",
   )
-  println("  tornado validate <config>  # validate config file")
+  println("  whirlwind validate <config>  # validate config file")
   println("")
   println("Agent kind options: claude | claude-code | codex | api | mock")
   println("")
@@ -99,7 +99,7 @@ fn print_usage() -> Unit {
   println("")
   println("Autonomous heartbeat: dev runs → reviewer reviews →")
   println("dev continues with next task → forever until Ctrl+C.")
-  println("Session auto-saved to .tornado/session.json for resume.")
+  println("Session auto-saved to .whirlwind/session.json for resume.")
 }
 
 ///|
@@ -151,7 +151,7 @@ fn run_ralph(
   // Load or create milestones
   let milestones_path = match config.milestones_path {
     Some(p) => p
-    None => ".tornado/milestones.json"
+    None => ".whirlwind/milestones.json"
   }
   let mgr = if is_existing_file(milestones_path) {
     match read_file_result(milestones_path) {

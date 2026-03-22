@@ -204,8 +204,8 @@ fn parse_sdk_event_json(
     Some(String(sid)) => if not(sid.is_empty()) { on_session_id(sid) }
     _ => ()
   }
-  // Extract _tornado_ts and wrap on_output to prefix timestamped events
-  let ts_on_output = match map.get("_tornado_ts") {
+  // Extract _whirlwind_ts and wrap on_output to prefix timestamped events
+  let ts_on_output = match map.get("_whirlwind_ts") {
     Some(String(ts)) => wrap_output_with_ts(on_output, ts)
     _ => on_output
   }

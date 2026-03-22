@@ -20,7 +20,7 @@ fn run_repl(
     review_interval~,
   )
   println("")
-  println("  tornado - autonomous development orchestrator")
+  println("  whirlwind - autonomous development orchestrator")
   println("")
   match dev_kind {
     Some(kind) => log("BOOT", "Override: dev=\{@cli.kind_name(kind)}")

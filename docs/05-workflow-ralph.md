@@ -1,8 +1,8 @@
-# Tornado ワークフロー & Ralph 利用ガイド
+# Whirlwind ワークフロー & Ralph 利用ガイド
 
 ## 1. 2つの実行モード
 
-Tornado には2つの実行モードがある。
+Whirlwind には2つの実行モードがある。
 
 | 項目           | 通常モード (Heartbeat)                             | Ralph モード                       |
 | -------------- | -------------------------------------------------- | ---------------------------------- |
@@ -22,8 +22,8 @@ Tornado には2つの実行モードがある。
 ### Step 1: マイルストーンファイルを作成
 
 ```bash
-mkdir -p .tornado
-cat > .tornado/milestones.json << 'EOF'
+mkdir -p .whirlwind
+cat > .whirlwind/milestones.json << 'EOF'
 {
   "milestones": [
     {
@@ -47,15 +47,15 @@ EOF
 
 ```bash
 # プリセット構成で実行
-tornado --ralph
+whirlwind --ralph
 
 # または設定ファイルを使って実行
-tornado --ralph --config=tornado.json
+whirlwind --ralph --config=whirlwind.json
 ```
 
 ### Step 3: 結果を確認
 
-実行後、`.tornado/milestones.json` が更新され、各タスクの結果が記録される。
+実行後、`.whirlwind/milestones.json` が更新され、各タスクの結果が記録される。
 
 ---
 
@@ -64,7 +64,7 @@ tornado --ralph --config=tornado.json
 ### 基本コマンド
 
 ```bash
-tornado --ralph [オプション...]
+whirlwind --ralph [オプション...]
 ```
 
 ### 利用可能なオプション
@@ -72,7 +72,7 @@ tornado --ralph [オプション...]
 | オプション              | 説明                                                              | デフォルト                               |
 | ----------------------- | ----------------------------------------------------------------- | ---------------------------------------- |
 | `--ralph`               | **必須**。Ralph モードを有効化する                                | `false`                                  |
-| `--config=<path>`       | 設定ファイルのパス                                                | `tornado.json`（なければプリセット使用） |
+| `--config=<path>`       | 設定ファイルのパス                                                | `whirlwind.json`（なければプリセット使用） |
 | `--dev=<kind>`          | Builder（Dev ロール）の種類を上書き                               | `claude-code`                            |
 | `--review=<kind>`       | Review ロールの種類を上書き。**Ralph モードでは効かない（後述）** | `codex`                                  |
 | `--lang=<auto\|ja\|en>` | エージェントの応答言語                                            | `auto`（環境変数 `LANG` から検出）       |
@@ -89,7 +89,7 @@ tornado --ralph [オプション...]
 ### マイルストーンファイルのパス指定
 
 マイルストーンファイルのパスを CLI 引数で直接指定するオプションは**存在しない**。
-パスを変更するには、設定ファイル (`tornado.json`) の `milestones_path` を使う:
+パスを変更するには、設定ファイル (`whirlwind.json`) の `milestones_path` を使う:
 
 ```json
 {
@@ -101,39 +101,39 @@ tornado --ralph [オプション...]
 
 | 方法                                    | マイルストーンファイルのパス                                              |
 | --------------------------------------- | ------------------------------------------------------------------------- |
-| `tornado --ralph` (設定なし)            | `.tornado/milestones.json` 固定                                           |
-| `tornado --ralph --config=tornado.json` | 設定ファイル内の `milestones_path`（省略時は `.tornado/milestones.json`） |
-| ~~`tornado --ralph --milestones=...`~~  | **未実装（CLI フラグは存在しない）**                                      |
+| `whirlwind --ralph` (設定なし)            | `.whirlwind/milestones.json` 固定                                           |
+| `whirlwind --ralph --config=whirlwind.json` | 設定ファイル内の `milestones_path`（省略時は `.whirlwind/milestones.json`） |
+| ~~`whirlwind --ralph --milestones=...`~~  | **未実装（CLI フラグは存在しない）**                                      |
 
 ### 使用例
 
 ```bash
-# 最小構成（プリセット使用、.tornado/milestones.json を読み込む）
-tornado --ralph
+# 最小構成（プリセット使用、.whirlwind/milestones.json を読み込む）
+whirlwind --ralph
 
 # 設定ファイル指定（milestones_path もここで変更可能）
-tornado --ralph --config=tornado.json
+whirlwind --ralph --config=whirlwind.json
 
 # エージェント種類を上書き
-tornado --ralph --dev=codex --review=claude
+whirlwind --ralph --dev=codex --review=claude
 
 # 日本語で応答
-tornado --ralph --lang=ja
+whirlwind --ralph --lang=ja
 
 # フル指定
-tornado --ralph --config=my-config.json --dev=claude --review=codex --lang=ja
+whirlwind --ralph --config=my-config.json --dev=claude --review=codex --lang=ja
 ```
 
 ---
 
-## 4. 設定ファイル (`tornado.json`)
+## 4. 設定ファイル (`whirlwind.json`)
 
-`--config` を指定しない場合、カレントディレクトリの `tornado.json` を探す。
+`--config` を指定しない場合、カレントディレクトリの `whirlwind.json` を探す。
 見つからなければ組み込みプリセット (`preset_ralph`) が使われる。
 
 ### 設定ロード順序
 
-1. `--config=PATH` or デフォルト `tornado.json`
+1. `--config=PATH` or デフォルト `whirlwind.json`
 2. JSON パース -> ProjectConfig
 3. `apply_overrides()` で CLI フラグ反映
 4. `validate()` でエージェント構成チェック
@@ -145,7 +145,7 @@ tornado --ralph --config=my-config.json --dev=claude --review=codex --lang=ja
   "project_dir": ".",
   "review_dir": "docs/reviews",
   "ralph_enabled": true,
-  "milestones_path": ".tornado/milestones.json",
+  "milestones_path": ".whirlwind/milestones.json",
   "max_rework_attempts": 3,
   "max_review_cycles": 3,
   "review_interval": 1,
@@ -182,7 +182,7 @@ tornado --ralph --config=my-config.json --dev=claude --review=codex --lang=ja
 | `project_dir`         | string  | `"."`            | プロジェクトルートディレクトリ                                  |
 | `review_dir`          | string  | `"docs/reviews"` | レビュー出力ディレクトリ                                        |
 | `ralph_enabled`       | bool    | `false`          | Ralph モード有効化（`--ralph` フラグで自動 `true`）             |
-| `milestones_path`     | string? | `null`           | マイルストーンファイルパス（省略時 `.tornado/milestones.json`） |
+| `milestones_path`     | string? | `null`           | マイルストーンファイルパス（省略時 `.whirlwind/milestones.json`） |
 | `max_rework_attempts` | int     | `3`              | マイルストーン検証のリワーク最大回数                             |
 | `max_review_cycles`   | int     | `3`              | レビューサイクル上限（Ralph では未使用）                        |
 | `review_interval`     | int     | `1`              | レビュー間隔（Ralph では未使用）                                |
@@ -205,7 +205,7 @@ tornado --ralph --config=my-config.json --dev=claude --review=codex --lang=ja
 
 ### プリセット
 
-**preset_ralph()**: Ralph モード用（`--ralph` のみで起動し `tornado.json` がない場合）
+**preset_ralph()**: Ralph モード用（`--ralph` のみで起動し `whirlwind.json` がない場合）
 
 | エージェント | ID         | Kind       | Role     |
 | ------------ | ---------- | ---------- | -------- |
@@ -232,7 +232,7 @@ tornado --ralph --config=my-config.json --dev=claude --review=codex --lang=ja
 
 ---
 
-## 5. マイルストーンファイル (`.tornado/milestones.json`)
+## 5. マイルストーンファイル (`.whirlwind/milestones.json`)
 
 Ralph モードの入力となるファイル。実行前に手動で作成する必要がある。
 
@@ -433,7 +433,7 @@ Wave 0 並列実行 → Wave 1 並列実行 → ... → 全 Wave 完了
 4. 設定バリデーション
 5. バックエンド生成: 各エージェントの kind に応じたバックエンドを作成
 6. マイルストーンロード:
-   a. milestones_path (デフォルト .tornado/milestones.json) を読み込み
+   a. milestones_path (デフォルト .whirlwind/milestones.json) を読み込み
    b. ファイルがなければ空のマネージャーを作成 → 警告表示して終了
 7. RalphLoop 生成・実行
 8. 完了後: マイルストーン状態を milestones_path に保存
@@ -479,9 +479,9 @@ CLI (--ralph)
   parse_cli_args()
   |
   run_ralph()
-    |-- Load config (tornado.json or preset_ralph)
+    |-- Load config (whirlwind.json or preset_ralph)
     |-- apply_overrides() [--dev, --review, --lang]
-    |-- Load milestones (.tornado/milestones.json)
+    |-- Load milestones (.whirlwind/milestones.json)
     `-- RalphLoop::new()
           |-- backends[Planner, Builder, Verifier]
           |-- MilestoneManager
@@ -640,7 +640,7 @@ skill はマイルストーン列と `brief` だけを準備し、実際の task
 
 ```
 Markdown plan
-  → ralph-tornado skill
+  → ralph-whirlwind skill
     → plan-en.md
     → brief 抽出
     → milestones.json を直接生成
@@ -650,7 +650,7 @@ Markdown plan
            { "id": "m1", "goal": "...", "status": "pending", "summary": "", "tasks": [] }
          ]
        }
-  → tornado --ralph
+  → whirlwind --ralph
     → tasks が空の milestone ごとに Planner AI を実行
     → milestone 完了時に summary を生成して milestones.json に書き戻す
 ```
@@ -671,13 +671,13 @@ Markdown plan
 runtime はこの `brief` を task description に埋め込まず、必要な agent の system prompt にだけ注入する。
 つまり、各 task に plan 全文や補足文脈を複製する方式ではない。
 
-### 8A.2 ralph-tornado skill の責務
+### 8A.2 ralph-whirlwind skill の責務
 
-`/ralph-tornado <plan.md>` は Markdown plan を以下の 3 つに変換する。
+`/ralph-whirlwind <plan.md>` は Markdown plan を以下の 3 つに変換する。
 
 - `plan-en.md`: plan 全文の英訳版
 - `milestones.json`: `brief` と milestone 配列
-- `tornado.json`: planner / builder / verifier の設定
+- `whirlwind.json`: planner / builder / verifier の設定
 
 `references/parse-rules.md` のルールは最小限で、`#` はディレクトリ名、`##` は milestone に対応する。
 list 項目や `###` は skill 側では解釈しない。各 milestone は `tasks: []` で初期化される。
@@ -829,7 +829,7 @@ task.description + "\n\nFeedback from verifier:\n" + "- feedback1\n- feedback2\n
 
 ## 11. 永続化とレジューム
 
-### JSON 形式 (.tornado/milestones.json)
+### JSON 形式 (.whirlwind/milestones.json)
 
 ```json
 {
@@ -883,7 +883,7 @@ task.description + "\n\nFeedback from verifier:\n" + "- feedback1\n- feedback2\n
 ### 12.1 ループ構造
 
 ```
-CLI (tornado plan.md --dev=codex --review=claude)
+CLI (whirlwind plan.md --dev=codex --review=claude)
   -> run_repl()
     while true {                          // Ctrl+C まで永久に回る
       1. check_interrupt()                // ユーザー入力チェック
@@ -901,7 +901,7 @@ CLI (tornado plan.md --dev=codex --review=claude)
 - `review_interval` で N 回 dev してから 1 回 review（デフォルト: 1）
 - Approved 後は `build_next_task()` / `build_continuation_task()` で自動継続
 - Rejected 時は `check_interrupt()` でユーザー入力をポーリング待ち
-- セッション状態を `.tornado/session.json` に毎イテレーション保存（resume 可能）
+- セッション状態を `.whirlwind/session.json` に毎イテレーション保存（resume 可能）
 - `--rlm` フラグで improvement loop mode（measure -> improve -> verify -> commit/revert）
 - トークン使用量・コストを per-iteration / cumulative で追跡
 
@@ -912,20 +912,20 @@ CLI (tornado plan.md --dev=codex --review=claude)
 ### 12.2 アーキテクチャ図
 
 ```
-CLI (tornado plan.md --dev=codex --review=claude)
+CLI (whirlwind plan.md --dev=codex --review=claude)
   |
   parse_cli_args()
   |
   run_repl()
-    |-- Load config (tornado.json or preset_default)
+    |-- Load config (whirlwind.json or preset_default)
     |-- apply_overrides() [--dev, --review, --lang]
     |-- Create backends (Dev, Reviewer)
-    |-- Resume session? (.tornado/session.json)
+    |-- Resume session? (.whirlwind/session.json)
     |-- Get initial task (plan file / prompt / TODO files)
     |-- start_stdin_watcher()
     `-- while true {                          // INFINITE LOOP (Ctrl+C to stop)
           |-- iteration++
-          |-- check_interrupt()               // user input from .tornado/interrupt.txt
+          |-- check_interrupt()               // user input from .whirlwind/interrupt.txt
           |-- save_session(phase: "dev")
           |-- run_dev(dev_id, task)            // Dev agent execution
           |     `-- backend.run(task, on_event) -> dev_result
@@ -1168,7 +1168,7 @@ agent="verifier" (role=Verifier) → _ => agent.kind    変更なし
 | Builder      | Dev      | **適用される** | 無視           |
 | Verifier     | Verifier | 無視           | **無視される** |
 
-**回避策:** Verifier（および Planner）の種類を変更するには設定ファイル (`tornado.json`) で直接指定する:
+**回避策:** Verifier（および Planner）の種類を変更するには設定ファイル (`whirlwind.json`) で直接指定する:
 
 ```json
 {
@@ -1218,7 +1218,7 @@ Verifier にはまだ適用されていない。
 | 3     | b82f97d-cbea064 | 2026-02-20 | 改善: RLM mode, --lang                                         |
 | 4     | f66a8cd         | 2026-03-02 | Ralph: Milestone-driven autonomous development                 |
 | 5     | 9ef81d8-5fff019 | 2026-03-07 | ドキュメント: docs/00-06 作成                                  |
-| 6     | e9063b4-825b08e | 2026-03-07 | ralph-tornado: skill 化とコンテキスト受け渡しの最適化          |
+| 6     | e9063b4-825b08e | 2026-03-07 | ralph-whirlwind: skill 化とコンテキスト受け渡しの最適化          |
 | 7     | 64b65b3         | 2026-03-20 | フィードバックルーティング: rework_tasks() に実装 + 5テスト    |
-| 8     | 79ffad4         | 2026-03-20 | パッケージ名変更: @mizchi/tornado → @ymdvsymd/tornado (v0.6.0) |
-| 9     | d10235a         | 2026-03-20 | ralph-tornado スキル化: コマンドから `.claude/skills/` へ移行  |
+| 8     | 79ffad4         | 2026-03-20 | パッケージ名変更: @mizchi/whirlwind → @ymdvsymd/whirlwind (v0.6.0) |
+| 9     | d10235a         | 2026-03-20 | ralph-whirlwind スキル化: コマンドから `.claude/skills/` へ移行  |
