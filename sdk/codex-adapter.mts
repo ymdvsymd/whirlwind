@@ -6,6 +6,10 @@ import type {
   RunnerOptions,
 } from "./agent-adapter.mjs";
 import {
+  formatItemCompleteLog,
+  formatItemStartLog,
+  formatItemUpdateLog,
+  getCodexItemId,
   formatTurnCompletedLog,
   formatTurnFailedLog,
   normalizeItemComplete,
@@ -36,13 +40,23 @@ type CodexClientConstructor = new (opts?: {
 }) => CodexClient;
 
 type CodexItem = {
+  id?: string;
   type?: string;
+  command?: string;
+  aggregated_output?: string;
+  status?: string;
+  server?: string;
+  server_name?: string;
+  tool?: string;
+  query?: string;
+  items?: Array<{ text?: string; completed?: boolean }>;
   _display?: string;
   [key: string]: unknown;
 };
 
 type CodexEvent = {
   type?: string;
+  message?: string;
   usage?: {
     input_tokens?: number;
     output_tokens?: number;
@@ -57,6 +71,8 @@ export function createCodexAdapter(
     CodexClient?: CodexClientConstructor;
   } = {},
 ): AgentAdapter<CodexEvent> {
+  const lastItemLogs = new Map<string, string>();
+
   return {
     tag: "Codex",
     async start(opts: RunnerOptions): Promise<AdapterStartResult<CodexEvent>> {
@@ -96,9 +112,13 @@ export function createCodexAdapter(
     emit(raw: CodexEvent, sessionId: string): readonly AdapterEmission[] {
       switch (raw.type) {
         case "item.started":
-          return emitItemStart(raw.item);
+          return emitItemStart(raw.item, lastItemLogs);
+        case "item.updated":
+          return emitItemUpdate(raw.item, lastItemLogs);
         case "item.completed":
-          return emitItemComplete(raw.item);
+          return emitItemComplete(raw.item, lastItemLogs);
+        case "turn.started":
+          return [{ log: "Turn started" }];
         case "turn.completed": {
           const resultEvent = normalizeTurnCompleted(raw, sessionId);
           return [{ event: resultEvent, log: formatTurnCompletedLog(raw) }];
@@ -107,6 +127,8 @@ export function createCodexAdapter(
           const errorEvent = normalizeTurnFailed(raw, sessionId);
           return [{ event: errorEvent, log: formatTurnFailedLog(raw) }];
         }
+        case "error":
+          return raw.message ? [{ log: `Error: ${raw.message}` }] : [];
         default:
           return [];
       }
@@ -134,24 +156,71 @@ function startThread(
 
 function emitItemStart(
   item: CodexItem | undefined,
+  lastItemLogs: Map<string, string>,
 ): readonly AdapterEmission[] {
   const normalized = normalizeItemStart(item || {});
-  if (!normalized) return [];
   const display =
-    typeof normalized._display === "string"
+    typeof normalized?._display === "string"
       ? normalized._display
-      : item?.type || "item.started";
-  return [{ event: normalized, log: display }];
+      : formatItemStartLog(item || {}) || item?.type || "item.started";
+
+  return buildItemEmissions(item, normalized, display, lastItemLogs);
+}
+
+function emitItemUpdate(
+  item: CodexItem | undefined,
+  lastItemLogs: Map<string, string>,
+): readonly AdapterEmission[] {
+  const display = formatItemUpdateLog(item || {});
+  return buildItemEmissions(item, undefined, display, lastItemLogs);
 }
 
 function emitItemComplete(
   item: CodexItem | undefined,
+  lastItemLogs: Map<string, string>,
 ): readonly AdapterEmission[] {
   const normalized = normalizeItemComplete(item || {});
-  if (!normalized) return [];
   const display =
-    typeof normalized._display === "string"
+    typeof normalized?._display === "string"
       ? normalized._display
-      : item?.type || "item.completed";
-  return [{ event: normalized, log: `Done: ${display}` }];
+      : formatItemCompleteLog(item || {}) || item?.type || "item.completed";
+
+  const emissions = buildItemEmissions(
+    item,
+    normalized,
+    display ? `Done: ${display}` : null,
+    lastItemLogs,
+  );
+
+  const itemId = getCodexItemId(item || {});
+  if (itemId) {
+    lastItemLogs.delete(itemId);
+  }
+
+  return emissions;
+}
+
+function buildItemEmissions(
+  item: CodexItem | undefined,
+  event: unknown,
+  log: string | null | undefined,
+  lastItemLogs: Map<string, string>,
+): readonly AdapterEmission[] {
+  const emissions: AdapterEmission[] = [];
+
+  if (event !== undefined) {
+    emissions.push({ event });
+  }
+
+  const itemId = getCodexItemId(item || {});
+  if (log) {
+    if (!itemId || lastItemLogs.get(itemId) !== log) {
+      emissions.push({ log });
+      if (itemId) {
+        lastItemLogs.set(itemId, log);
+      }
+    }
+  }
+
+  return emissions;
 }

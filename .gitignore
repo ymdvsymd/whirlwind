@@ -2,7 +2,7 @@ _build/
 bin/
 .mooncakes/
 .tornado/
-target/
+target
 node_modules/
 scheduled_tasks.lock
 settings.local.json

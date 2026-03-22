@@ -147,6 +147,7 @@ pub fn join_strings(parts : Array[String], sep : String) -> String {
 ///|
 /// Escape a string for JSON output (wraps in quotes)
 pub fn json_escape(s : String) -> String {
+  let hex_chars = "0123456789abcdef".to_array()
   let buf = StringBuilder::new()
   buf.write_char('"')
   for ch in s {
@@ -154,8 +155,17 @@ pub fn json_escape(s : String) -> String {
       '"' => buf.write_string("\\\"")
       '\\' => buf.write_string("\\\\")
       '\n' => buf.write_string("\\n")
+      '\r' => buf.write_string("\\r")
       '\t' => buf.write_string("\\t")
-      _ => buf.write_char(ch)
+      _ =>
+        if ch.to_int() < 0x20 {
+          let code = ch.to_int()
+          buf.write_string("\\u00")
+          buf.write_char(hex_chars[code / 16])
+          buf.write_char(hex_chars[code % 16])
+        } else {
+          buf.write_char(ch)
+        }
     }
   }
   buf.write_char('"')

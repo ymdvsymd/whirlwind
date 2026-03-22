@@ -117,7 +117,7 @@ fn parse_milestone(json : Json) -> @types.Milestone {
   let status : @types.MilestoneStatus = match status_str {
     "in_progress" => InProgress
     "done" => Done
-    "failed" => Failed("unknown")
+    "failed" => Failed(@util.get_string(json, "failure_reason", "unknown"))
     _ => Pending
   }
   let tasks : Array[@types.RalphTask] = []
@@ -146,7 +146,7 @@ fn parse_ralph_task(json : Json) -> @types.RalphTask {
   let status : @types.TaskStatus = match status_str {
     "in_progress" => Pending
     "done" => Done
-    "failed" => Failed("unknown")
+    "failed" => Failed(@util.get_string(json, "failure_reason", "unknown"))
     _ => Pending
   }
   let result : String? = match json {
@@ -170,11 +170,11 @@ fn parse_ralph_task(json : Json) -> @types.RalphTask {
 
 ///|
 fn milestone_to_json_value(m : @types.Milestone) -> Json {
-  let status_str = match m.status {
-    Pending => "pending"
-    InProgress => "in_progress"
-    Done => "done"
-    Failed(_) => "failed"
+  let (status_str, failure_reason) : (String, String?) = match m.status {
+    Pending => ("pending", None)
+    InProgress => ("in_progress", None)
+    Done => ("done", None)
+    Failed(reason) => ("failed", Some(reason))
   }
   let task_arr : Array[Json] = []
   for t in m.tasks {
@@ -184,6 +184,10 @@ fn milestone_to_json_value(m : @types.Milestone) -> Json {
   obj["id"] = m.id.to_json()
   obj["goal"] = m.goal.to_json()
   obj["status"] = status_str.to_json()
+  match failure_reason {
+    Some(reason) => obj["failure_reason"] = reason.to_json()
+    None => ()
+  }
   obj["current_wave"] = m.current_wave.to_json()
   obj["tasks"] = Json::array(task_arr)
   obj["summary"] = m.summary.to_json()
@@ -192,11 +196,11 @@ fn milestone_to_json_value(m : @types.Milestone) -> Json {
 
 ///|
 fn ralph_task_to_json_value(t : @types.RalphTask) -> Json {
-  let status_str = match t.status {
-    Pending => "pending"
-    InProgress(_) => "in_progress"
-    Done => "done"
-    Failed(_) => "failed"
+  let (status_str, failure_reason) : (String, String?) = match t.status {
+    Pending => ("pending", None)
+    InProgress(_) => ("in_progress", None)
+    Done => ("done", None)
+    Failed(reason) => ("failed", Some(reason))
   }
   let result_json : Json = match t.result {
     Some(s) => s.to_json()
@@ -211,6 +215,10 @@ fn ralph_task_to_json_value(t : @types.RalphTask) -> Json {
   obj["description"] = t.description.to_json()
   obj["wave"] = t.wave.to_json()
   obj["status"] = status_str.to_json()
+  match failure_reason {
+    Some(reason) => obj["failure_reason"] = reason.to_json()
+    None => ()
+  }
   obj["result"] = result_json
   obj["plan_doc"] = plan_doc_json
   Json::object(obj)

@@ -1,0 +1,92 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/agent"
+
+import {
+  "mizchi/llm",
+  "mizchi/tornado/types",
+}
+
+// Values
+pub fn create_backend(@types.AgentConfig) -> BoxedBackend
+
+pub fn create_backends(Array[@types.AgentConfig]) -> Map[String, BoxedBackend]
+
+pub fn parse_content_block_start(Map[String, Json], (@types.AgentEvent) -> Unit) -> Unit
+
+pub fn parse_sdk_result_event(Map[String, Json], (@types.AgentEvent) -> Unit) -> Unit
+
+pub fn parse_system_event(Map[String, Json], (@types.AgentEvent) -> Unit) -> Unit
+
+pub fn parse_tool_calls(Map[String, Json], (@types.AgentEvent) -> Unit) -> Unit
+
+pub fn parse_tool_result(Map[String, Json], (@types.AgentEvent) -> Unit) -> Unit
+
+pub fn run_claude_sdk(String) -> String
+
+pub fn run_codex_sdk(String) -> String
+
+// Errors
+
+// Types and methods
+pub struct ApiBackend {
+  provider : @llm.BoxedProvider
+}
+pub fn ApiBackend::anthropic(String, model? : String) -> Self
+pub fn ApiBackend::boxed(Self) -> BoxedBackend
+pub fn ApiBackend::from_provider(@llm.BoxedProvider) -> Self
+pub fn ApiBackend::openai(String, model? : String) -> Self
+
+pub struct BoxedBackend {
+  inner : &AgentBackend
+}
+pub fn BoxedBackend::get_session_id(Self) -> String
+pub fn BoxedBackend::name(Self) -> String
+pub fn BoxedBackend::new(&AgentBackend) -> Self
+pub fn BoxedBackend::run(Self, String, String, (@types.AgentEvent) -> Unit) -> @types.AgentResult
+pub fn BoxedBackend::set_session_id(Self, String) -> Unit
+
+pub struct FailingMockBackend {
+  error_msg : String
+  mut call_count : Int
+}
+pub fn FailingMockBackend::boxed(Self) -> BoxedBackend
+pub fn FailingMockBackend::new(error_msg? : String) -> Self
+
+pub struct MockBackend {
+  responses : Map[String, String]
+  default_response : String
+  call_history : Array[(String, String)]
+}
+pub fn MockBackend::add_response(Self, String, String) -> Unit
+pub fn MockBackend::boxed(Self) -> BoxedBackend
+pub fn MockBackend::failing(String) -> Self
+pub fn MockBackend::get_history(Self) -> Array[(String, String)]
+pub fn MockBackend::new(default_response? : String) -> Self
+
+pub struct OutputLineBuffer {
+  buf : StringBuilder
+}
+pub fn OutputLineBuffer::flush(Self, (String) -> Unit) -> Unit
+pub fn OutputLineBuffer::new() -> Self
+pub fn OutputLineBuffer::push(Self, String, (String) -> Unit) -> Unit
+
+pub struct SubprocessBackend {
+  kind : @types.AgentKind
+  model : String
+  mut session_id : String
+}
+pub fn SubprocessBackend::boxed(Self) -> BoxedBackend
+pub fn SubprocessBackend::get_session_id(Self) -> String
+pub fn SubprocessBackend::new(@types.AgentKind, model? : String) -> Self
+pub fn SubprocessBackend::set_session_id(Self, String) -> Unit
+
+// Type aliases
+
+// Traits
+pub(open) trait AgentBackend {
+  run(Self, String, String, (@types.AgentEvent) -> Unit) -> @types.AgentResult
+  name(Self) -> String
+  set_session_id(Self, String) -> Unit
+  get_session_id(Self) -> String
+}
+

@@ -372,7 +372,7 @@ pub fn Milestone::has_undone_tasks(self : Milestone) -> Bool {
   .iter()
   .any(fn(t) {
     match t.status {
-      Pending | InProgress(_) => true
+      Pending | InProgress(_) | Failed(_) => true
       _ => false
     }
   })
@@ -384,7 +384,7 @@ pub fn Milestone::next_wave_number(self : Milestone) -> Int? {
   let mut min_wave : Int? = None
   for t in self.tasks {
     match t.status {
-      Pending | InProgress(_) =>
+      Pending | InProgress(_) | Failed(_) =>
         match min_wave {
           None => min_wave = Some(t.wave)
           Some(w) => if t.wave < w { min_wave = Some(t.wave) }

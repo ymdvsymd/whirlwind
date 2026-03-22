@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/config"
+
+import {
+  "mizchi/tornado/types",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct ProjectConfig {
+  project_dir : String
+  review_dir : String
+  max_review_cycles : Int
+  review_interval : Int
+  agents : Array[@types.AgentConfig]
+  parse_warnings : Array[String]
+  ralph_enabled : Bool
+  milestones_path : String?
+  max_rework_attempts : Int
+}
+pub fn ProjectConfig::default() -> Self
+pub fn ProjectConfig::from_json(Json) -> Self raise Failure
+pub fn ProjectConfig::from_json_string(String) -> Self raise Failure
+pub fn ProjectConfig::preset_default() -> Self
+pub fn ProjectConfig::preset_ralph() -> Self
+pub fn ProjectConfig::validate(Self) -> Array[String]
+
+// Type aliases
+
+// Traits
+
