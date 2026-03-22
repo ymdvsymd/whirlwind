@@ -17,3 +17,4 @@ settings.local.json
 .claude/.cost-log.jsonl
 .claude/.build-log.jsonl
 .claude/.pre-compact-state.json
+.claude/worktrees/
