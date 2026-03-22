@@ -105,16 +105,6 @@ pub fn apply_overrides(
 }
 
 ///|
-/// Backward-compatible alias
-pub fn apply_kind_overrides(
-  config : @config.ProjectConfig,
-  dev_kind? : @types.AgentKind? = None,
-  review_kind? : @types.AgentKind? = None,
-) -> @config.ProjectConfig {
-  apply_overrides(config, dev_kind~, review_kind~)
-}
-
-///|
 /// Human-readable kind label for logs/usage.
 pub fn kind_name(kind : @types.AgentKind) -> String {
   match kind {

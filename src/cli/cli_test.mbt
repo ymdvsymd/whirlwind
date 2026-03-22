@@ -415,9 +415,9 @@ test "parse_cli_args --lang=invalid warns" {
 }
 
 ///|
-test "apply_kind_overrides rewrites role kinds" {
+test "apply_overrides rewrites role kinds" {
   let base = @config.ProjectConfig::preset_default()
-  let updated = @cli.apply_kind_overrides(
+  let updated = @cli.apply_overrides(
     base,
     dev_kind=Some(@types.AgentKind::Codex),
     review_kind=Some(@types.AgentKind::ClaudeCode),
