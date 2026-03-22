@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "whirlwind",
+  "project_id": "1c3d0357-02f6-4d1f-b1e2-17ad6b47fd12"
+}
