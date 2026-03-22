@@ -24,34 +24,57 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 
 ## オーケストレーション概要
 
+0. **状態初期化** — PROCESSED_IDS, ALL_RESULTS を初期化
 1. **チケット収集・バッチ計画** — readyチケット取得、並列安全性分析、バッチ分割
 2. **チケット実行** — TDD（テスト先行）で各チケットを修正・実装
-3. **バッチオーケストレーション** — サブエージェント並列起動、バッチ毎 `just live`
+3. **バッチオーケストレーション** — サブエージェント並列起動、worktreeマージ、バッチ毎テスト
 4. **障害分離・バグ起票** — live失敗時のper-ticket isolation、P1でバグ起票
-5. **クローズ・最終レポート** — commit hashでチケットクローズ、サマリー出力
+5. **クローズ・最終レポート** — 全イテレーションの結果を集約、チケットクローズ
+
+**Phase 1〜4 は外部ループ（最大5回）で繰り返し、毎回 `bd ready` を再スキャンして新規チケットを拾う。**
 
 各フェーズを**必ず順番に**実行すること。
 
 ---
 
+### Phase 0: 状態初期化
+
+以下の状態変数を初期化する:
+
+- `ITERATION = 0` — ループ回数カウンタ
+- `PROCESSED_IDS = {}` — 処理済みチケットIDの集合
+- `ALL_RESULTS = []` — 全イテレーション結果の蓄積リスト
+
+引数を解析する:
+- 最初の `P` で始まるトークン（P0〜P4）を `PRIORITY_THRESHOLD` とする（デフォルト: `3` = P3）
+- `--sequential` があれば `SEQUENTIAL=true`
+- `--dry-run` があれば `DRY_RUN=true`
+- `--type=<value>` があれば `TYPE_FILTER` に格納
+
+---
+
+### 外部ループ（ITERATION < 5 の間繰り返す）
+
+`ITERATION` をインクリメントし、Phase 1 〜 Phase 4 を実行する。
+
+---
+
 ### Phase 1: チケット収集・バッチ計画
 
-1. `$ARGUMENTS` を解析する:
-   - 最初の `P` で始まるトークン（P0〜P4）を `PRIORITY_THRESHOLD` とする（デフォルト: `3` = P3）
-   - `--sequential` があれば `SEQUENTIAL=true`
-   - `--dry-run` があれば `DRY_RUN=true`
-   - `--type=<value>` があれば `TYPE_FILTER` に格納
-
-2. readyチケットを取得:
+1. readyチケットを取得:
 
    ```bash
    bd ready
    ```
 
-3. 優先度フィルタ: `PRIORITY_THRESHOLD` 以下（P0が最高=0、P4が最低=4）のチケットのみ残す。
+2. 優先度フィルタ: `PRIORITY_THRESHOLD` 以下（P0が最高=0、P4が最低=4）のチケットのみ残す。
    `TYPE_FILTER` が指定されていれば種別でも絞り込む。
 
-4. 対象チケットが 0 件の場合、「対象チケットなし」と報告して終了。
+3. 処理済みチケットを除外: `PROCESSED_IDS` に含まれるIDを除外する。
+
+4. 対象チケットが 0 件の場合:
+   - 初回（`ITERATION == 1`）: 「対象チケットなし」と報告して終了
+   - 再スキャン（`ITERATION >= 2`）: 「新規チケットなし」→ ループ終了、Phase 5 へ
 
 5. 各チケットの詳細を取得:
 
@@ -72,6 +95,7 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
    ```markdown
    ## bd-runner 実行計画
 
+   **イテレーション**: N / 5
    **優先度閾値**: P<N>
    **対象チケット数**: N
    **モード**: 並列 / 直列
@@ -88,7 +112,9 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
    | tornado-zzz | P2 | task | ... |
    ```
 
-8. `DRY_RUN=true` の場合、ここで終了。
+8. `DRY_RUN=true` の場合:
+   - 初回: 実行計画を表示して終了
+   - 再スキャン（`ITERATION >= 2`）: 「再スキャンで N 件の新規チケット発見」と表示して終了
 
 ---
 
@@ -132,11 +158,43 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
    - 全サブエージェントの完了を待機する
 
 3. **結果処理**:
-   - 成功 → commit hash を記録
-   - 失敗 → エラーを記録、チケットをスキップ扱い
-   - worktree に変更がある場合 → worktree のブランチからメインブランチへマージ
+   - 成功 → commit hash を記録、`PROCESSED_IDS` に追加
+   - 失敗 → エラーを記録、`PROCESSED_IDS` に追加（再試行しない）
+   - worktree に変更がある場合 → ステップ4 のマージ手順を実行
 
-4. **バッチ後結合テスト**:
+4. **worktree マージ**（バッチ内チケットが 2 つ以上の場合）:
+
+   各 worktree ブランチを順番にメインブランチへマージする:
+
+   a. `git merge <worktree-branch> --no-edit`
+   b. **競合が発生した場合**:
+      - 競合マーカーを解析し、両方の変更を保持する方向で解決する
+      - 変数名の不整合（例: 一方が `tasks`、他方が `pending_tasks`）は、
+        メインブランチ側の命名を優先して統一する
+      - `git add <resolved-files> && git commit --no-edit` でマージコミット作成
+   c. 全ブランチのマージ完了後、worktree とブランチをクリーンアップ:
+      ```bash
+      git worktree remove --force <worktree-path>
+      git branch -D <worktree-branch>
+      ```
+
+5. **マージ後検証**:
+
+   ```bash
+   just test
+   ```
+
+   - **PASS** → ステップ6 へ
+   - **FAIL** → 競合解決ミスの可能性。失敗内容を確認し修正を試みる。
+     3回試行しても通過しない場合、バッチ全体の変更を revert し、
+     全チケットを失敗マークして P1 バグを起票:
+     ```bash
+     bd create --title="[bd-runner] Merge conflict resolution caused test failure" \
+       --description="バッチマージ後の just test 失敗。対象チケット: <ticket-ids>\n\n失敗詳細:\n<エラー出力>" \
+       --type=bug --priority=1
+     ```
+
+6. **バッチ後結合テスト**:
 
    ```bash
    just test
@@ -151,7 +209,10 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
    - **成功** → 次バッチへ進行
    - **失敗** → Phase 4（障害分離）へ移行
 
-5. 全バッチ完了後 → Phase 5 へ
+7. 全バッチ完了後:
+   - 結果を `ALL_RESULTS` に追加
+   - 外部ループの次のイテレーションへ（Phase 1 に戻り `bd ready` を再スキャン）
+   - サーキットブレーカー（`ITERATION >= 5`）到達時は Phase 5 へ
 
 ---
 
@@ -179,10 +240,9 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
      --type=bug --priority=1
    ```
 
-4. **ループ再実行判定**:
-   - 新チケットが `PRIORITY_THRESHOLD` 以内 → 現バッチ完了後にループに追加
-   - `ITERATION` カウンタをインクリメント
-   - **サーキットブレーカー**: `ITERATION >= 5` で停止、残バグを報告して Phase 5 へ
+4. **新規バグの登録**:
+   - 新規起票バグは次イテレーションの `bd ready` 再スキャンで自動的に拾われる
+   - 新規バグのIDを `ALL_RESULTS` の「新規起票バグ」リストに記録する
 
 5. 残りの成功 commit は維持し、次バッチへ進行
 
@@ -211,17 +271,17 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 
    **優先度閾値**: P<N>
    **イテレーション**: <N> / 5
-   **処理チケット数**: <N>
+   **処理チケット数**: <N>（全イテレーション合計）
 
    ### 完了
-   | チケット | タイトル | Commit | テスト |
-   |----------|---------|--------|--------|
-   | tornado-xxx | ... | abc1234 | PASS |
+   | チケット | タイトル | Commit | テスト | イテレーション |
+   |----------|---------|--------|--------|--------------|
+   | tornado-xxx | ... | abc1234 | PASS | 1 |
 
    ### 失敗
-   | チケット | タイトル | エラー |
-   |----------|---------|--------|
-   | tornado-yyy | ... | <要約> |
+   | チケット | タイトル | エラー | イテレーション |
+   |----------|---------|--------|--------------|
+   | tornado-yyy | ... | <要約> | 1 |
 
    ### 新規起票バグ
    | チケット | タイトル | 優先度 |
@@ -239,11 +299,13 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 
 | シナリオ | アクション |
 |----------|-----------|
-| `bd ready` が 0 件 | 「対象チケットなし」で終了 |
+| `bd ready` が 0 件（初回） | 「対象チケットなし」で終了 |
+| 再スキャンで新規チケット 0 件 | ループ終了、Phase 5 へ |
 | `bd update --claim` 失敗 | スキップ、次のチケットへ |
 | TDD テスト作成失敗 | チケットを失敗マーク、unclaim、次へ |
 | 実装後 `just test` 失敗 | 変更を revert、失敗マーク、次へ |
-| worktree マージ競合 | 手動解決フラグ、他バッチ続行 |
+| worktree マージ競合 | 競合解決 → `just test` → 失敗なら revert + P1 バグ起票 |
+| マージ後 `just test` 失敗（3回） | バッチ変更を revert、P1 バグ起票、次バッチ続行 |
 | `just live` 失敗 | Phase 4 で障害分離・バグ起票 |
 | サーキットブレーカー発動（5回） | 残バグ報告して Phase 5 へ |
 | サブエージェント タイムアウト | 失敗扱い、ノート追加、次へ |
