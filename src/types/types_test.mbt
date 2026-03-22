@@ -43,11 +43,40 @@ test "Session::new creates active session" {
 ///|
 test "OrchestratorCallbacks::noop does not panic" {
   let cb = @types.OrchestratorCallbacks::noop()
-  (cb.on_agent_output)("a1", "line")
-  (cb.on_agent_complete)("a1", "done")
-  (cb.on_review_complete)("t1", @types.ReviewVerdict::Approved)
-  (cb.on_phase_change)("s1", @types.OrchestratorPhase::Executing)
-  (cb.on_session_complete)("s1")
+  (cb.on_agent_output)({ agent_id: "a1", line: "hello" })
+  (cb.on_agent_complete)({ agent_id: "a1", result: "done" })
+  (cb.on_task_start)({ task_id: "t1", description: "do work", agent_id: "a1" })
+  (cb.on_task_complete)({ task_id: "t1", status: "done" })
+  (cb.on_task_assign)({ task_id: "t1", agent_id: "a1" })
+  (cb.on_review_start)({ task_id: "t1", reviewer_id: "r1" })
+  (cb.on_review_complete)({
+    task_id: "t1",
+    verdict: @types.ReviewVerdict::Approved,
+  })
+  (cb.on_phase_change)({
+    session_id: "s1",
+    phase: @types.OrchestratorPhase::Executing,
+  })
+  (cb.on_session_complete)({ session_id: "s1" })
+  (cb.on_info)({ message: "hello" })
+  (cb.on_save)()
+}
+
+///|
+test "OrchestratorCallbacks record types carry correct values" {
+  let outputs : Array[String] = []
+  let cb = @types.OrchestratorCallbacks::noop()
+  let callbacks = {
+    ..cb,
+    on_agent_output: fn(e : @types.AgentOutputEvent) {
+      outputs.push(e.agent_id + ":" + e.line)
+    },
+    on_info: fn(e : @types.InfoEvent) { outputs.push("info:" + e.message) },
+  }
+  (callbacks.on_agent_output)({ agent_id: "dev-1", line: "building..." })
+  (callbacks.on_info)({ message: "started" })
+  inspect(outputs[0], content="dev-1:building...")
+  inspect(outputs[1], content="info:started")
 }
 
 ///|

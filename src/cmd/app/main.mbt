@@ -180,22 +180,24 @@ fn run_ralph(
   }
   // Create callbacks
   let callbacks : @types.OrchestratorCallbacks = {
-    on_agent_output: fn(id, line) { log("OUT", "[\{id}] \{line}") },
-    on_agent_complete: fn(id, _result) { log("INFO", "Agent \{id} complete") },
-    on_task_start: fn(tid, desc, aid) {
-      log("INFO", "Task \{tid}: \{desc} (agent: \{aid})")
+    on_agent_output: fn(e) { log("OUT", "[\{e.agent_id}] \{e.line}") },
+    on_agent_complete: fn(e) { log("INFO", "Agent \{e.agent_id} complete") },
+    on_task_start: fn(e) {
+      log("INFO", "Task \{e.task_id}: \{e.description} (agent: \{e.agent_id})")
     },
-    on_task_complete: fn(tid, status) {
-      log("INFO", "Task \{tid} → \{status}")
+    on_task_complete: fn(e) { log("INFO", "Task \{e.task_id} → \{e.status}") },
+    on_task_assign: fn(e) {
+      log("INFO", "Assigned \{e.task_id} → \{e.agent_id}")
     },
-    on_task_assign: fn(tid, aid) { log("INFO", "Assigned \{tid} → \{aid}") },
-    on_review_start: fn(tid, rid) { log("INFO", "Review \{tid} by \{rid}") },
-    on_review_complete: fn(tid, verdict) {
-      log("INFO", "Review \{tid}: \{verdict}")
+    on_review_start: fn(e) {
+      log("INFO", "Review \{e.task_id} by \{e.reviewer_id}")
     },
-    on_phase_change: fn(_sid, phase) { log("INFO", "Phase: \{phase}") },
-    on_session_complete: fn(_sid) { log("INFO", "Session complete") },
-    on_info: fn(msg) { log("INFO", msg) },
+    on_review_complete: fn(e) {
+      log("INFO", "Review \{e.task_id}: \{e.verdict}")
+    },
+    on_phase_change: fn(e) { log("INFO", "Phase: \{e.phase}") },
+    on_session_complete: fn(_e) { log("INFO", "Session complete") },
+    on_info: fn(e) { log("INFO", e.message) },
     on_save: fn() { write_file_sync(milestones_path, mgr.to_json()) },
   }
   // Run ralph loop

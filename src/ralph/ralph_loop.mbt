@@ -569,15 +569,15 @@ fn handle_event(
   event : @types.AgentEvent,
 ) -> Unit {
   match event {
-    OutputLine(line) => (rl.callbacks.on_agent_output)(agent_id, line)
-    Info(msg) => (rl.callbacks.on_info)(msg)
+    OutputLine(line) => (rl.callbacks.on_agent_output)({ agent_id, line })
+    Info(msg) => (rl.callbacks.on_info)({ message: msg })
     _ => ()
   }
 }
 
 ///|
 fn emit_info(rl : RalphLoop, msg : String) -> Unit {
-  (rl.callbacks.on_info)(msg)
+  (rl.callbacks.on_info)({ message: msg })
 }
 
 ///| Extract changed file paths from builder output.

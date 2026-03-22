@@ -65,7 +65,7 @@ test "RalphLoop full cycle with single milestone" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Milestone should be complete
@@ -267,7 +267,7 @@ test "RalphLoop logs resume progress for partially completed milestone" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   assert_true(
@@ -307,7 +307,7 @@ test "run_wave skips already-done tasks before submitting to builder" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
 
   rl.run()
@@ -358,7 +358,7 @@ test "run_wave does not emit running logs for already-done tasks" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
 
   rl.run()
@@ -401,7 +401,7 @@ test "resume skips already-done milestones" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
 
   rl.run()
@@ -459,7 +459,7 @@ test "RalphLoop with rework cycle at milestone verification" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Should have rework info from milestone verification
@@ -499,7 +499,7 @@ test "RalphLoop milestone failure at milestone verification" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Milestone should be failed
@@ -622,7 +622,7 @@ test "RalphLoop multi-wave execution" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   inspect(mgr.milestones[0].status, content="Done")
@@ -659,7 +659,7 @@ test "RalphLoop verifies all 4 perspectives after waves complete" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
 
   rl.run()
@@ -752,7 +752,7 @@ test "RalphLoop reworks milestone tasks during milestone verification" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
 
   rl.run()
@@ -804,7 +804,7 @@ test "RalphLoop milestone verification rework cycle retries and then completes" 
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
 
   rl.run()
@@ -1232,7 +1232,7 @@ test "tornado-1fy: detect file conflicts between parallel builders in same wave"
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // The key assertion: file conflict on package.json must be detected and reported
@@ -1279,7 +1279,7 @@ test "tornado-1fy: no false positive when parallel builders edit different files
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // No conflict should be reported
@@ -1404,7 +1404,7 @@ test "run_wave with 3 parallel builders causing multi-file conflicts" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // config.ts is touched by all 3 tasks — must report conflict with 3 task IDs
@@ -1498,7 +1498,7 @@ test "verify_milestone reaches max rework attempts and accepts as-is" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Max rework should be reached and milestone accepted as-is
@@ -1553,7 +1553,7 @@ test "next_wave_number skips completed waves and jumps to pending wave" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Wave 0 should never be executed (all tasks done, next_wave_number skips it)
@@ -1623,7 +1623,7 @@ test "run_wave returns false when no builder backend is available" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Milestone should fail because no builder backend found
@@ -1668,7 +1668,7 @@ test "verify_milestone fails after rework when re-verify returns milestone_faile
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // Milestone should be Failed, not Done
@@ -1777,7 +1777,7 @@ test "single task wave does not trigger conflict detection" {
   backends["verifier"] = verifier_mock.boxed()
   let infos : Array[String] = []
   let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = { ..cb, on_info: fn(msg) { infos.push(msg) } }
+  let callbacks = { ..cb, on_info: fn(e) { infos.push(e.message) } }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   // With only 1 task, the conflict detection block is skipped entirely

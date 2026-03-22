@@ -103,36 +103,107 @@ pub(all) struct Session {
   tasks : Array[Task]
 }
 
+// --- Callback event types ---
+
+///|
+/// Event data for agent output
+pub(all) struct AgentOutputEvent {
+  agent_id : String
+  line : String
+}
+
+///|
+/// Event data for agent completion
+pub(all) struct AgentCompleteEvent {
+  agent_id : String
+  result : String
+}
+
+///|
+/// Event data for task start
+pub(all) struct TaskStartEvent {
+  task_id : String
+  description : String
+  agent_id : String
+}
+
+///|
+/// Event data for task completion
+pub(all) struct TaskCompleteEvent {
+  task_id : String
+  status : String
+}
+
+///|
+/// Event data for task assignment
+pub(all) struct TaskAssignEvent {
+  task_id : String
+  agent_id : String
+}
+
+///|
+/// Event data for review start
+pub(all) struct ReviewStartEvent {
+  task_id : String
+  reviewer_id : String
+}
+
+///|
+/// Event data for review completion
+pub(all) struct ReviewCompleteEvent {
+  task_id : String
+  verdict : ReviewVerdict
+}
+
+///|
+/// Event data for phase change
+pub(all) struct PhaseChangeEvent {
+  session_id : String
+  phase : OrchestratorPhase
+}
+
+///|
+/// Event data for session completion
+pub(all) struct SessionCompleteEvent {
+  session_id : String
+}
+
+///|
+/// Event data for info messages
+pub(all) struct InfoEvent {
+  message : String
+}
+
 ///|
 /// Callbacks for the orchestrator to notify the UI
 pub(all) struct OrchestratorCallbacks {
-  on_agent_output : (String, String) -> Unit // (agent_id, line)
-  on_agent_complete : (String, String) -> Unit // (agent_id, result)
-  on_task_start : (String, String, String) -> Unit // (task_id, description, agent_id)
-  on_task_complete : (String, String) -> Unit // (task_id, status)
-  on_task_assign : (String, String) -> Unit // (task_id, agent_id)
-  on_review_start : (String, String) -> Unit // (task_id, reviewer_id)
-  on_review_complete : (String, ReviewVerdict) -> Unit // (task_id, verdict)
-  on_phase_change : (String, OrchestratorPhase) -> Unit // (session_id, phase)
-  on_session_complete : (String) -> Unit // (session_id)
-  on_info : (String) -> Unit // generic info message
-  on_save : () -> Unit // persist milestones state
+  on_agent_output : (AgentOutputEvent) -> Unit
+  on_agent_complete : (AgentCompleteEvent) -> Unit
+  on_task_start : (TaskStartEvent) -> Unit
+  on_task_complete : (TaskCompleteEvent) -> Unit
+  on_task_assign : (TaskAssignEvent) -> Unit
+  on_review_start : (ReviewStartEvent) -> Unit
+  on_review_complete : (ReviewCompleteEvent) -> Unit
+  on_phase_change : (PhaseChangeEvent) -> Unit
+  on_session_complete : (SessionCompleteEvent) -> Unit
+  on_info : (InfoEvent) -> Unit
+  on_save : () -> Unit
 }
 
 ///|
 /// Create noop callbacks for testing
 pub fn OrchestratorCallbacks::noop() -> OrchestratorCallbacks {
   {
-    on_agent_output: fn(_agent_id, _line) {  },
-    on_agent_complete: fn(_agent_id, _result) {  },
-    on_task_start: fn(_task_id, _desc, _agent_id) {  },
-    on_task_complete: fn(_task_id, _status) {  },
-    on_task_assign: fn(_task_id, _agent_id) {  },
-    on_review_start: fn(_task_id, _reviewer_id) {  },
-    on_review_complete: fn(_task_id, _verdict) {  },
-    on_phase_change: fn(_session_id, _phase) {  },
-    on_session_complete: fn(_session_id) {  },
-    on_info: fn(_msg) {  },
+    on_agent_output: fn(_e) {  },
+    on_agent_complete: fn(_e) {  },
+    on_task_start: fn(_e) {  },
+    on_task_complete: fn(_e) {  },
+    on_task_assign: fn(_e) {  },
+    on_review_start: fn(_e) {  },
+    on_review_complete: fn(_e) {  },
+    on_phase_change: fn(_e) {  },
+    on_session_complete: fn(_e) {  },
+    on_info: fn(_e) {  },
     on_save: fn() {  },
   }
 }
