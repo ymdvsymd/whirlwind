@@ -39,7 +39,7 @@ test "ReviewAgent::parse_verdict defaults to approved" {
 test "ReviewAgent::build_prompt includes perspective-specific content" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::CodeQuality,
+    @prompts.Perspective::CodeQuality,
     "build API",
     "done building",
     "",
@@ -54,7 +54,7 @@ test "ReviewAgent::build_prompt includes perspective-specific content" {
 test "ReviewAgent::build_prompt performance perspective" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::Performance,
+    @prompts.Perspective::Performance,
     "optimize query",
     "optimized",
     "",
@@ -67,7 +67,7 @@ test "ReviewAgent::build_prompt performance perspective" {
 test "ReviewAgent::build_prompt security perspective" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::Security,
+    @prompts.Perspective::Security,
     "add auth",
     "added auth",
     "",
@@ -80,7 +80,7 @@ test "ReviewAgent::build_prompt security perspective" {
 test "ReviewAgent::build_prompt includes context when provided" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::CodeQuality,
+    @prompts.Perspective::CodeQuality,
     "task",
     "output",
     "### Recent Commits\nabc123 fix bug",
@@ -261,7 +261,7 @@ test "review merges correctly when one perspective backend fails" {
 test "ReviewAgent::build_prompt ja includes Japanese text" {
   let ra = @review.ReviewAgent::new("r1", "ja")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::CodeQuality,
+    @prompts.Perspective::CodeQuality,
     "API を構築",
     "完了",
     "",
@@ -280,7 +280,7 @@ test "ReviewAgent::build_prompt ja includes Japanese text" {
 test "ReviewAgent::build_prompt en includes English text" {
   let ra = @review.ReviewAgent::new("r1", "en")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::Performance,
+    @prompts.Perspective::Performance,
     "optimize",
     "done",
     "",
@@ -295,7 +295,7 @@ test "ReviewAgent::build_prompt en includes English text" {
 test "ReviewAgent::build_prompt ja performance perspective" {
   let ra = @review.ReviewAgent::new("r1", "ja")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::Performance,
+    @prompts.Perspective::Performance,
     "最適化",
     "完了",
     "",
@@ -308,7 +308,7 @@ test "ReviewAgent::build_prompt ja performance perspective" {
 test "ReviewAgent::build_prompt ja security perspective" {
   let ra = @review.ReviewAgent::new("r1", "ja")
   let prompt = ra.build_prompt(
-    @review.ReviewPerspective::Security,
+    @prompts.Perspective::Security,
     "認証追加",
     "完了",
     "",

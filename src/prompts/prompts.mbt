@@ -1,4 +1,13 @@
 ///|
+/// Unified review/verification perspective
+pub(all) enum Perspective {
+  CodeQuality
+  Performance
+  Security
+  GoalAlignment
+} derive(Eq, Show)
+
+///|
 pub fn code_quality_checklist(lang : String) -> String {
   let buf = StringBuilder::new()
   if lang == "ja" {
@@ -71,6 +80,37 @@ pub fn security_checklist(lang : String) -> String {
     buf.write_string("- Authentication and authorization gaps\n")
     buf.write_string("- Sensitive data exposure (secrets, tokens, PII)\n")
     buf.write_string("- Dependency safety\n")
+  }
+  buf.to_string()
+}
+
+///|
+pub fn goal_alignment_checklist(lang : String) -> String {
+  let buf = StringBuilder::new()
+  if lang == "ja" {
+    buf.write_string("## レビュー観点: ゴール整合性\n")
+    buf.write_string("以下の観点で評価してください:\n")
+    buf.write_string(
+      "- 出力はマイルストーンで定義された目標を達成しているか\n",
+    )
+    buf.write_string("- すべてのタスク出力に一貫性があるか\n")
+    buf.write_string(
+      "- 不足している成果物や未完了の実装がないか\n",
+    )
+    buf.write_string(
+      "- 全体の方向性がプロジェクトの意図と一致しているか\n",
+    )
+  } else {
+    buf.write_string("## Review Focus: Goal Alignment\n")
+    buf.write_string("Evaluate the following aspects:\n")
+    buf.write_string("- Does the output achieve the stated milestone goal?\n")
+    buf.write_string("- Are all task outputs consistent with each other?\n")
+    buf.write_string(
+      "- Are there missing deliverables or incomplete implementations?\n",
+    )
+    buf.write_string(
+      "- Does the overall direction match the project's intent?\n",
+    )
   }
   buf.to_string()
 }

@@ -6,14 +6,6 @@ pub struct VerifierAgent {
 }
 
 ///|
-pub(all) enum VerifierPerspective {
-  CodeQuality
-  Performance
-  Security
-  GoalAlignment
-} derive(Eq, Show)
-
-///|
 /// Create a new verifier agent
 pub fn VerifierAgent::new(
   agent_id? : String = "verifier",
@@ -23,40 +15,9 @@ pub fn VerifierAgent::new(
 }
 
 ///|
-fn goal_alignment_checklist(lang : String) -> String {
-  let buf = StringBuilder::new()
-  if lang == "ja" {
-    buf.write_string("## レビュー観点: ゴール整合性\n")
-    buf.write_string("以下の観点で評価してください:\n")
-    buf.write_string(
-      "- 出力はマイルストーンで定義された目標を達成しているか\n",
-    )
-    buf.write_string("- すべてのタスク出力に一貫性があるか\n")
-    buf.write_string(
-      "- 不足している成果物や未完了の実装がないか\n",
-    )
-    buf.write_string(
-      "- 全体の方向性がプロジェクトの意図と一致しているか\n",
-    )
-  } else {
-    buf.write_string("## Review Focus: Goal Alignment\n")
-    buf.write_string("Evaluate the following aspects:\n")
-    buf.write_string("- Does the output achieve the stated milestone goal?\n")
-    buf.write_string("- Are all task outputs consistent with each other?\n")
-    buf.write_string(
-      "- Are there missing deliverables or incomplete implementations?\n",
-    )
-    buf.write_string(
-      "- Does the overall direction match the project's intent?\n",
-    )
-  }
-  buf.to_string()
-}
-
-///|
 pub fn VerifierAgent::build_perspective_prompt(
   self : VerifierAgent,
-  perspective : VerifierPerspective,
+  perspective : @prompts.Perspective,
   milestone : @types.Milestone,
   wave : Int,
   wave_results : Array[(String, String)],
@@ -96,7 +57,8 @@ pub fn VerifierAgent::build_perspective_prompt(
     CodeQuality => buf.write_string(@prompts.code_quality_checklist(self.lang))
     Performance => buf.write_string(@prompts.performance_checklist(self.lang))
     Security => buf.write_string(@prompts.security_checklist(self.lang))
-    GoalAlignment => buf.write_string(goal_alignment_checklist(self.lang))
+    GoalAlignment =>
+      buf.write_string(@prompts.goal_alignment_checklist(self.lang))
   }
   match perspective {
     GoalAlignment =>
@@ -162,7 +124,7 @@ pub fn VerifierAgent::verify(
   wave_results : Array[(String, String)],
   backend : @agent.BoxedBackend,
   project_context : String,
-  perspectives? : Array[VerifierPerspective] = [
+  perspectives? : Array[@prompts.Perspective] = [
     CodeQuality,
     Performance,
     Security,
@@ -183,7 +145,7 @@ pub fn VerifierAgent::verify(
   }
   let results = @agent.run_parallel(backend, tasks, on_event)
   let perspective_verdicts : Array[
-    (VerifierPerspective, @types.VerifierVerdict),
+    (@prompts.Perspective, @types.VerifierVerdict),
   ] = []
   for i in 0..<perspectives.length() {
     let perspective = perspectives[i]
@@ -209,7 +171,7 @@ pub fn VerifierAgent::verify(
 ///|
 pub fn inject_perspective_tag(
   item : String,
-  perspective : VerifierPerspective,
+  perspective : @prompts.Perspective,
 ) -> String {
   let tag = "[" + perspective.to_string() + "] "
   let colon_idx = @util.find_substring(item, ": ")
@@ -240,7 +202,7 @@ pub fn inject_perspective_tag(
 ///|
 pub fn VerifierAgent::merge_verdicts(
   _self : VerifierAgent,
-  verdicts : Array[(VerifierPerspective, @types.VerifierVerdict)],
+  verdicts : Array[(@prompts.Perspective, @types.VerifierVerdict)],
 ) -> @types.VerifierVerdict {
   let items : Array[String] = []
   for verdict in verdicts {

@@ -1,12 +1,4 @@
 ///|
-/// Review perspective
-pub(all) enum ReviewPerspective {
-  CodeQuality
-  Performance
-  Security
-} derive(Eq, Show)
-
-///|
 /// ReviewAgent parses review verdicts from LLM output
 pub struct ReviewAgent {
   reviewer_id : String
@@ -23,7 +15,7 @@ pub fn ReviewAgent::new(reviewer_id : String, lang : String) -> ReviewAgent {
 /// All review perspectives in order
 pub fn ReviewAgent::perspectives(
   _self : ReviewAgent,
-) -> Array[ReviewPerspective] {
+) -> Array[@prompts.Perspective] {
   [CodeQuality, Performance, Security]
 }
 
@@ -31,7 +23,7 @@ pub fn ReviewAgent::perspectives(
 /// Build review prompt for a specific perspective
 pub fn ReviewAgent::build_prompt(
   self : ReviewAgent,
-  perspective : ReviewPerspective,
+  perspective : @prompts.Perspective,
   task_description : String,
   agent_output : String,
   context : String,
@@ -72,6 +64,8 @@ pub fn ReviewAgent::build_prompt(
     CodeQuality => buf.write_string(@prompts.code_quality_checklist(self.lang))
     Performance => buf.write_string(@prompts.performance_checklist(self.lang))
     Security => buf.write_string(@prompts.security_checklist(self.lang))
+    GoalAlignment =>
+      buf.write_string(@prompts.goal_alignment_checklist(self.lang))
   }
   // TODO.md instruction — reviewer must NOT attempt to fix issues
   buf.write_string("\n\n")
@@ -218,7 +212,7 @@ pub fn ReviewAgent::review(
 ///|
 fn ReviewAgent::build_system_prompt(
   self : ReviewAgent,
-  perspective : ReviewPerspective,
+  perspective : @prompts.Perspective,
 ) -> String {
   if self.lang == "ja" {
     "あなたは \{perspective} に焦点を当てたコードレビュアーです。簡潔かつ具体的に指摘してください。問題の修正は行わず、TODO リストとして書き出してください。"
