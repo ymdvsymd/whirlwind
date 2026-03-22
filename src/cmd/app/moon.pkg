@@ -7,7 +7,7 @@ import {
   "mizchi/tornado/display",
   "mizchi/tornado/ralph",
   "mizchi/tornado/cmd/helpers",
-  "mizchi/x/sys",
+  "moonbitlang/x/sys",
   "moonbitlang/core/json",
 }
 

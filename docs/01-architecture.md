@@ -26,7 +26,7 @@ mizchi/tornado (root)  ※ npm は @ymdvsymd/tornado v0.9.1
 | パッケージ | バージョン | 役割 | 使用モジュール |
 |-----------|-----------|------|--------------|
 | `mizchi/llm` | 0.2.2 | LLM提供者抽象化 | anthropic, openai, ffi |
-| `mizchi/x` | 0.1.3 | ユーティリティ | sys (CLI引数取得) |
+| `moonbitlang/x` | 0.4.40 | ユーティリティ | sys (CLI引数取得) |
 | `mizchi/tui` | 0.7.0 | TUI描画エンジン | vnode (VNodeコンポーネント) |
 
 ---
