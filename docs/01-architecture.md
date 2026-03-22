@@ -2,67 +2,65 @@
 
 ## 1. モジュール依存関係グラフ
 
-### 1.1 全モジュール構成（12パッケージ）
+### 1.1 全モジュール構成（11パッケージ）
 
 ```
-ymdvsymd/whirlwind (root)  ※ npm は @ymdvsymd/whirlwind v0.9.1
+ymdvsymd/whirlwind (root)  ※ npm は @ymdvsymd/whirlwind v0.1.0
   types          (基本型定義、no import)
-  config         (-> types)
+  util           (-> json)
+  config         (-> types, util, json)
   cli            (-> types, config)
-  agent          (-> types, llm/*, json)
-  review         (-> types, agent)
-  orchestrator   (-> types, agent, task, review, config)
-  task           (-> types)
-  spawn          (no import)
   display        (-> json)
-  ralph          (-> types, agent, config, json)
-  tui            (-> types, tui/vnode)
+  prompts        (no import)
+  agent          (-> types, json)
+  review         (-> types, agent, prompts, util)
+  ralph          (-> types, agent, config, prompts, util, json)
+  cmd/helpers    (-> json)
   cmd/app        (is-main: true)
-    imports: types, config, cli, agent, review, display, ralph, sys, json
+    imports: types, config, cli, agent, ralph, cmd/helpers, sys, json
 ```
 
 ### 1.2 外部依存関係
 
 | パッケージ | バージョン | 役割 | 使用モジュール |
 |-----------|-----------|------|--------------|
-| `mizchi/llm` | 0.2.2 | LLM提供者抽象化 | anthropic, openai, ffi |
 | `moonbitlang/x` | 0.4.40 | ユーティリティ | sys (CLI引数取得) |
-| `mizchi/tui` | 0.7.0 | TUI描画エンジン | vnode (VNodeコンポーネント) |
 
 ---
 
 ## 2. レイヤーアーキテクチャ
 
 ```
-Layer 0: types (基盤型層)
-  他の全モジュールに依存される
+Layer 0: 基盤型・ユーティリティ
+  types (他の全モジュールに依存される)
+  util (-> json)
 
-Layer 1: 設定・タスク・UIパーツ
-  config (-> types)
-  task (-> types)
+Layer 1: 設定・UIパーツ・プロンプト
+  config (-> types, util, json)
+  cli (-> types, config)
   display (-> json)
-  spawn (独立)
+  prompts (独立)
 
 Layer 2: エージェント実装
-  agent (-> types, llm/*)
-  review (-> types, agent)
+  agent (-> types, json)
+  review (-> types, agent, prompts, util)
 
 Layer 3: オーケストレーション
-  orchestrator (-> types, agent, task, review, config)
-  ralph (-> types, agent, config, json)
+  ralph (-> types, agent, config, prompts, util, json)
 
 Layer 4: CLI・エントリーポイント
-  cmd/app (-> types, config, cli, agent, review, display, ralph, sys)
+  cmd/helpers (-> json)
+  cmd/app (-> types, config, cli, agent, ralph, cmd/helpers, sys, json)
 ```
 
 ### 各レイヤーの責務
 
 | Layer | 責務 | 典型的な変更理由 |
 |-------|------|----------------|
-| 0 (types) | ドメイン型の定義・共有 | 新概念の追加 |
-| 1 (config/task/display) | 入出力・設定管理 | 新設定項目、表示形式 |
+| 0 (types/util) | ドメイン型の定義・汎用ユーティリティ | 新概念の追加 |
+| 1 (config/cli/display/prompts) | 入出力・設定管理・プロンプト | 新設定項目、表示形式 |
 | 2 (agent/review) | AI実行・品質検証 | 新バックエンド、レビュー観点 |
-| 3 (orchestrator/ralph) | ワークフロー制御 | 新実行モード、フェーズ |
+| 3 (ralph) | ワークフロー制御 | 新実行モード、フェーズ |
 | 4 (cmd/app) | エントリーポイント・FFI | CLI引数、JS統合 |
 
 ---
@@ -76,11 +74,10 @@ Layer 4: CLI・エントリーポイント
 
 ### 3.2 FFIファイル一覧
 
-| ファイル | 関数数 | 役割 |
-|---------|--------|------|
-| `src/cmd/app/ffi_js.mbt` | 10 | ファイルI/O、stdin、環境変数、sleep |
-| `src/agent/sdk_js.mbt` | 1 | Claude/Codex SDK 実行 |
-| `src/spawn/ffi_js.mbt` | 1 | ストリーミングプロセス起動 |
+| ファイル | 役割 |
+|---------|------|
+| `src/cmd/app/ffi_js.mbt` | ファイルI/O、stdin、環境変数、sleep |
+| `src/agent/sdk_js.mbt` | Claude/Codex SDK 実行 |
 
 ### 3.3 主要FFI関数
 
@@ -114,7 +111,6 @@ pub(open) trait AgentBackend {
 
 3つの実装:
 - `SubprocessBackend` (claude-code/codex) - SDK経由プロセス実行
-- `ApiBackend` (Anthropic/OpenAI) - API直接呼出
 - `MockBackend` - テスト用
 
 動的ディスパッチ:
@@ -129,7 +125,6 @@ pub fn create_backend(config: AgentConfig) -> BoxedBackend {
   match config.kind {
     ClaudeCode => SubprocessBackend::new(ClaudeCode, ...).boxed()
     Codex => SubprocessBackend::new(Codex, ...).boxed()
-    Api => ApiBackend::anthropic(api_key, ...).boxed()
     Mock => MockBackend::new().boxed()
   }
 }
@@ -138,17 +133,22 @@ pub fn create_backend(config: AgentConfig) -> BoxedBackend {
 ### 4.3 イベント駆動 + コールバック
 
 ```moonbit
+pub enum OrchestratorEvent {
+  AgentOutput(AgentOutputEvent)
+  AgentComplete(AgentCompleteEvent)
+  TaskStart(TaskStartEvent)
+  TaskComplete(TaskCompleteEvent)
+  TaskAssign(TaskAssignEvent)
+  ReviewStart(ReviewStartEvent)
+  ReviewComplete(ReviewCompleteEvent)
+  PhaseChange(PhaseChangeEvent)
+  SessionComplete(SessionCompleteEvent)
+  Info(InfoEvent)
+}
+
 pub struct OrchestratorCallbacks {
-  on_agent_output: (String, String) -> Unit
-  on_agent_complete: (String, String) -> Unit
-  on_task_start: (String, String, String) -> Unit
-  on_task_complete: (String, String) -> Unit
-  on_task_assign: (String, String) -> Unit
-  on_review_start: (String, String) -> Unit
-  on_review_complete: (String, ReviewVerdict) -> Unit
-  on_phase_change: (String, OrchestratorPhase) -> Unit
-  on_session_complete: (String) -> Unit
-  on_info: (String) -> Unit
+  on_event: (OrchestratorEvent) -> Unit
+  on_save: () -> Unit
 }
 ```
 
@@ -202,28 +202,6 @@ stateDiagram-v2
     MilestoneComplete --> AllComplete : 全milestone完了
     AllComplete --> [*]
 ```
-
-**Orchestrator モード — `Orchestrator::run()` (未使用):**
-
-```mermaid
-stateDiagram-v2
-    [*] --> Decomposing
-    Decomposing --> Assigning : タスク分解完了
-    Assigning --> Executing : エージェント割当完了
-    Executing --> Reviewing : 全タスク実行完了
-    Executing --> Finalizing : レビューなし
-
-    Reviewing --> Finalizing : 全タスクApproved
-    Reviewing --> Iterating : NeedsChanges
-
-    Iterating --> Reviewing : 再レビュー
-    Reviewing --> Finalizing : cycle >= max_cycles
-
-    Finalizing --> [*]
-```
-
-> **Note:** `Orchestrator::run()` は現在どのエントリーポイントからも呼ばれていない。
-> `run_repl()` / `run_ralph()` とは独立した3つ目のオーケストレーション設計である。
 
 ### 4.5 代数的データ型による型安全性
 
@@ -289,9 +267,6 @@ run_repl() の while true ループ:
        -> Rejected:  check_interrupt() でユーザー入力待ち
 ```
 
-> **Note:** `Orchestrator::execute_tasks()` は `orchestrator.mbt` に定義されているが、
-> 実際のランタイムでは `run_repl()` が `run_dev()` / `run_review()` を直接呼んでいる。
-
 ### 5.3 レビューフロー
 
 ```
@@ -312,8 +287,6 @@ ReviewAgent::review(task, backend)
 | 新AgentKind | types.mbt + config.mbt + factory.mbt + 新Backend実装 |
 | 新レビュー観点 | ReviewPerspective enum + review.mbt |
 | 新Ralphフェーズ | RalphPhase enum + ralph_loop.mbt |
-| 新LLMプロバイダ | mizchi/llm に実装追加 (ApiBackend自動対応) |
-| 新UI画面 | views.mbt + state.mbt |
 
 ---
 
@@ -321,20 +294,6 @@ ReviewAgent::review(task, backend)
 
 ### 7.1 cmd/app/main.mbt の集中
 
-`main.mbt` は約1,380行で、REPL ループ、セッション永続化、タスクビルダー、レビュー実行、
-git コンテキスト収集を単一ファイルに含む。`run_repl()` 関数だけで約400行。
+`main.mbt` は REPL ループ、セッション永続化、タスクビルダー、レビュー実行、
+git コンテキスト収集を単一ファイルに含む。
 将来的に `session/`, `context/`, `prompt_builder/` への分解が検討できる。
-
-### 7.2 spawn/ モジュールの未使用
-
-`src/spawn/` の非同期 `spawn_streaming` インフラは他モジュールからインポートされていない。
-エージェントシステムは `sdk_js.mbt` の同期 `spawnSync` を使用。
-将来的な非同期実行（Wave 並列化等）のための基盤として残されている。
-
-### 7.3 orchestrator/ と ralph/ の重複
-
-両モジュールがタスク実行とリワークループを異なるアプローチで実装:
-- `orchestrator/`: `TaskManager` + `ReviewAgent`（3観点レビュー）
-- `ralph/`: `MilestoneManager` + `VerifierAgent`（マイルストーン単位4観点並列検証, v0.9.0）
-
-実行・リワークのプリミティブを共有する余地がある。

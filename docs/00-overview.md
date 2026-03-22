@@ -1,10 +1,10 @@
 # Whirlwind - Multi-Agent Development Orchestrator: 総合調査報告
 
 **初版調査日**: 2026-03-07
-**最終更新日**: 2026-03-20
+**最終更新日**: 2026-03-22
 **調査手法**: 7つの専門エージェントによる並行多角的調査
 **リポジトリ**: https://github.com/ymdvsymd/whirlwind
-**バージョン**: 0.9.1 (npm: @ymdvsymd/whirlwind)
+**バージョン**: 0.1.0 (npm: @ymdvsymd/whirlwind)
 
 ---
 
@@ -20,7 +20,7 @@ Whirlwind は **MoonBit** で実装されたマルチエージェント開発オ
 | コア言語 | MoonBit (JSターゲット) |
 | SDK層 | TypeScript (ES2022) |
 | 外部依存 | @anthropic-ai/claude-agent-sdk, @openai/codex-sdk |
-| MoonBit依存 | mizchi/llm, moonbitlang/x, mizchi/tui |
+| MoonBit依存 | moonbitlang/x |
 | ビルド | moon + npm + justfile |
 | ランタイム | Node.js >= 18 |
 | 配布 | npm (@ymdvsymd/whirlwind) |
@@ -30,8 +30,7 @@ Whirlwind は **MoonBit** で実装されたマルチエージェント開発オ
 1. **通常モード** (Heartbeat Loop): `run_repl()` 内の `while true` 無限ループで `run_dev()` → `run_review()` を繰り返す自律開発ループ（Ctrl+C で終了）
 2. **Ralph モード** (`--ralph`): マイルストーン駆動自律開発（Planner → Builder → Verifier）
 
-> **Note:** `src/orchestrator/orchestrator.mbt` に定義された `Orchestrator::run()` は
-> 現在のランタイムパスからは呼ばれておらず、通常モードは `run_repl()` が直接制御している。
+> **Note:** 通常モードは `run_repl()` が直接制御している。
 
 ---
 
@@ -42,7 +41,7 @@ Whirlwind は **MoonBit** で実装されたマルチエージェント開発オ
 | 1 | [01-architecture.md](./01-architecture.md) | アーキテクチャ | モジュール依存関係、レイヤー構造、設計パターン、データフロー |
 | 2 | [02-moonbit-core.md](./02-moonbit-core.md) | MoonBitコア | 全11モジュールの実装詳細、型定義、状態遷移、API |
 | 3 | [03-sdk-integration.md](./03-sdk-integration.md) | SDK統合 | TypeScript SDK、Claude/Codex統合、FFIブリッジ、ストリーミング |
-| 4 | [04-testing-quality.md](./04-testing-quality.md) | テスト品質 | 16テストファイル、約216テストケース、カバレッジ、ビルドシステム |
+| 4 | [04-testing-quality.md](./04-testing-quality.md) | テスト品質 | 19テストファイル、約362テストケース、カバレッジ、ビルドシステム |
 | 5 | [05-workflow-ralph.md](./05-workflow-ralph.md) | ワークフロー & Ralph利用ガイド | Ralph自律ループ、CLIオプション、設定、マイルストーン、3大エージェント、レビューサイクル |
 | 6 | [06-ralph-whirlwind-skill.md](./06-ralph-whirlwind-skill.md) | ralph-whirlwindスキル | 計画→マイルストーン変換、5フェーズパイプライン |
 
@@ -59,16 +58,15 @@ whirlwind/
   tsconfig.sdk.json      # TypeScript SDK 設定
   src/
     types/               # Layer 0: ドメイン型定義
+    util/                # Layer 0: 汎用ユーティリティ
     config/              # Layer 1: 設定パース・バリデーション
     cli/                 # Layer 1: CLI引数パース
-    task/                # Layer 1: タスク管理
-    spawn/               # Layer 1: プロセス起動
     display/             # Layer 1: 表示フォーマット
+    prompts/             # Layer 1: プロンプトテンプレート
     agent/               # Layer 2: エージェント抽象化・実行
     review/              # Layer 2: 3観点レビュー
     ralph/               # Layer 3: マイルストーン駆動自律ループ
-    orchestrator/        # Layer 3: タスクオーケストレーション
-    tui/                 # UI: TUI状態管理・描画
+    cmd/helpers/         # Layer 4: ヘルパー関数
     cmd/app/             # Layer 4: エントリーポイント・FFI
   sdk/
     runner-io.mts        # 共通I/O
@@ -79,6 +77,7 @@ whirlwind/
     codex-adapter.mts    # Codex SDK 統合
     codex-runner.mts     # Codex ランナー
     codex-normalizer.mts # Codex→Claude 形式正規化
+    parallel-runner.mts  # 並列実行ランナー
     stdin-watcher.mjs    # ユーザー入力監視
 ```
 
@@ -92,7 +91,7 @@ whirlwind/
 2. **AgentBackend trait** - 新エージェント種追加が容易なプラグイン設計
 3. **統一ストリーミング** - Claude/Codexの異なるイベント形式をアダプターで統一
 4. **3観点レビュー** - CodeQuality/Performance/Security の独立レビューとマージ
-5. **テストカバレッジ** - コアロジック中心に約216テストケース（16ファイル）
+5. **テストカバレッジ** - コアロジック中心に約362テストケース（19ファイル）
 6. **明確なレイヤー分離** - types → config → agent → orchestrator → main
 7. **Verifier フィードバック実装** - ターゲット指定のフィードバックルーティング（v0.6.0）
 8. **ralph-whirlwind スキル** - 計画ファイルからマイルストーン変換・起動・監視を自動化
@@ -101,9 +100,7 @@ whirlwind/
 
 1. ~~**Verifier フィードバック未活用**~~ → **v0.6.0 で実装済み**（タスクID指定のルーティング + フォールバックブロードキャスト）
 2. **Wave 並列実行未実装** - 設計上は並列可能だが順序実行
-3. **SDK統合テスト不足** - アダプター実装の実動作テストが少ない
-4. **タイムアウト固定** - FFI の10分タイムアウトが設定不可
-5. **Verifier サイレント承認** - バックエンド障害時に黙って承認してしまう（Review モジュールの修正パターン未適用）
+3. **タイムアウト固定** - FFI の10分タイムアウトが設定不可
 
 ### 品質スコア
 

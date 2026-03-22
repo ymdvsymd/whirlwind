@@ -203,31 +203,6 @@ const result = spawnSync(process.execPath, [runnerPath, optsJson], {
 - `.whirlwind/interrupt.txt` を読み込み
 - 内容があれば消費済みマークしてreturn
 
-### 5.3 ストリーミング FFI (spawn/ffi_js.mbt)
-
-```moonbit
-pub fn spawn_streaming(
-  program: String,
-  args_json: String,
-  on_stdout: (String) -> Unit,
-  on_stderr: (String) -> Unit,
-  on_close: (Int) -> Unit,
-) -> Unit
-```
-
-行バッファリング:
-```javascript
-let buf = '';
-child.stdout.on('data', (chunk) => {
-  buf += chunk.toString();
-  while ((nl = buf.indexOf('\n')) !== -1) {
-    const line = buf.slice(0, nl).replace(/\r$/, '');
-    buf = buf.slice(nl + 1);
-    onLine(line);
-  }
-});
-```
-
 ---
 
 ## 6. ストリーミングプロトコル (JSONL)

@@ -7,10 +7,10 @@
 ### 主要型
 
 **エージェント関連:**
-- `AgentKind` (enum): ClaudeCode | Codex | Api | Mock
-- `AgentRole` (enum): Dev | Review | Orchestrator | Planner | Verifier
+- `AgentKind` (enum): ClaudeCode | Codex | Mock
+- `AgentRole` (enum): Builder | Review | Planner | Verifier
 - `AgentStatus` (enum): Idle | Running | Completed | Failed(String)
-- `AgentConfig` (struct): id, kind, role, model, system_prompt, working_dir, max_iterations
+- `AgentConfig` (struct): id, kind, role, model
 
 **タスク・セッション:**
 - `TaskStatus` (enum): Pending | InProgress(String) | Done | Failed(String)
@@ -21,50 +21,21 @@
 
 **Ralph ループ:**
 - `MilestoneStatus` (enum): Pending | InProgress | Done | Failed(String)
-- `Milestone` (struct): id, goal, status, tasks[], current_wave
-- `RalphTask` (struct): id, description, wave, status, result, plan_doc
+- `Milestone` (struct): id, goal, status, tasks[], summary
+- `RalphTask` (struct): id, description, wave, status, result
 - `RalphPhase` (enum): LoadingMilestones | Planning(String) | ExecutingWave(String, Int) | Verifying(String, Int) | Reworking(String, Int) | MilestoneComplete(String) | AllComplete
 - `VerifierVerdict` (enum): Approved | NeedsRework(Array[String]) | MilestoneFailed(String)
 
 **イベント・コールバック:**
 - `AgentEvent` (enum): OutputLine | Info | ToolCall | ToolResult | SubAgentStart/End | StatusChange | SessionId | Usage
-- `OrchestratorCallbacks` (struct): 11個のコールバック関数フィールド
+- `OrchestratorEvent` (enum): AgentOutput | AgentComplete | TaskStart | TaskComplete | TaskAssign | ReviewStart | ReviewComplete | PhaseChange | SessionComplete | Info
+- `OrchestratorCallbacks` (struct): on_event (単一イベントリスナー) + on_save
 
 ---
 
-## 2. src/task/ - タスク管理
+## 2. src/agent/ - エージェント抽象化層
 
-依存: types
-
-### TaskManager
-
-- `new()` -> TaskManager
-- `add_task(description, parent_id?)` -> Task (ID自動採番: task-1, task-2, ...)
-- `parse_tasks(text, parent_id?)` -> Array[Task] (番号付き/箇条書きリストをパース)
-- `get_task(id)` -> Task?
-- `get_pending()` -> Array[Task]
-- `get_completed()` -> Array[Task]
-- `assign_next(agent_id)` -> Task? (ラウンドロビン割り当て)
-- `completed_count()` -> Int
-- `all_done()` -> Bool
-
-### Task 状態遷移
-
-```
-Pending -> InProgress(agent_id) -> Done | Failed(error)
-```
-
-### テキストパース
-
-- "1. ", "- ", "* " プレフィックスを自動削除
-- 空行スキップ
-- 各行を独立したTaskとして生成
-
----
-
-## 3. src/agent/ - エージェント抽象化層
-
-依存: types, llm/*, json
+依存: types, json
 
 ### AgentBackend trait
 
@@ -78,18 +49,13 @@ pub(open) trait AgentBackend {
 }
 ```
 
-### 3つの実装
+### 2つの実装
 
 **SubprocessBackend** (ClaudeCode/Codex):
 - Claude Agent SDK / Codex SDK をサブプロセスで起動
 - JSONL イベント形式でパース: system, assistant, stream_event, tool_result, result
 - session_id で再開可能
 - トークン使用量・コスト追跡
-
-**ApiBackend** (Anthropic/OpenAI API):
-- `@llm.BoxedProvider` を使用してモデル切り替え
-- `stream()` で実行、TextDelta/Error イベント処理
-- OutputLineBuffer で行単位バッファリング
 
 **MockBackend** (テスト用):
 - 固定応答またはパターンマッチング応答 (`add_response(keyword, response)`)
@@ -121,64 +87,9 @@ pub fn create_backend(config: AgentConfig) -> BoxedBackend
 
 ---
 
-## 4. src/orchestrator/ - オーケストレーション
+## 3. src/review/ - レビューエージェント
 
-依存: types, agent, task, review, config
-
-> **⚠️ 注意:** このモジュールは `Orchestrator::run()` メソッドを定義しているが、
-> 現在のランタイムパス (`run_repl()`) からは**呼ばれていない**。
-> 通常モードは `cmd/app/main.mbt` 内の `run_repl()` が `run_dev()` / `run_review()` を
-> `while true` ループで直接呼び出している。
-> `OrchestratorCallbacks` 型のみ Ralph モードから参照されている。
-
-### Orchestrator 構造
-
-```moonbit
-pub struct Orchestrator {
-  config: ProjectConfig
-  task_manager: TaskManager
-  review_agent: ReviewAgent?
-  backends: Map[String, BoxedBackend]
-  callbacks: OrchestratorCallbacks
-  mut review_cycles: Int
-}
-```
-
-### 実行フロー (run) - 現在未使用
-
-以下の 6 フェーズ制御は定義されているが、`run_repl()` からは呼ばれない:
-
-1. **Decomposing**: Dev エージェントでタスク分解、parse_tasks()で解析
-2. **Assigning**: ラウンドロビン割り当て
-3. **Executing**: InProgressタスクをbackend.run()で実行
-4. **Reviewing**: ReviewAgent::review()で3視点レビュー
-5. **Iterating**: NeedsChanges -> フィードバック付き再実行 -> 再レビュー
-6. **Finalizing**: session.status = Completed
-
-### 制御パラメータ
-
-- `max_review_cycles`: レビュー繰り返し上限 (default: 3)
-- `review_interval`: レビュー間隔
-
-### 失敗時の保護
-
-- Decompose失敗: 元タスクをそのまま使用
-- Rework前にreviewデータ保存、失敗時に復元
-
-### 実際の通常モード実行 (run_repl)
-
-`cmd/app/main.mbt` の `run_repl()` が通常モードの実体:
-- `while true` 無限ループで `run_dev()` → `run_review()` を繰り返す
-- `review_interval` で N 回 dev 後に 1 回 review
-- Approved 後は `build_next_task()` で自動的に次タスクを生成して継続
-- Rejected 時は `check_interrupt()` でユーザー入力をポーリング待ち
-- 終了は **Ctrl+C のみ**
-
----
-
-## 5. src/review/ - レビューエージェント
-
-依存: types, agent
+依存: types, agent, prompts, util
 
 ### 3つのレビュー観点
 
@@ -208,11 +119,11 @@ XMLタグベース:
 
 ---
 
-## 6. src/ralph/ - Ralph自律開発ループ
+## 4. src/ralph/ - Ralph自律開発ループ
 
-依存: types, agent, config, json
+依存: types, agent, config, prompts, util, json
 
-### 6.1 RalphLoop (ralph_loop.mbt)
+### 4.1 RalphLoop (ralph_loop.mbt)
 
 状態マシン:
 ```
@@ -229,7 +140,7 @@ LoadingMilestones -> Planning(m_id) -> ExecutingWave(m_id, wave)
 - マッチなし → ブロードキャストモード（全Done タスクにフォールバック）
 - リワークプロンプト: `task.description + "\n\nFeedback from verifier:\n" + feedback_str`
 
-### 6.2 PlannerAgent (planner.mbt)
+### 4.2 PlannerAgent (planner.mbt)
 
 マイルストーン -> Waveごとのタスクリスト生成
 
@@ -243,7 +154,7 @@ WAVE 1:
 1. Task that depends on wave 0
 ```
 
-### 6.3 VerifierAgent (verifier.mbt)
+### 4.3 VerifierAgent (verifier.mbt)
 
 Wave の実行結果を検証
 
@@ -252,7 +163,7 @@ Wave の実行結果を検証
 - `<needs_rework>task_id: reason</needs_rework>` -> NeedsRework
 - `<milestone_failed>reason</milestone_failed>` -> MilestoneFailed
 
-### 6.4 MilestoneManager (milestone.mbt)
+### 4.4 MilestoneManager (milestone.mbt)
 
 - JSON シリアライズ (milestones.json 永続化)
 - `parse_planner_output()`: WAVE テキスト解析
@@ -262,7 +173,7 @@ Wave の実行結果を検証
 
 ---
 
-## 7. src/cli/ - CLIパース
+## 5. src/cli/ - CLIパース
 
 依存: types, config
 
@@ -295,9 +206,9 @@ CLI フラグを ProjectConfig にマージ
 
 ---
 
-## 8. src/config/ - 設定パース・バリデーション
+## 6. src/config/ - 設定パース・バリデーション
 
-依存: types
+依存: types, util, json
 
 ### ProjectConfig
 
@@ -329,7 +240,7 @@ pub struct ProjectConfig {
 
 ---
 
-## 9. src/display/ - 表示フォーマット
+## 7. src/display/ - 表示フォーマット
 
 依存: json
 
@@ -352,55 +263,57 @@ pub struct ProjectConfig {
 
 ---
 
-## 10. src/tui/ - TUI状態管理
-
-依存: types, tui/vnode
-
-### TuiState
-
-```moonbit
-pub struct TuiState {
-  sessions: Map[String, Session]
-  mut active_session_id: String?
-  mut active_tab: Int
-  agent_logs: Map[String, Array[String]]
-  phase_log: Array[String]
-}
-```
-
-### コールバック統合
-
-`make_callbacks()` で OrchestratorCallbacks を生成:
-- on_agent_output -> agent_logs に追記
-- on_phase_change -> phase_log に追記
-- on_task_start/assign/complete -> 適切なログに記録
-
-### レンダリング
-
-- `render_header()`: session ID, phase, agent count
-- `render_tabs()`: タブバー (active_tab ハイライト)
-- `render_agent_panel()`: agent info + 最後の20行ログ
-- `render_status_bar()`: Progress X/N + session.status
-- `render_app()`: 全体レイアウト (VirtualDOM)
-
----
-
-## 11. src/spawn/ - プロセス起動
+## 8. src/prompts/ - プロンプトテンプレート
 
 依存: なし
 
-### spawn_lines()
+### チェックリスト生成
 
-プロセス起動 -> stdout行ごとコールバック:
-```
-spawn_lines(program, args, on_line, on_error, on_done)
-```
+- `code_quality_checklist(lang)`: コード品質レビュー用チェックリスト
+- `performance_checklist(lang)`: パフォーマンスレビュー用チェックリスト
+- `security_checklist(lang)`: セキュリティレビュー用チェックリスト
+- `goal_alignment_checklist(lang)`: 目標整合性レビュー用チェックリスト
 
-### LineBuffer
+各関数は `lang` 引数で日本語/英語を切り替え。
 
-- `push(chunk)`: \n 検出時に完全行を on_line() で発火
-- `flush()`: 残り (不完全行) を最終イベント化
-- CRLF 対応: \r\n -> \n に正規化
+---
+
+## 9. src/util/ - 汎用ユーティリティ
+
+依存: json
+
+### 文字列操作
+- `extract_tag_content(text, tag_name)`: XMLタグ内のコンテンツ抽出
+- `split_lines(s)`: 改行で分割
+- `trim(s)`: 前後空白除去
+- `join_strings(parts, sep)`: 文字列結合
+- `json_escape(s)`: JSON文字列エスケープ
+- `find_substring(haystack, needle)`: 部分文字列検索
+- `find_substring_from(haystack, needle, from)`: 位置指定部分文字列検索
+- `substring(s, start, end)`: 部分文字列抽出
+
+### JSON ヘルパー
+- `get_string(json, key, default)`: 文字列フィールド取得
+- `get_int(json, key, default)`: 整数フィールド取得
+- `get_bool(json, key, default)`: 真偽値フィールド取得
+- `get_string_opt(json, key)`: オプショナル文字列フィールド取得
+
+---
+
+## 10. src/cmd/helpers/ - ヘルパー関数
+
+依存: json
+
+### 主要関数
+- `resolve_lang(cli_lang, detect_fn)`: 言語設定の解決
+- `extract_event_ts(...)`: イベントタイムスタンプの抽出
+- `derive_archive_path(plan_path)`: アーカイブパス導出
+- `join_dev_outputs(outputs)`: Dev出力の結合
+- `build_cycle_summary(...)`: サイクルサマリー構築
+- `build_plan_file_task(...)`: 計画ファイルからタスク構築
+- `build_improvement_task(...)`: 改善タスク構築
+- `session_to_json(state)` / `session_from_json(content)`: セッション永続化
+- `find_agent_id(agents, role)`: ロールベースのエージェント検索
 
 ---
 

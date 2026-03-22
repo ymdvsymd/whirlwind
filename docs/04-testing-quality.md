@@ -2,40 +2,43 @@
 
 ## エグゼクティブサマリー
 
-- **テストファイル数**: 16 (MoonBit 14 + TypeScript 2)
-- **テストケース総数**: 289 (MoonBit 273 + Node.js 16)
+- **テストファイル数**: 19 (MoonBit 13 + TypeScript 6)
+- **テストケース総数**: 362 (MoonBit 328 + Node.js 34)
 - **品質スコア**: 8.5/10
-- **最終更新**: 2026-03-22 (v0.9.1)
+- **最終更新**: 2026-03-22 (v0.1.0)
 
 ---
 
 ## 1. テストファイル一覧
 
-### MoonBit テスト (14ファイル, ~3,350行)
+### MoonBit テスト (13ファイル, ~5,438行)
 
 | ファイル | 行数 | ケース数 | テスト対象 |
 |---------|------|---------|----------|
-| src/agent/agent_test.mbt | 516 | 30 | MockBackend, イベント解析, OutputLineBuffer |
-| src/cli/cli_test.mbt | 402 | 19 | CLI引数パース, フラグ解析 |
-| src/review/review_test.mbt | 345 | 26 | 3観点レビュー, 評決パース, 多言語, バックエンド障害伝播 |
-| src/orchestrator/orchestrator_test.mbt | 365 | 10 | フェーズ遷移, イテレーション, reworkデータ保持 |
-| src/ralph/ralph_loop_test.mbt | ~550 | 12 | 自律ループ, フィードバックルーティング(5テスト追加), reworkプロンプト検証 |
-| src/ralph/milestone_test.mbt | 205 | 13 | マイルストーン管理, JSON永続化 |
-| src/config/config_test.mbt | 279 | 22 | 設定パース, バリデーション |
-| src/display/display_test.mbt | 167 | 22 | ツール表示, テキスト整形 |
-| src/types/types_test.mbt | 155 | 14 | 型定義, enum to_string |
-| src/tui/tui_test.mbt | 143 | 9 | TUI状態, コールバック |
-| src/spawn/line_buffer_test.mbt | 103 | 10 | 行バッファ, CRLF |
-| src/ralph/verifier_test.mbt | 95 | 7 | 検証結果パース |
-| src/task/task_test.mbt | 89 | 8 | タスク管理, テキストパース |
-| src/ralph/planner_test.mbt | 64 | 4 | 計画生成, WAVEパース |
+| src/ralph/ralph_loop_test.mbt | 1,878 | 40 | 自律ループ, フィードバックルーティング, reworkプロンプト検証 |
+| src/agent/agent_test.mbt | 742 | 53 | MockBackend, イベント解析, OutputLineBuffer |
+| src/ralph/milestone_test.mbt | 502 | 23 | マイルストーン管理, JSON永続化 |
+| src/cmd/helpers/helpers_test.mbt | 338 | 36 | ヘルパー関数 |
+| src/types/types_test.mbt | 327 | 23 | 型定義, enum to_string |
+| src/review/review_test.mbt | 318 | 25 | 3観点レビュー, 評決パース, 多言語, バックエンド障害伝播 |
+| src/ralph/verifier_test.mbt | 292 | 20 | 検証結果パース |
+| src/config/config_test.mbt | 289 | 21 | 設定パース, バリデーション |
+| src/cli/cli_test.mbt | 238 | 18 | CLI引数パース, フラグ解析 |
+| src/util/util_test.mbt | 198 | 27 | 汎用ユーティリティ |
+| src/display/display_test.mbt | 196 | 30 | ツール表示, テキスト整形 |
+| src/ralph/planner_test.mbt | 66 | 4 | 計画生成, WAVEパース |
+| src/prompts/prompts_test.mbt | 54 | 8 | プロンプトテンプレート |
 
-### TypeScript テスト (2ファイル, ~140行)
+### TypeScript テスト (6ファイル, ~916行)
 
 | ファイル | 行数 | ケース数 | テスト対象 |
 |---------|------|---------|----------|
-| sdk/agent-runner.test.mjs | 70 | 2 | アダプター実行フロー |
-| sdk/codex-normalizer.test.mjs | 70 | 8 | Codex->Claude正規化（全 normalizer 関数） |
+| sdk/claude-adapter.test.mjs | 369 | 5 | Claude Agent SDK アダプター |
+| sdk/agent-runner.test.mjs | 171 | 6 | アダプター実行フロー |
+| sdk/codex-adapter.test.mjs | 160 | 5 | Codex SDK アダプター |
+| sdk/codex-normalizer.test.mjs | 135 | 11 | Codex->Claude正規化（全 normalizer 関数） |
+| sdk/runner-io.test.mjs | 64 | 6 | 共通I/Oユーティリティ |
+| sdk/shebang.test.mjs | 17 | 1 | shebang 行検証 |
 
 ---
 
@@ -99,14 +102,13 @@ struct EventCollector {
 | cli | 高 | A | 全フラグ・コマンドカバー |
 | config | 高 | A | バリデーション全ルールカバー |
 | display | 高 | A | 全ツール表示カバー |
-| task | 高 | A | ID生成・状態遷移完全 |
-| spawn (line_buffer) | 高 | A | エッジケース豊富 |
+| cmd/helpers | 高 | A | ヘルパー関数カバー |
+| util | 高 | A | 汎用ユーティリティカバー |
 | review | 中-高 | A- | 3観点 + マージ + 多言語 |
-| orchestrator | 中-高 | A- | フェーズ遷移 + 失敗回復 |
 | ralph | 高 | A- | 状態マシン + フィードバックルーティング + rework cycle |
-| types | 中 | B | enum show のみ |
-| tui | 中 | B | 状態 + コールバック (render詳細不足) |
-| sdk | 低-中 | C+ | アダプター基本フローのみ |
+| types | 中-高 | B+ | enum show + 各種型テスト |
+| prompts | 中 | B | プロンプトテンプレート |
+| sdk | 中-高 | B+ | claude/codex アダプター + normalizer + runner-io |
 
 ### テストされていない領域
 
@@ -114,9 +116,7 @@ struct EventCollector {
 2. **実際のSDK実行**: SubprocessBackend の実動作
 3. **ファイルI/O**: review markdown生成、milestone JSON永続化
 4. **大規模シナリオ**: 100+ タスク、並列エージェント
-5. **TUIレンダリング詳細**: VNode描画の実際の出力（smoke test のみ: `output.length() > 0`）
-6. **SDKアダプター**: claude-adapter.mjs, codex-adapter.mjs にテストファイルなし
-7. **cmd/app/main.mbt**: アプリケーションエントリーポイントにテストなし
+5. **cmd/app/main.mbt**: アプリケーションエントリーポイントにテストなし
 
 ---
 
@@ -130,12 +130,18 @@ struct EventCollector {
 | setup | - | npm install | 依存インストール |
 | check | - | npm run build:sdk && moon check --target js | 型チェック |
 | test | - | npm run build:sdk && node --test && moon test | テスト実行 |
+| mock | pack | bash tests/e2e-ralph.sh mock | E2Eテスト (モックサーバー) |
+| mock-flags | pack | bash tests/e2e-ralph.sh mock-flags | E2Eテスト (モック + フラグ) |
+| live | pack | bash tests/e2e-ralph.sh live | E2Eテスト (実サーバー) |
+| live-flags | pack | bash tests/e2e-ralph.sh live-flags | E2Eテスト (実サーバー + フラグ) |
 | build | - | npm run build:sdk && moon build --target js | アプリビルド |
 | pack | build | bin/whirlwind.js 生成 | shebang付き実行可能ファイル |
 | publish | pack | npm publish --access public | npm公開 |
 | run | build | node app.js | ローカル実行 |
 | clean | - | moon clean | キャッシュクリア |
+| coverage | - | npm run build:sdk && node --test --experimental-test-coverage | SDKテストカバレッジ |
 | fmt | - | moon fmt | コードフォーマット |
+| info | - | moon info | MoonBit プロジェクト情報 |
 
 ### ビルドパイプライン
 
@@ -160,9 +166,8 @@ struct EventCollector {
 
 ### バージョン情報
 
-- `moon.mod.json`: 0.5.0 (MoonBit パッケージ)
-- `package.json`: 0.9.1 (npm パッケージ: @ymdvsymd/whirlwind)
-- 注: MoonBit パッケージと npm パッケージのバージョンが異なる
+- `moon.mod.json`: 0.1.0 (MoonBit パッケージ)
+- `package.json`: 0.1.0 (npm パッケージ: @ymdvsymd/whirlwind)
 
 ---
 
@@ -202,17 +207,9 @@ node_modules/     # NPM dependencies
 
 ### 優先度: 高
 
-1. **Verifier サイレント承認バグ修正**: バックエンド障害時に `Approved` を返す問題（`verifier.mbt:107`）。Review モジュールでは修正済みの同一パターン。1行修正 + 1テスト追加で対応可能。
-2. **SDK統合テスト追加**: Claude/Codex adapter の実動作テスト
+1. **CI/CDパイプライン**: GitHub Actions で `just test` を自動実行
 
 ### 優先度: 中
 
-3. **TUIレンダリングテスト**: render_app の出力検証（現在 `length() > 0` のみ）
-4. **CI/CDパイプライン**: GitHub Actions で `just test` を自動実行
-5. **dead code 整理**: `MockBackend::failing()` が未使用（`FailingMockBackend` が代替）
-
-### 優先度: 低
-
-6. **大規模シナリオテスト**: 100+ タスク
-7. **パフォーマンステスト**: ストリーミング処理のスループット
-8. **リンター導入**: ESLint/Prettier for SDK TypeScript
+2. **大規模シナリオテスト**: 100+ タスク
+3. **パフォーマンステスト**: ストリーミング処理のスループット
