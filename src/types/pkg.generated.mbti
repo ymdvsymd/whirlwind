@@ -82,7 +82,6 @@ pub(all) struct Milestone {
   goal : String
   mut status : MilestoneStatus
   mut tasks : Array[RalphTask]
-  mut current_wave : Int
   mut summary : String
 }
 pub fn Milestone::get_wave_tasks(Self, Int) -> Array[RalphTask]
@@ -152,7 +151,6 @@ pub(all) struct RalphTask {
   wave : Int
   mut status : TaskStatus
   mut result : String?
-  mut plan_doc : String?
 }
 
 pub(all) struct ReviewCompleteEvent {

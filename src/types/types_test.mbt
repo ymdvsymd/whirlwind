@@ -135,7 +135,6 @@ test "Milestone creation and mutation" {
     goal: "implement feature X",
     status: @types.MilestoneStatus::Pending,
     tasks: [],
-    current_wave: 0,
     summary: "",
   }
   inspect(m.status, content="Pending")
@@ -151,7 +150,6 @@ test "RalphTask creation and status update" {
     wave: 0,
     status: @types.TaskStatus::Pending,
     result: None,
-    plan_doc: None,
   }
   inspect(t.status, content="Pending")
   inspect(t.wave, content="0")
@@ -222,7 +220,6 @@ test "Milestone::get_wave_tasks filters by wave number" {
         wave: 0,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       },
       {
         id: "m1-t2",
@@ -230,7 +227,6 @@ test "Milestone::get_wave_tasks filters by wave number" {
         wave: 0,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       },
       {
         id: "m1-t3",
@@ -238,10 +234,8 @@ test "Milestone::get_wave_tasks filters by wave number" {
         wave: 1,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       },
     ],
-    current_wave: 0,
     summary: "",
   }
   let wave0 = m.get_wave_tasks(0)
@@ -264,7 +258,6 @@ test "Milestone::has_undone_tasks detects pending tasks" {
         wave: 0,
         status: @types.TaskStatus::Done,
         result: None,
-        plan_doc: None,
       },
       {
         id: "m1-t2",
@@ -272,10 +265,8 @@ test "Milestone::has_undone_tasks detects pending tasks" {
         wave: 0,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       },
     ],
-    current_wave: 0,
     summary: "",
   }
   assert_true(m.has_undone_tasks())
@@ -294,10 +285,8 @@ test "Milestone::has_undone_tasks returns false when all done" {
         wave: 0,
         status: @types.TaskStatus::Done,
         result: None,
-        plan_doc: None,
       },
     ],
-    current_wave: 0,
     summary: "",
   }
   assert_true(not(m.has_undone_tasks()))
@@ -316,7 +305,6 @@ test "Milestone::next_wave_number finds lowest pending wave" {
         wave: 0,
         status: @types.TaskStatus::Done,
         result: None,
-        plan_doc: None,
       },
       {
         id: "m1-t2",
@@ -324,7 +312,6 @@ test "Milestone::next_wave_number finds lowest pending wave" {
         wave: 1,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       },
       {
         id: "m1-t3",
@@ -332,10 +319,8 @@ test "Milestone::next_wave_number finds lowest pending wave" {
         wave: 2,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       },
     ],
-    current_wave: 0,
     summary: "",
   }
   inspect(m.next_wave_number(), content="Some(1)")

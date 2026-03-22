@@ -6,7 +6,6 @@ test "PlannerAgent::build_plan_prompt includes milestone info" {
     goal: "Build authentication system",
     status: @types.MilestoneStatus::Pending,
     tasks: [],
-    current_wave: 0,
     summary: "",
   }
   let prompt = planner.build_plan_prompt(milestone)
@@ -23,7 +22,6 @@ test "PlannerAgent::build_plan_prompt lang=ja" {
     goal: "Build auth",
     status: @types.MilestoneStatus::Pending,
     tasks: [],
-    current_wave: 0,
     summary: "",
   }
   let prompt = planner.build_plan_prompt(milestone)
@@ -59,7 +57,6 @@ test "PlannerAgent::plan with mock backend" {
     goal: "Build auth",
     status: @types.MilestoneStatus::Pending,
     tasks: [],
-    current_wave: 0,
     summary: "",
   }
   let tasks = planner.plan(milestone, backend, "", [], mgr)

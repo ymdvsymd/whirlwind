@@ -180,7 +180,6 @@ test "to_json uses Json API not manual string concatenation" {
         wave: 0,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       },
       {
         id: "m1-t2",
@@ -188,10 +187,8 @@ test "to_json uses Json API not manual string concatenation" {
         wave: 1,
         status: @types.TaskStatus::Done,
         result: Some("done result"),
-        plan_doc: Some("plan content"),
       },
     ],
-    current_wave: 0,
     summary: "",
   })
   let serialized = mgr.to_json()
@@ -214,7 +211,6 @@ test "to_json uses Json API not manual string concatenation" {
               assert_true(m_map.contains("goal"))
               assert_true(m_map.contains("status"))
               assert_true(m_map.contains("tasks"))
-              assert_true(m_map.contains("current_wave"))
               assert_true(m_map.contains("summary"))
               // Check null result is properly represented
               match m_map.get("tasks") {

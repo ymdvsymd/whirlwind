@@ -121,7 +121,6 @@ fn parse_milestone(json : Json) -> @types.Milestone {
     _ => Pending
   }
   let tasks : Array[@types.RalphTask] = []
-  let current_wave = @util.get_int(json, "current_wave", 0)
   let summary = @util.get_string(json, "summary", "")
   match json {
     Object(map) =>
@@ -134,7 +133,7 @@ fn parse_milestone(json : Json) -> @types.Milestone {
       }
     _ => ()
   }
-  { id, goal, status, tasks, current_wave, summary }
+  { id, goal, status, tasks, summary }
 }
 
 ///|
@@ -157,15 +156,7 @@ fn parse_ralph_task(json : Json) -> @types.RalphTask {
       }
     _ => None
   }
-  let plan_doc : String? = match json {
-    Object(map) =>
-      match map.get("plan_doc") {
-        Some(String(s)) => Some(s)
-        _ => None
-      }
-    _ => None
-  }
-  { id, description, wave, status, result, plan_doc }
+  { id, description, wave, status, result }
 }
 
 ///|
@@ -188,7 +179,6 @@ fn milestone_to_json_value(m : @types.Milestone) -> Json {
     Some(reason) => obj["failure_reason"] = reason.to_json()
     None => ()
   }
-  obj["current_wave"] = m.current_wave.to_json()
   obj["tasks"] = Json::array(task_arr)
   obj["summary"] = m.summary.to_json()
   Json::object(obj)
@@ -206,10 +196,6 @@ fn ralph_task_to_json_value(t : @types.RalphTask) -> Json {
     Some(s) => s.to_json()
     None => Json::null()
   }
-  let plan_doc_json : Json = match t.plan_doc {
-    Some(s) => s.to_json()
-    None => Json::null()
-  }
   let obj : Map[String, Json] = {}
   obj["id"] = t.id.to_json()
   obj["description"] = t.description.to_json()
@@ -220,7 +206,6 @@ fn ralph_task_to_json_value(t : @types.RalphTask) -> Json {
     None => ()
   }
   obj["result"] = result_json
-  obj["plan_doc"] = plan_doc_json
   Json::object(obj)
 }
 
@@ -288,7 +273,6 @@ fn parse_plan_text(
         wave: current_wave,
         status: @types.TaskStatus::Pending,
         result: None,
-        plan_doc: None,
       })
     }
   }

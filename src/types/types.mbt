@@ -335,7 +335,6 @@ pub(all) struct Milestone {
   goal : String
   mut status : MilestoneStatus
   mut tasks : Array[RalphTask]
-  mut current_wave : Int
   mut summary : String
 }
 
@@ -347,7 +346,6 @@ pub(all) struct RalphTask {
   wave : Int
   mut status : TaskStatus
   mut result : String?
-  mut plan_doc : String?
 }
 
 ///|

@@ -1413,7 +1413,6 @@ test "tornado-1fy: detect_wave_file_conflicts finds overlapping files" {
     wave: 0,
     status: Done,
     result: None,
-    plan_doc: None,
   }
   let t2 : @types.RalphTask = {
     id: "m1-t2",
@@ -1421,7 +1420,6 @@ test "tornado-1fy: detect_wave_file_conflicts finds overlapping files" {
     wave: 0,
     status: Done,
     result: None,
-    plan_doc: None,
   }
   results.push((t1, ["package.json", "src/a.ts"]))
   results.push((t2, ["package.json", "src/b.ts"]))
@@ -1442,7 +1440,6 @@ test "tornado-1fy: detect_wave_file_conflicts returns empty for no overlaps" {
     wave: 0,
     status: Done,
     result: None,
-    plan_doc: None,
   }
   let t2 : @types.RalphTask = {
     id: "m1-t2",
@@ -1450,7 +1447,6 @@ test "tornado-1fy: detect_wave_file_conflicts returns empty for no overlaps" {
     wave: 0,
     status: Done,
     result: None,
-    plan_doc: None,
   }
   results.push((t1, ["src/a.ts"]))
   results.push((t2, ["src/b.ts"]))
@@ -1823,7 +1819,6 @@ test "detect_wave_file_conflicts with 3 tasks all sharing the same file" {
     wave: 0,
     status: Done,
     result: None,
-    plan_doc: None,
   }
   let t2 : @types.RalphTask = {
     id: "m1-t2",
@@ -1831,7 +1826,6 @@ test "detect_wave_file_conflicts with 3 tasks all sharing the same file" {
     wave: 0,
     status: Done,
     result: None,
-    plan_doc: None,
   }
   let t3 : @types.RalphTask = {
     id: "m1-t3",
@@ -1839,7 +1833,6 @@ test "detect_wave_file_conflicts with 3 tasks all sharing the same file" {
     wave: 0,
     status: Done,
     result: None,
-    plan_doc: None,
   }
   results.push((t1, ["shared.ts", "a.ts"]))
   results.push((t2, ["shared.ts", "b.ts"]))
