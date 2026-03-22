@@ -226,13 +226,13 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 7. **バッチ後結合テスト**:
 
    ```bash
-   just test
+   just mock
    ```
 
-   ユニットテスト通過を確認後:
+   mock テスト通過を確認後:
 
    ```bash
-   just live
+   just live-flags
    ```
 
    - **成功** → 次バッチへ進行
