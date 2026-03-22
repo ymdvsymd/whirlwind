@@ -3,6 +3,7 @@ package "mizchi/tornado/review"
 
 import {
   "mizchi/tornado/agent",
+  "mizchi/tornado/prompts",
   "mizchi/tornado/types",
 }
 
@@ -15,21 +16,11 @@ pub struct ReviewAgent {
   reviewer_id : String
   lang : String
 }
-pub fn ReviewAgent::build_prompt(Self, ReviewPerspective, String, String, String) -> String
-pub fn ReviewAgent::format_review(Self, @types.Task, @types.ReviewResult) -> String
+pub fn ReviewAgent::build_prompt(Self, @prompts.Perspective, String, String, String) -> String
 pub fn ReviewAgent::new(String, String) -> Self
 pub fn ReviewAgent::parse_verdict(Self, String) -> @types.ReviewVerdict
-pub fn ReviewAgent::perspectives(Self) -> Array[ReviewPerspective]
+pub fn ReviewAgent::perspectives(Self) -> Array[@prompts.Perspective]
 pub fn ReviewAgent::review(Self, @types.Task, @agent.BoxedBackend, context? : String, on_event? : (@types.AgentEvent) -> Unit) -> @types.ReviewResult
-pub fn ReviewAgent::review_perspective(Self, ReviewPerspective, @types.Task, @agent.BoxedBackend, String, on_event? : (@types.AgentEvent) -> Unit) -> @types.ReviewResult
-
-pub(all) enum ReviewPerspective {
-  CodeQuality
-  Performance
-  Security
-}
-pub impl Eq for ReviewPerspective
-pub impl Show for ReviewPerspective
 
 // Type aliases
 

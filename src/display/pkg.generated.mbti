@@ -4,26 +4,6 @@ package "mizchi/tornado/display"
 // Values
 pub fn count_lines(String) -> Int
 
-pub fn format_agent_output_line(String) -> String?
-
-pub fn format_agent_panel_entry(String, String) -> String?
-
-pub fn format_cli_log_line(String, String) -> String
-
-pub fn format_phase_change_line(String) -> String
-
-pub fn format_review_complete_line(String, String) -> String
-
-pub fn format_review_start_line(String) -> String
-
-pub fn format_session_complete_line() -> String
-
-pub fn format_task_assign_line(String) -> String
-
-pub fn format_task_complete_line(String, String) -> String
-
-pub fn format_task_start_line(String, String) -> String
-
 pub fn format_tool_call(String, String) -> String
 
 pub fn format_tool_result(String, String) -> String

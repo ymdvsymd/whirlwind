@@ -7,8 +7,6 @@ import {
 }
 
 // Values
-pub fn apply_kind_overrides(@config.ProjectConfig, dev_kind? : @types.AgentKind?, review_kind? : @types.AgentKind?) -> @config.ProjectConfig
-
 pub fn apply_overrides(@config.ProjectConfig, dev_kind? : @types.AgentKind?, review_kind? : @types.AgentKind?, review_interval? : Int?) -> @config.ProjectConfig
 
 pub fn kind_name(@types.AgentKind) -> String
@@ -19,9 +17,10 @@ pub fn parse_cli_args(Array[String], (String) -> Bool) -> CliCommand
 
 // Types and methods
 pub(all) enum CliCommand {
-  Run(config_path~ : String?, plan_path~ : String?, dev_kind~ : @types.AgentKind?, review_kind~ : @types.AgentKind?, review_interval~ : Int?, rlm~ : Bool, ralph~ : Bool, lang~ : String?, warnings~ : Array[String])
+  Run(config_path~ : String?, plan_path~ : String?, dev_kind~ : @types.AgentKind?, review_kind~ : @types.AgentKind?, review_interval~ : Int?, rlm~ : Bool, ralph~ : Bool, lang~ : String?, log_path~ : String?, warnings~ : Array[String])
   Validate(String?)
   Help
+  Version
 }
 
 // Type aliases

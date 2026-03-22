@@ -2,16 +2,21 @@
 package "mizchi/tornado/agent"
 
 import {
-  "mizchi/llm",
   "mizchi/tornado/types",
 }
 
 // Values
+pub fn check_ffi_error(String) -> Result[String, String]
+
 pub fn create_backend(@types.AgentConfig) -> BoxedBackend
 
 pub fn create_backends(Array[@types.AgentConfig]) -> Map[String, BoxedBackend]
 
 pub fn parse_content_block_start(Map[String, Json], (@types.AgentEvent) -> Unit) -> Unit
+
+pub fn parse_jsonl_result(String, (@types.AgentEvent) -> Unit) -> @types.AgentResult
+
+pub fn parse_sdk_event_line(String, StringBuilder, OutputLineBuffer, StringBuilder, (@types.AgentEvent) -> Unit, (String) -> Unit) -> Bool
 
 pub fn parse_sdk_result_event(Map[String, Json], (@types.AgentEvent) -> Unit) -> Unit
 
@@ -25,17 +30,13 @@ pub fn run_claude_sdk(String) -> String
 
 pub fn run_codex_sdk(String) -> String
 
+pub fn run_parallel(BoxedBackend, Array[(String, String)], (@types.AgentEvent) -> Unit, model? : String) -> Array[@types.AgentResult]
+
+pub fn run_parallel_sdk(String) -> String
+
 // Errors
 
 // Types and methods
-pub struct ApiBackend {
-  provider : @llm.BoxedProvider
-}
-pub fn ApiBackend::anthropic(String, model? : String) -> Self
-pub fn ApiBackend::boxed(Self) -> BoxedBackend
-pub fn ApiBackend::from_provider(@llm.BoxedProvider) -> Self
-pub fn ApiBackend::openai(String, model? : String) -> Self
-
 pub struct BoxedBackend {
   inner : &AgentBackend
 }
@@ -59,7 +60,6 @@ pub struct MockBackend {
 }
 pub fn MockBackend::add_response(Self, String, String) -> Unit
 pub fn MockBackend::boxed(Self) -> BoxedBackend
-pub fn MockBackend::failing(String) -> Self
 pub fn MockBackend::get_history(Self) -> Array[(String, String)]
 pub fn MockBackend::new(default_response? : String) -> Self
 

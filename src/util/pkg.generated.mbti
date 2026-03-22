@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/util"
+
+// Values
+pub fn extract_tag_content(String, String) -> String?
+
+pub fn find_substring(String, String) -> Int
+
+pub fn find_substring_from(String, String, Int) -> Int
+
+pub fn get_bool(Json, String, Bool) -> Bool
+
+pub fn get_int(Json, String, Int) -> Int
+
+pub fn get_string(Json, String, String) -> String
+
+pub fn get_string_opt(Json, String) -> String?
+
+pub fn join_strings(Array[String], String) -> String
+
+pub fn json_escape(String) -> String
+
+pub fn split_lines(String) -> Array[String]
+
+pub fn substring(String, Int, Int) -> String
+
+pub fn trim(String) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/tornado/prompts"
+
+// Values
+pub fn code_quality_checklist(String) -> String
+
+pub fn goal_alignment_checklist(String) -> String
+
+pub fn performance_checklist(String) -> String
+
+pub fn security_checklist(String) -> String
+
+// Errors
+
+// Types and methods
+pub(all) enum Perspective {
+  CodeQuality
+  Performance
+  Security
+  GoalAlignment
+}
+pub impl Eq for Perspective
+pub impl Show for Perspective
+
+// Type aliases
+
+// Traits
+

@@ -6,6 +6,11 @@ package "mizchi/tornado/types"
 // Errors
 
 // Types and methods
+pub(all) struct AgentCompleteEvent {
+  agent_id : String
+  result : String
+}
+
 pub(all) struct AgentConfig {
   id : String
   kind : AgentKind
@@ -31,22 +36,28 @@ pub(all) enum AgentEvent {
 pub(all) enum AgentKind {
   ClaudeCode
   Codex
-  Api
   Mock
 }
 pub impl Eq for AgentKind
 pub impl Show for AgentKind
 
+pub(all) struct AgentOutputEvent {
+  agent_id : String
+  line : String
+}
+
 pub(all) struct AgentResult {
   content : String
   status : AgentStatus
   error : String?
+  session_id : String
 }
+pub fn AgentResult::failed(String) -> Self
+pub fn AgentResult::failed_with_session(String, String) -> Self
 
 pub(all) enum AgentRole {
   Dev
   Review
-  Orchestrator
   Planner
   Verifier
 }
@@ -58,10 +69,13 @@ pub(all) enum AgentStatus {
   Running
   Completed
   Failed(String)
-  Aborted
 }
 pub impl Eq for AgentStatus
 pub impl Show for AgentStatus
+
+pub(all) struct InfoEvent {
+  message : String
+}
 
 pub(all) struct Milestone {
   id : String
@@ -69,7 +83,11 @@ pub(all) struct Milestone {
   mut status : MilestoneStatus
   mut tasks : Array[RalphTask]
   mut current_wave : Int
+  mut summary : String
 }
+pub fn Milestone::get_wave_tasks(Self, Int) -> Array[RalphTask]
+pub fn Milestone::has_undone_tasks(Self) -> Bool
+pub fn Milestone::next_wave_number(Self) -> Int?
 
 pub(all) enum MilestoneStatus {
   Pending
@@ -81,18 +99,24 @@ pub impl Eq for MilestoneStatus
 pub impl Show for MilestoneStatus
 
 pub(all) struct OrchestratorCallbacks {
-  on_agent_output : (String, String) -> Unit
-  on_agent_complete : (String, String) -> Unit
-  on_task_start : (String, String, String) -> Unit
-  on_task_complete : (String, String) -> Unit
-  on_task_assign : (String, String) -> Unit
-  on_review_start : (String, String) -> Unit
-  on_review_complete : (String, ReviewVerdict) -> Unit
-  on_phase_change : (String, OrchestratorPhase) -> Unit
-  on_session_complete : (String) -> Unit
-  on_info : (String) -> Unit
+  on_event : (OrchestratorEvent) -> Unit
+  on_save : () -> Unit
 }
+pub fn OrchestratorCallbacks::emit(Self, OrchestratorEvent) -> Unit
 pub fn OrchestratorCallbacks::noop() -> Self
+
+pub(all) enum OrchestratorEvent {
+  AgentOutput(AgentOutputEvent)
+  AgentComplete(AgentCompleteEvent)
+  TaskStart(TaskStartEvent)
+  TaskComplete(TaskCompleteEvent)
+  TaskAssign(TaskAssignEvent)
+  ReviewStart(ReviewStartEvent)
+  ReviewComplete(ReviewCompleteEvent)
+  PhaseChange(PhaseChangeEvent)
+  SessionComplete(SessionCompleteEvent)
+  Info(InfoEvent)
+}
 
 pub(all) enum OrchestratorPhase {
   Decomposing
@@ -104,6 +128,11 @@ pub(all) enum OrchestratorPhase {
 }
 pub impl Eq for OrchestratorPhase
 pub impl Show for OrchestratorPhase
+
+pub(all) struct PhaseChangeEvent {
+  session_id : String
+  phase : OrchestratorPhase
+}
 
 pub(all) enum RalphPhase {
   LoadingMilestones
@@ -126,6 +155,11 @@ pub(all) struct RalphTask {
   mut plan_doc : String?
 }
 
+pub(all) struct ReviewCompleteEvent {
+  task_id : String
+  verdict : ReviewVerdict
+}
+
 pub(all) struct ReviewResult {
   reviewer_id : String
   verdict : ReviewVerdict
@@ -133,6 +167,11 @@ pub(all) struct ReviewResult {
   file_path : String
 }
 pub impl Show for ReviewResult
+
+pub(all) struct ReviewStartEvent {
+  task_id : String
+  reviewer_id : String
+}
 
 pub(all) enum ReviewVerdict {
   Approved
@@ -151,6 +190,10 @@ pub(all) struct Session {
   tasks : Array[Task]
 }
 pub fn Session::new(String, String, Array[AgentConfig]) -> Self
+
+pub(all) struct SessionCompleteEvent {
+  session_id : String
+}
 
 pub(all) enum SessionStatus {
   Active
@@ -174,6 +217,22 @@ pub fn Task::fail(Self, String) -> Unit
 pub fn Task::is_done(Self) -> Bool
 pub fn Task::is_pending(Self) -> Bool
 pub fn Task::new(String, String, parent_id? : String?) -> Self
+
+pub(all) struct TaskAssignEvent {
+  task_id : String
+  agent_id : String
+}
+
+pub(all) struct TaskCompleteEvent {
+  task_id : String
+  status : String
+}
+
+pub(all) struct TaskStartEvent {
+  task_id : String
+  description : String
+  agent_id : String
+}
 
 pub(all) enum TaskStatus {
   Pending

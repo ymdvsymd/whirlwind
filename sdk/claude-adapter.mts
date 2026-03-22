@@ -128,6 +128,7 @@ function extractLogs(message: ClaudeMessage, state: ClaudeLogState): string[] {
     case "tool_use_summary":
       return extractToolUseSummaryLog(message);
     case "result":
+      state.lastToolProgressById.clear();
       return [formatResultLog(message)];
     default:
       return [];
