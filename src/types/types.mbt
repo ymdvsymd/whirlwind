@@ -175,37 +175,44 @@ pub(all) struct InfoEvent {
 }
 
 ///|
-/// Callbacks for the orchestrator to notify the UI
+/// Unified event type for orchestrator notifications.
+/// Adding a new event only requires extending this enum — no changes
+/// to OrchestratorCallbacks or its construction sites.
+pub(all) enum OrchestratorEvent {
+  AgentOutput(AgentOutputEvent)
+  AgentComplete(AgentCompleteEvent)
+  TaskStart(TaskStartEvent)
+  TaskComplete(TaskCompleteEvent)
+  TaskAssign(TaskAssignEvent)
+  ReviewStart(ReviewStartEvent)
+  ReviewComplete(ReviewCompleteEvent)
+  PhaseChange(PhaseChangeEvent)
+  SessionComplete(SessionCompleteEvent)
+  Info(InfoEvent)
+}
+
+///|
+/// Callbacks for the orchestrator to notify the UI.
+/// Uses a single event listener for all notification events,
+/// plus a dedicated on_save callback for persistence commands.
 pub(all) struct OrchestratorCallbacks {
-  on_agent_output : (AgentOutputEvent) -> Unit
-  on_agent_complete : (AgentCompleteEvent) -> Unit
-  on_task_start : (TaskStartEvent) -> Unit
-  on_task_complete : (TaskCompleteEvent) -> Unit
-  on_task_assign : (TaskAssignEvent) -> Unit
-  on_review_start : (ReviewStartEvent) -> Unit
-  on_review_complete : (ReviewCompleteEvent) -> Unit
-  on_phase_change : (PhaseChangeEvent) -> Unit
-  on_session_complete : (SessionCompleteEvent) -> Unit
-  on_info : (InfoEvent) -> Unit
+  on_event : (OrchestratorEvent) -> Unit
   on_save : () -> Unit
 }
 
 ///|
 /// Create noop callbacks for testing
 pub fn OrchestratorCallbacks::noop() -> OrchestratorCallbacks {
-  {
-    on_agent_output: fn(_e) {  },
-    on_agent_complete: fn(_e) {  },
-    on_task_start: fn(_e) {  },
-    on_task_complete: fn(_e) {  },
-    on_task_assign: fn(_e) {  },
-    on_review_start: fn(_e) {  },
-    on_review_complete: fn(_e) {  },
-    on_phase_change: fn(_e) {  },
-    on_session_complete: fn(_e) {  },
-    on_info: fn(_e) {  },
-    on_save: fn() {  },
-  }
+  { on_event: fn(_e) {  }, on_save: fn() {  } }
+}
+
+///|
+/// Emit an event through the callbacks
+pub fn OrchestratorCallbacks::emit(
+  self : OrchestratorCallbacks,
+  event : OrchestratorEvent,
+) -> Unit {
+  (self.on_event)(event)
 }
 
 ///|

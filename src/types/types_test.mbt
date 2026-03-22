@@ -43,38 +43,38 @@ test "Session::new creates active session" {
 ///|
 test "OrchestratorCallbacks::noop does not panic" {
   let cb = @types.OrchestratorCallbacks::noop()
-  (cb.on_agent_output)({ agent_id: "a1", line: "hello" })
-  (cb.on_agent_complete)({ agent_id: "a1", result: "done" })
-  (cb.on_task_start)({ task_id: "t1", description: "do work", agent_id: "a1" })
-  (cb.on_task_complete)({ task_id: "t1", status: "done" })
-  (cb.on_task_assign)({ task_id: "t1", agent_id: "a1" })
-  (cb.on_review_start)({ task_id: "t1", reviewer_id: "r1" })
-  (cb.on_review_complete)({
-    task_id: "t1",
-    verdict: @types.ReviewVerdict::Approved,
-  })
-  (cb.on_phase_change)({
-    session_id: "s1",
-    phase: @types.OrchestratorPhase::Executing,
-  })
-  (cb.on_session_complete)({ session_id: "s1" })
-  (cb.on_info)({ message: "hello" })
+  cb.emit(AgentOutput({ agent_id: "a1", line: "hello" }))
+  cb.emit(AgentComplete({ agent_id: "a1", result: "done" }))
+  cb.emit(TaskStart({ task_id: "t1", description: "do work", agent_id: "a1" }))
+  cb.emit(TaskComplete({ task_id: "t1", status: "done" }))
+  cb.emit(TaskAssign({ task_id: "t1", agent_id: "a1" }))
+  cb.emit(ReviewStart({ task_id: "t1", reviewer_id: "r1" }))
+  cb.emit(
+    ReviewComplete({ task_id: "t1", verdict: @types.ReviewVerdict::Approved }),
+  )
+  cb.emit(
+    PhaseChange({ session_id: "s1", phase: @types.OrchestratorPhase::Executing }),
+  )
+  cb.emit(SessionComplete({ session_id: "s1" }))
+  cb.emit(Info({ message: "hello" }))
   (cb.on_save)()
 }
 
 ///|
-test "OrchestratorCallbacks record types carry correct values" {
+test "OrchestratorCallbacks unified event listener carries correct values" {
   let outputs : Array[String] = []
-  let cb = @types.OrchestratorCallbacks::noop()
-  let callbacks = {
-    ..cb,
-    on_agent_output: fn(e : @types.AgentOutputEvent) {
-      outputs.push(e.agent_id + ":" + e.line)
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        AgentOutput(ev) => outputs.push(ev.agent_id + ":" + ev.line)
+        Info(ev) => outputs.push("info:" + ev.message)
+        _ => ()
+      }
     },
-    on_info: fn(e : @types.InfoEvent) { outputs.push("info:" + e.message) },
+    on_save: fn() {  },
   }
-  (callbacks.on_agent_output)({ agent_id: "dev-1", line: "building..." })
-  (callbacks.on_info)({ message: "started" })
+  callbacks.emit(AgentOutput({ agent_id: "dev-1", line: "building..." }))
+  callbacks.emit(Info({ message: "started" }))
   inspect(outputs[0], content="dev-1:building...")
   inspect(outputs[1], content="info:started")
 }

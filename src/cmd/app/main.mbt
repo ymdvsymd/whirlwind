@@ -181,24 +181,26 @@ fn run_ralph(
   }
   // Create callbacks
   let callbacks : @types.OrchestratorCallbacks = {
-    on_agent_output: fn(e) { log("OUT", "[\{e.agent_id}] \{e.line}") },
-    on_agent_complete: fn(e) { log("INFO", "Agent \{e.agent_id} complete") },
-    on_task_start: fn(e) {
-      log("INFO", "Task \{e.task_id}: \{e.description} (agent: \{e.agent_id})")
+    on_event: fn(e) {
+      match e {
+        AgentOutput(ev) => log("OUT", "[\{ev.agent_id}] \{ev.line}")
+        AgentComplete(ev) => log("INFO", "Agent \{ev.agent_id} complete")
+        TaskStart(ev) =>
+          log(
+            "INFO",
+            "Task \{ev.task_id}: \{ev.description} (agent: \{ev.agent_id})",
+          )
+        TaskComplete(ev) => log("INFO", "Task \{ev.task_id} → \{ev.status}")
+        TaskAssign(ev) =>
+          log("INFO", "Assigned \{ev.task_id} → \{ev.agent_id}")
+        ReviewStart(ev) =>
+          log("INFO", "Review \{ev.task_id} by \{ev.reviewer_id}")
+        ReviewComplete(ev) => log("INFO", "Review \{ev.task_id}: \{ev.verdict}")
+        PhaseChange(ev) => log("INFO", "Phase: \{ev.phase}")
+        SessionComplete(_) => log("INFO", "Session complete")
+        Info(ev) => log("INFO", ev.message)
+      }
     },
-    on_task_complete: fn(e) { log("INFO", "Task \{e.task_id} → \{e.status}") },
-    on_task_assign: fn(e) {
-      log("INFO", "Assigned \{e.task_id} → \{e.agent_id}")
-    },
-    on_review_start: fn(e) {
-      log("INFO", "Review \{e.task_id} by \{e.reviewer_id}")
-    },
-    on_review_complete: fn(e) {
-      log("INFO", "Review \{e.task_id}: \{e.verdict}")
-    },
-    on_phase_change: fn(e) { log("INFO", "Phase: \{e.phase}") },
-    on_session_complete: fn(_e) { log("INFO", "Session complete") },
-    on_info: fn(e) { log("INFO", e.message) },
     on_save: fn() { write_file_sync(milestones_path, mgr.to_json()) },
   }
   // Run ralph loop
