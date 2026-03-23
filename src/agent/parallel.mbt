@@ -8,9 +8,45 @@ pub fn run_parallel(
 ) -> Array[@types.AgentResult] {
   match backend.name() {
     "claude-code" => run_parallel_sdk_backend("claude", tasks, on_output, model)
-    "codex" => run_parallel_sdk_backend("codex", tasks, on_output, model)
+    "codex" => {
+      // If Codex previously crashed (sandbox), route to Claude Code
+      if not(is_codex_available()) {
+        on_output(
+          @types.AgentEvent::Info("Codex unavailable, routing to Claude Code"),
+        )
+        return run_parallel_sdk_backend("claude", tasks, on_output, "")
+      }
+      let results = run_parallel_sdk_backend("codex", tasks, on_output, model)
+      // If all tasks crashed, mark Codex unavailable and retry with Claude Code
+      if all_crashed(results) {
+        mark_codex_unavailable()
+        on_output(
+          @types.AgentEvent::Info(
+            "Codex parallel crashed (sandbox), retrying with Claude Code",
+          ),
+        )
+        return run_parallel_sdk_backend("claude", tasks, on_output, "")
+      }
+      results
+    }
     _ => run_parallel_sequential(backend, tasks, on_output)
   }
+}
+
+///|
+/// Check if all results indicate a process crash
+pub fn all_crashed(results : Array[@types.AgentResult]) -> Bool {
+  if results.is_empty() {
+    return false
+  }
+  results
+  .iter()
+  .all(fn(r) {
+    match r.error {
+      Some(err) => is_crash_error(err)
+      None => false
+    }
+  })
 }
 
 ///|

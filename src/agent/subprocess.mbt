@@ -212,13 +212,21 @@ pub fn parse_sdk_result_event(
 }
 
 ///|
-/// Run via Codex SDK
+/// Run via Codex SDK (with automatic Claude Code fallback on sandbox crash)
 fn SubprocessBackend::run_codex(
   self : SubprocessBackend,
   task : String,
   system_prompt : String,
   on_output : (@types.AgentEvent) -> Unit,
 ) -> @types.AgentResult {
+  // If Codex previously crashed (sandbox), skip and use Claude Code directly
+  if not(is_codex_available()) {
+    on_output(
+      @types.AgentEvent::Info("Codex unavailable (sandbox), using Claude Code"),
+    )
+    let fallback = SubprocessBackend::new(ClaudeCode)
+    return fallback.run_claude_code(task, system_prompt, on_output)
+  }
   let opts : Map[String, Json] = {}
   opts["prompt"] = task.to_json()
   if not(system_prompt.is_empty()) {
@@ -244,6 +252,17 @@ fn SubprocessBackend::run_codex(
   let raw_output = run_codex_sdk(opts_json)
   match check_ffi_error(raw_output) {
     Err(err) => {
+      // Detect sandbox crash and fall back to Claude Code
+      if is_crash_error(err) {
+        mark_codex_unavailable()
+        on_output(
+          @types.AgentEvent::Info(
+            "Codex crashed (sandbox restriction), falling back to Claude Code",
+          ),
+        )
+        let fallback = SubprocessBackend::new(ClaudeCode)
+        return fallback.run_claude_code(task, system_prompt, on_output)
+      }
       on_output(
         @types.AgentEvent::StatusChange(@types.AgentStatus::Failed(err)),
       )

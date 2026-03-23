@@ -4,11 +4,43 @@
 /// This function centralizes that check so callers use Result instead of
 /// raw string prefix matching.
 pub fn check_ffi_error(raw : String) -> Result[String, String] {
-  if raw.has_prefix("ERROR:") {
+  if raw.has_prefix("ERROR:") || raw.has_prefix("CRASH:") {
     Err(raw)
   } else {
     Ok(raw)
   }
+}
+
+///|
+/// Check if an error string indicates a process crash (not a normal failure)
+pub fn is_crash_error(err : String) -> Bool {
+  err.has_prefix("CRASH:")
+}
+
+///|
+/// Module-level flag tracking whether Codex is available.
+/// Set to false after the first sandbox crash detection.
+priv struct AvailabilityFlag {
+  mut val : Bool
+}
+
+///|
+let codex_available : AvailabilityFlag = { val: true }
+
+///|
+pub fn is_codex_available() -> Bool {
+  codex_available.val
+}
+
+///|
+pub fn mark_codex_unavailable() -> Unit {
+  codex_available.val = false
+}
+
+///|
+/// Reset Codex availability (for testing)
+pub fn reset_codex_available() -> Unit {
+  codex_available.val = true
 }
 
 ///|

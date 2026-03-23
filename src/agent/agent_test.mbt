@@ -721,6 +721,98 @@ test "check_ffi_error returns Ok for string containing ERROR: in middle" {
   inspect(result, content="Ok(\"some ERROR: in the middle\")")
 }
 
+// ── CRASH detection and Codex availability tests ──
+
+///|
+test "check_ffi_error returns Err for CRASH: prefixed string" {
+  let result = @agent.check_ffi_error("CRASH: exit code 101")
+  inspect(result, content="Err(\"CRASH: exit code 101\")")
+}
+
+///|
+test "is_crash_error detects CRASH prefix" {
+  assert_true(@agent.is_crash_error("CRASH: exit code 101"))
+  assert_true(@agent.is_crash_error("CRASH: something"))
+  assert_true(not(@agent.is_crash_error("ERROR: exit code 1")))
+  assert_true(not(@agent.is_crash_error("crash: lowercase")))
+  assert_true(not(@agent.is_crash_error("")))
+}
+
+///|
+test "codex_available flag defaults to true and can be toggled" {
+  @agent.reset_codex_available()
+  assert_true(@agent.is_codex_available())
+  @agent.mark_codex_unavailable()
+  assert_true(not(@agent.is_codex_available()))
+  @agent.reset_codex_available()
+  assert_true(@agent.is_codex_available())
+}
+
+///|
+test "all_crashed detects all-crash results" {
+  let crash_results : Array[@types.AgentResult] = [
+    {
+      content: "",
+      status: @types.AgentStatus::Failed("CRASH: exit code 101"),
+      error: Some("CRASH: exit code 101"),
+      session_id: "",
+    },
+    {
+      content: "",
+      status: @types.AgentStatus::Failed("CRASH: exit code 101"),
+      error: Some("CRASH: exit code 101"),
+      session_id: "",
+    },
+  ]
+  assert_true(@agent.all_crashed(crash_results))
+}
+
+///|
+test "all_crashed returns false for mixed results" {
+  let mixed_results : Array[@types.AgentResult] = [
+    {
+      content: "",
+      status: @types.AgentStatus::Failed("CRASH: exit code 101"),
+      error: Some("CRASH: exit code 101"),
+      session_id: "",
+    },
+    {
+      content: "ok",
+      status: @types.AgentStatus::Completed,
+      error: None,
+      session_id: "",
+    },
+  ]
+  assert_true(not(@agent.all_crashed(mixed_results)))
+}
+
+///|
+test "all_crashed returns false for empty array" {
+  let empty : Array[@types.AgentResult] = []
+  assert_true(not(@agent.all_crashed(empty)))
+}
+
+///|
+test "all_crashed returns false for normal errors" {
+  let error_results : Array[@types.AgentResult] = [
+    {
+      content: "",
+      status: @types.AgentStatus::Failed("ERROR: exit code 1"),
+      error: Some("ERROR: exit code 1"),
+      session_id: "",
+    },
+  ]
+  assert_true(not(@agent.all_crashed(error_results)))
+}
+
+///|
+test "parse_jsonl_result handles CRASH prefix as failure" {
+  let ec = EventCollector::new()
+  let result = @agent.parse_jsonl_result("CRASH: exit code 101", ec.handler())
+  inspect(result.status, content="Failed(\"CRASH: exit code 101\")")
+  assert_true(not(result.error is None))
+}
+
 ///|
 test "tornado-5r4: backward compat without _whirlwind_ts" {
   let buf = StringBuilder::new()

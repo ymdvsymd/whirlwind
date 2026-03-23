@@ -39,7 +39,14 @@ extern "js" fn js_run_sdk(runner : String, opts_json : String) -> String =
   #|      env,
   #|    });
   #|    if (result.error) return 'ERROR: ' + (result.error.message || String(result.error));
-  #|    if (result.status !== 0 && !result.stdout) return 'ERROR: exit code ' + result.status;
+  #|    if (result.status !== null && result.status !== 0) {
+  #|      if (result.status >= 100 || result.signal) {
+  #|        return 'CRASH: exit code ' + result.status;
+  #|      }
+  #|      if (!result.stdout) {
+  #|        return 'ERROR: exit code ' + result.status;
+  #|      }
+  #|    }
   #|    return result.stdout || '';
   #|  } catch (e) {
   #|    return 'ERROR: ' + (e.message || String(e));
