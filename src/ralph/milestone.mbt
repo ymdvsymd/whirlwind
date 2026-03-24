@@ -156,7 +156,24 @@ fn parse_ralph_task(json : Json) -> @types.RalphTask {
       }
     _ => None
   }
-  { id, description, wave, status, result }
+  let scope : Array[String] = match json {
+    Object(map) =>
+      match map.get("scope") {
+        Some(Array(items)) => {
+          let result : Array[String] = []
+          for item in items {
+            match item {
+              String(s) => result.push(s)
+              _ => ()
+            }
+          }
+          result
+        }
+        _ => []
+      }
+    _ => []
+  }
+  { id, description, wave, scope, status, result }
 }
 
 ///|
@@ -206,6 +223,13 @@ fn ralph_task_to_json_value(t : @types.RalphTask) -> Json {
     None => ()
   }
   obj["result"] = result_json
+  if not(t.scope.is_empty()) {
+    let scope_arr : Array[Json] = []
+    for path in t.scope {
+      scope_arr.push(path.to_json())
+    }
+    obj["scope"] = Json::array(scope_arr)
+  }
   Json::object(obj)
 }
 
@@ -246,9 +270,12 @@ fn parse_plan_text(
   let mut saw_wave_header = false
   let mut found_wave_tasks = false
   let lines = @util.split_lines(output)
-  for line in lines {
+  let mut i = 0
+  while i < lines.length() {
+    let line = lines[i]
     let trimmed = @util.trim(line)
     if trimmed.is_empty() {
+      i = i + 1
       continue
     }
     // Stop at "---" only after we've started parsing actual WAVE tasks.
@@ -264,9 +291,11 @@ fn parse_plan_text(
         current_wave = num
         saw_wave_header = true
       }
+      i = i + 1
       continue
     }
     if not(saw_wave_header) {
+      i = i + 1
       continue
     }
     // Check for numbered items: "1. description" or "- description"
@@ -278,10 +307,25 @@ fn parse_plan_text(
         id,
         description: desc,
         wave: current_wave,
+        scope: [],
         status: @types.TaskStatus::Pending,
         result: None,
       })
+      i = i + 1
+      if i < lines.length() {
+        match parse_scope_line(lines[i]) {
+          Some(paths) => {
+            let last_idx = tasks.length() - 1
+            let task = tasks[last_idx]
+            tasks[last_idx] = { ..task, scope: paths }
+            i = i + 1
+          }
+          None => ()
+        }
+      }
+      continue
     }
+    i = i + 1
   }
   tasks
 }
@@ -367,4 +411,26 @@ fn parse_list_item(s : String) -> String {
     return @util.trim(String::from_array(chars[2:]))
   }
   ""
+}
+
+///|
+fn parse_scope_line(s : String) -> Array[String]? {
+  let trimmed = @util.trim(s)
+  if not(
+      trimmed.has_prefix("SCOPE:") ||
+      trimmed.has_prefix("scope:") ||
+      trimmed.has_prefix("Scope:"),
+    ) {
+    return None
+  }
+
+  let rest = @util.trim(String::from_array(trimmed.to_array()[6:]))
+  let items : Array[String] = []
+  for part_view in rest.split(",") {
+    let part = @util.trim(part_view.to_string())
+    if not(part.is_empty()) {
+      items.push(part)
+    }
+  }
+  Some(items)
 }

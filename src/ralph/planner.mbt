@@ -41,8 +41,9 @@ pub fn PlannerAgent::build_plan_prompt(
     "Tasks in the same wave can be executed independently.\n" +
     "Tasks in later waves depend on earlier waves.\n\n" +
     "## Output Format\n" +
-    "WAVE 0:\n1. First task description\n2. Second task description\n\n" +
-    "WAVE 1:\n1. Task that depends on wave 0\n",
+    "WAVE 0:\n1. First task description\nSCOPE: src/foo.mbt, test/foo_test.mbt\n2. Second task description\nSCOPE: src/bar.mbt\n\n" +
+    "WAVE 1:\n1. Task that depends on wave 0\nSCOPE: src/baz.mbt, src/qux.mbt\n\n" +
+    "Add a SCOPE line (comma-separated file paths expected to be modified) under each task. Omit SCOPE if unknown.\n",
   )
   prompt.to_string()
 }

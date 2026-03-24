@@ -340,9 +340,10 @@ pub(all) struct Milestone {
 pub(all) struct RalphTask {
   id : String
   description : String
-  wave : Int
+  mut wave : Int
   mut status : TaskStatus
   mut result : String?
+  scope : Array[String]
 }
 
 ///|

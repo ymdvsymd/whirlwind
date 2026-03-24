@@ -213,4 +213,9 @@ fi
 assert_file_contains "$LOG_FILE" "Milestone m1 complete"
 assert_file_contains "$LOG_FILE" "Milestone m2 complete"
 
+if [ "$MODE" = "live" ] || [ "$MODE" = "live-flags" ]; then
+  assert_contains "SCOPE:"
+  assert_file_contains "$LOG_FILE" "SCOPE:"
+fi
+
 echo "PASS: All e2e assertions passed ($MODE)"

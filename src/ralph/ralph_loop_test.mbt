@@ -384,6 +384,287 @@ test "run_wave does not emit running logs for already-done tasks" {
 }
 
 ///|
+test "run_wave resolves scope conflicts before execution" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Refactor shared code", "status": "pending",
+    #|      "tasks": [
+    #|        {
+    #|          "id": "m1-t1",
+    #|          "description": "Update shared types",
+    #|          "wave": 0,
+    #|          "scope": ["src/shared.ts", "src/types.ts"],
+    #|          "status": "pending"
+    #|        },
+    #|        {
+    #|          "id": "m1-t2",
+    #|          "description": "Update shared helpers",
+    #|          "wave": 0,
+    #|          "scope": ["src/shared.ts", "src/helpers.ts"],
+    #|          "status": "pending"
+    #|        }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  builder_mock.add_response("Update shared helpers", "Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  let history = builder_mock.get_history()
+  assert_true(history.length() == 2)
+  inspect(history[0].0, content="Update shared types")
+  inspect(history[1].0, content="Update shared helpers")
+  inspect(mgr.milestones[0].tasks[0].wave, content="0")
+  inspect(mgr.milestones[0].tasks[1].wave, content="1")
+  inspect(mgr.milestones[0].tasks[0].status, content="Done")
+  inspect(mgr.milestones[0].tasks[1].status, content="Done")
+  assert_true(
+    infos
+    .iter()
+    .any(fn(msg) {
+      msg.contains("Pre-wave scope check: moved 1 tasks from wave 0")
+    }),
+  )
+  assert_true(
+    infos
+    .iter()
+    .any(fn(msg) {
+      msg.contains("Moved task") && msg.contains("due to scope overlap")
+    }),
+  )
+}
+
+///|
+test "resolve_scope_conflicts moves conflicting tasks to new wave" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Refactor shared code", "status": "pending",
+    #|      "tasks": [
+    #|        {
+    #|          "id": "m1-t1",
+    #|          "description": "Update shared types",
+    #|          "wave": 0,
+    #|          "scope": ["src/shared.ts", "src/types.ts"],
+    #|          "status": "pending"
+    #|        },
+    #|        {
+    #|          "id": "m1-t2",
+    #|          "description": "Update shared helpers",
+    #|          "wave": 0,
+    #|          "scope": ["src/shared.ts", "src/helpers.ts"],
+    #|          "status": "pending"
+    #|        },
+    #|        {
+    #|          "id": "m1-t3",
+    #|          "description": "Update isolated file",
+    #|          "wave": 0,
+    #|          "scope": ["src/isolated.ts"],
+    #|          "status": "pending"
+    #|        }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="unused")
+  let verifier_mock = @agent.MockBackend::new(default_response="unused")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  let milestone = mgr.milestones[0]
+
+  let moved = rl.resolve_scope_conflicts(milestone, 0)
+
+  assert_true(moved == 1)
+  inspect(milestone.tasks[0].wave, content="0")
+  inspect(milestone.tasks[1].wave, content="1")
+  inspect(milestone.tasks[2].wave, content="0")
+  assert_true(
+    infos
+    .iter()
+    .any(fn(msg) {
+      msg.contains("Moved task m1-t2") && msg.contains("due to scope overlap")
+    }),
+  )
+}
+
+///|
+test "run_wave with no scope overlaps executes all tasks normally" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Refactor isolated code", "status": "pending",
+    #|      "tasks": [
+    #|        {
+    #|          "id": "m1-t1",
+    #|          "description": "Update file A",
+    #|          "wave": 0,
+    #|          "scope": ["src/a.ts"],
+    #|          "status": "pending"
+    #|        },
+    #|        {
+    #|          "id": "m1-t2",
+    #|          "description": "Update file B",
+    #|          "wave": 0,
+    #|          "scope": ["src/b.ts"],
+    #|          "status": "pending"
+    #|        }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done A")
+  builder_mock.add_response("Update file B", "Done B")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  let history = builder_mock.get_history()
+  assert_true(history.length() == 2)
+  inspect(history[0].0, content="Update file A")
+  inspect(history[1].0, content="Update file B")
+  inspect(mgr.milestones[0].tasks[0].wave, content="0")
+  inspect(mgr.milestones[0].tasks[1].wave, content="0")
+  assert_true(
+    not(infos.iter().any(fn(msg) { msg.contains("Pre-wave scope check") })),
+  )
+}
+
+///|
+test "run_wave with empty scope arrays skips conflict check" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Preserve backward compatibility", "status": "pending",
+    #|      "tasks": [
+    #|        {
+    #|          "id": "m1-t1",
+    #|          "description": "Run legacy task A",
+    #|          "wave": 0,
+    #|          "scope": [],
+    #|          "status": "pending"
+    #|        },
+    #|        {
+    #|          "id": "m1-t2",
+    #|          "description": "Run legacy task B",
+    #|          "wave": 0,
+    #|          "scope": [],
+    #|          "status": "pending"
+    #|        }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done A")
+  builder_mock.add_response("Run legacy task B", "Done B")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  let history = builder_mock.get_history()
+  assert_true(history.length() == 2)
+  inspect(history[0].0, content="Run legacy task A")
+  inspect(history[1].0, content="Run legacy task B")
+  inspect(mgr.milestones[0].tasks[0].status, content="Done")
+  inspect(mgr.milestones[0].tasks[1].status, content="Done")
+  assert_true(
+    not(infos.iter().any(fn(msg) { msg.contains("Pre-wave scope check") })),
+  )
+  assert_true(
+    not(
+      infos
+      .iter()
+      .any(fn(msg) {
+        msg.contains("Moved task") && msg.contains("scope overlap")
+      }),
+    ),
+  )
+}
+
+///|
 test "resume skips already-done milestones" {
   let config = make_ralph_config()
   let json =
@@ -1292,9 +1573,11 @@ test "tornado-1fy: detect file conflicts between parallel builders in same wave"
     },
     on_save: fn() {  },
   }
-  let rl = @ralph.RalphLoop::new(
-    config, mgr, backends, callbacks, file_checker=fn(_) { true },
-  )
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, file_checker=fn(
+    _,
+  ) {
+    true
+  })
   rl.run()
   // The key assertion: file conflict on package.json must be detected and reported
   assert_true(
@@ -1348,9 +1631,11 @@ test "tornado-1fy: no false positive when parallel builders edit different files
     },
     on_save: fn() {  },
   }
-  let rl = @ralph.RalphLoop::new(
-    config, mgr, backends, callbacks, file_checker=fn(_) { true },
-  )
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, file_checker=fn(
+    _,
+  ) {
+    true
+  })
   rl.run()
   // No conflict should be reported
   assert_true(
@@ -1389,6 +1674,7 @@ test "tornado-1fy: detect_wave_file_conflicts finds overlapping files" {
   let t1 : @types.RalphTask = {
     id: "m1-t1",
     description: "task 1",
+    scope: [],
     wave: 0,
     status: Done,
     result: None,
@@ -1396,6 +1682,7 @@ test "tornado-1fy: detect_wave_file_conflicts finds overlapping files" {
   let t2 : @types.RalphTask = {
     id: "m1-t2",
     description: "task 2",
+    scope: [],
     wave: 0,
     status: Done,
     result: None,
@@ -1416,6 +1703,7 @@ test "tornado-1fy: detect_wave_file_conflicts returns empty for no overlaps" {
   let t1 : @types.RalphTask = {
     id: "m1-t1",
     description: "task 1",
+    scope: [],
     wave: 0,
     status: Done,
     result: None,
@@ -1423,6 +1711,7 @@ test "tornado-1fy: detect_wave_file_conflicts returns empty for no overlaps" {
   let t2 : @types.RalphTask = {
     id: "m1-t2",
     description: "task 2",
+    scope: [],
     wave: 0,
     status: Done,
     result: None,
@@ -1431,6 +1720,86 @@ test "tornado-1fy: detect_wave_file_conflicts returns empty for no overlaps" {
   results.push((t2, ["src/b.ts"]))
   let conflicts = @ralph.detect_wave_file_conflicts(results)
   assert_true(conflicts.is_empty())
+}
+
+///|
+test "detect_scope_overlaps finds overlapping scoped files" {
+  let tasks : Array[@types.RalphTask] = []
+  let t1 : @types.RalphTask = {
+    id: "m1-t1",
+    description: "task 1",
+    scope: ["src/shared.ts", "src/a.ts"],
+    wave: 0,
+    status: Pending,
+    result: None,
+  }
+  let t2 : @types.RalphTask = {
+    id: "m1-t2",
+    description: "task 2",
+    scope: ["src/shared.ts", "src/b.ts"],
+    wave: 0,
+    status: Pending,
+    result: None,
+  }
+  tasks.push(t1)
+  tasks.push(t2)
+  let overlaps = @ralph.detect_scope_overlaps(tasks)
+  assert_true(overlaps.length() == 1)
+  let (file, task_ids) = overlaps[0]
+  inspect(file, content="src/shared.ts")
+  assert_true(task_ids.length() == 2)
+  assert_true(task_ids.contains("m1-t1"))
+  assert_true(task_ids.contains("m1-t2"))
+}
+
+///|
+test "detect_scope_overlaps returns empty for no overlaps" {
+  let tasks : Array[@types.RalphTask] = []
+  let t1 : @types.RalphTask = {
+    id: "m1-t1",
+    description: "task 1",
+    scope: ["src/a.ts"],
+    wave: 0,
+    status: Pending,
+    result: None,
+  }
+  let t2 : @types.RalphTask = {
+    id: "m1-t2",
+    description: "task 2",
+    scope: ["src/b.ts"],
+    wave: 0,
+    status: Pending,
+    result: None,
+  }
+  tasks.push(t1)
+  tasks.push(t2)
+  let overlaps = @ralph.detect_scope_overlaps(tasks)
+  assert_true(overlaps.is_empty())
+}
+
+///|
+test "detect_scope_overlaps skips tasks with empty scope" {
+  let tasks : Array[@types.RalphTask] = []
+  let t1 : @types.RalphTask = {
+    id: "m1-t1",
+    description: "task 1",
+    scope: [],
+    wave: 0,
+    status: Pending,
+    result: None,
+  }
+  let t2 : @types.RalphTask = {
+    id: "m1-t2",
+    description: "task 2",
+    scope: [],
+    wave: 0,
+    status: Pending,
+    result: None,
+  }
+  tasks.push(t1)
+  tasks.push(t2)
+  let overlaps = @ralph.detect_scope_overlaps(tasks)
+  assert_true(overlaps.is_empty())
 }
 
 ///|
@@ -1478,9 +1847,11 @@ test "run_wave with 3 parallel builders causing multi-file conflicts" {
     },
     on_save: fn() {  },
   }
-  let rl = @ralph.RalphLoop::new(
-    config, mgr, backends, callbacks, file_checker=fn(_) { true },
-  )
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, file_checker=fn(
+    _,
+  ) {
+    true
+  })
   rl.run()
   // config.ts is touched by all 3 tasks — must report conflict with 3 task IDs
   assert_true(
@@ -1632,9 +2003,11 @@ test "run_wave fails builder result when reported files are missing from worktre
     },
     on_save: fn() {  },
   }
-  let rl = @ralph.RalphLoop::new(
-    config, mgr, backends, callbacks, file_checker=fn(_) { false },
-  )
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, file_checker=fn(
+    _,
+  ) {
+    false
+  })
   rl.run()
   assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
   assert_true(
@@ -1682,13 +2055,11 @@ test "validate_builder_result fails on partial file missing (whirlwind-aps)" {
     on_save: fn() {  },
   }
   // Only scripts/query.py exists; config/snowflake.yml is missing
-  let rl = @ralph.RalphLoop::new(
-    config,
-    mgr,
-    backends,
-    callbacks,
-    file_checker=fn(path) { path == "scripts/query.py" },
-  )
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, file_checker=fn(
+    path,
+  ) {
+    path == "scripts/query.py"
+  })
   rl.run()
   // Strict check: task should fail because config/snowflake.yml is missing
   assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
@@ -1892,6 +2263,7 @@ test "detect_wave_file_conflicts with 3 tasks all sharing the same file" {
   let t1 : @types.RalphTask = {
     id: "m1-t1",
     description: "task 1",
+    scope: [],
     wave: 0,
     status: Done,
     result: None,
@@ -1899,6 +2271,7 @@ test "detect_wave_file_conflicts with 3 tasks all sharing the same file" {
   let t2 : @types.RalphTask = {
     id: "m1-t2",
     description: "task 2",
+    scope: [],
     wave: 0,
     status: Done,
     result: None,
@@ -1906,6 +2279,7 @@ test "detect_wave_file_conflicts with 3 tasks all sharing the same file" {
   let t3 : @types.RalphTask = {
     id: "m1-t3",
     description: "task 3",
+    scope: [],
     wave: 0,
     status: Done,
     result: None,
@@ -1980,9 +2354,11 @@ test "single task wave does not trigger conflict detection" {
     },
     on_save: fn() {  },
   }
-  let rl = @ralph.RalphLoop::new(
-    config, mgr, backends, callbacks, file_checker=fn(_) { true },
-  )
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, file_checker=fn(
+    _,
+  ) {
+    true
+  })
   rl.run()
   // With only 1 task, the conflict detection block is skipped entirely
   assert_true(

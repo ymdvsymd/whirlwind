@@ -53,6 +53,64 @@ test "MilestoneManager::load_from_json roundtrip" {
 }
 
 ///|
+test "JSON roundtrip preserves scope" {
+  let mgr = @ralph.MilestoneManager::new()
+  mgr.milestones.push({
+    id: "m1",
+    goal: "Preserve scoped tasks",
+    status: @types.MilestoneStatus::Pending,
+    tasks: [
+      {
+        id: "m1-t1",
+        description: "Update planner",
+        wave: 0,
+        scope: ["src/ralph/planner.mbt", "src/ralph/milestone.mbt"],
+        status: @types.TaskStatus::Pending,
+        result: None,
+      },
+      {
+        id: "m1-t2",
+        description: "Update tests",
+        wave: 0,
+        scope: ["src/ralph/milestone_test.mbt"],
+        status: @types.TaskStatus::Done,
+        result: Some("updated"),
+      },
+      {
+        id: "m1-t3",
+        description: "No declared scope",
+        wave: 1,
+        scope: [],
+        status: @types.TaskStatus::Pending,
+        result: None,
+      },
+    ],
+    summary: "",
+  })
+
+  let serialized = mgr.to_json()
+  assert_true(
+    serialized.contains(
+      "\"scope\":[\"src/ralph/planner.mbt\",\"src/ralph/milestone.mbt\"]",
+    ),
+  )
+  assert_true(
+    serialized.contains("\"scope\":[\"src/ralph/milestone_test.mbt\"]"),
+  )
+  assert_false(serialized.contains("\"scope\":[]"))
+
+  let reloaded = @ralph.MilestoneManager::load_from_json(serialized)
+  let tasks = reloaded.milestones[0].tasks
+  assert_true(tasks.length() == 3)
+  assert_true(tasks[0].scope.length() == 2)
+  inspect(tasks[0].scope[0], content="src/ralph/planner.mbt")
+  inspect(tasks[0].scope[1], content="src/ralph/milestone.mbt")
+  assert_true(tasks[1].scope.length() == 1)
+  inspect(tasks[1].scope[0], content="src/ralph/milestone_test.mbt")
+  assert_true(tasks[2].scope.length() == 0)
+}
+
+///|
 test "MilestoneManager::load_from_json converts in-progress tasks back to pending" {
   let json =
     #|{
@@ -178,6 +236,7 @@ test "to_json uses Json API not manual string concatenation" {
         id: "m1-t1",
         description: "task desc",
         wave: 0,
+        scope: [],
         status: @types.TaskStatus::Pending,
         result: None,
       },
@@ -185,6 +244,7 @@ test "to_json uses Json API not manual string concatenation" {
         id: "m1-t2",
         description: "task with result",
         wave: 1,
+        scope: [],
         status: @types.TaskStatus::Done,
         result: Some("done result"),
       },
@@ -374,6 +434,78 @@ test "parse_planner_output parses WAVE format" {
   inspect(tasks[2].description, content="Build API handlers")
   inspect(tasks[3].wave, content="1")
   inspect(tasks[3].description, content="Add authentication")
+}
+
+///|
+test "parse_planner_output parses SCOPE lines" {
+  let mgr = @ralph.MilestoneManager::new()
+  let output =
+    #|WAVE 0:
+    #|1. Create database schema
+    #|SCOPE: src/a.ts, src/b.ts
+    #|2. Write migration scripts
+    #|SCOPE: db/migrations/001.sql
+    #|
+    #|WAVE 1:
+    #|1. Build API handlers
+    #|SCOPE: src/api.ts, src/auth.ts
+    #|2. Add authentication
+    #|SCOPE: src/session.ts
+  let tasks = mgr.parse_planner_output(output, "m1")
+  assert_true(tasks.length() == 4)
+  assert_true(tasks[0].scope.length() == 2)
+  inspect(tasks[0].scope[0], content="src/a.ts")
+  inspect(tasks[0].scope[1], content="src/b.ts")
+  assert_true(tasks[1].scope.length() == 1)
+  inspect(tasks[1].scope[0], content="db/migrations/001.sql")
+  assert_true(tasks[2].scope.length() == 2)
+  inspect(tasks[2].scope[0], content="src/api.ts")
+  inspect(tasks[2].scope[1], content="src/auth.ts")
+  assert_true(tasks[3].scope.length() == 1)
+  inspect(tasks[3].scope[0], content="src/session.ts")
+}
+
+///|
+test "parse_planner_output without SCOPE lines defaults to empty scope" {
+  let mgr = @ralph.MilestoneManager::new()
+  let output =
+    #|WAVE 0:
+    #|1. Create database schema
+    #|2. Write migration scripts
+    #|
+    #|WAVE 1:
+    #|1. Build API handlers
+    #|2. Add authentication
+  let tasks = mgr.parse_planner_output(output, "m1")
+  assert_true(tasks.length() == 4)
+  assert_true(tasks[0].scope.length() == 0)
+  assert_true(tasks[1].scope.length() == 0)
+  assert_true(tasks[2].scope.length() == 0)
+  assert_true(tasks[3].scope.length() == 0)
+}
+
+///|
+test "parse_planner_output mixed SCOPE and no-SCOPE tasks" {
+  let mgr = @ralph.MilestoneManager::new()
+  let output =
+    #|WAVE 0:
+    #|1. Create database schema
+    #|SCOPE: src/schema.mbt, src/migrations.mbt
+    #|2. Write migration scripts
+    #|
+    #|WAVE 1:
+    #|1. Build API handlers
+    #|SCOPE: src/api.mbt
+    #|2. Add authentication
+  let tasks = mgr.parse_planner_output(output, "m1")
+  assert_true(tasks.length() == 4)
+  assert_true(tasks[0].scope.length() == 2)
+  inspect(tasks[0].scope[0], content="src/schema.mbt")
+  inspect(tasks[0].scope[1], content="src/migrations.mbt")
+  assert_true(tasks[1].scope.length() == 0)
+  assert_true(tasks[2].scope.length() == 1)
+  inspect(tasks[2].scope[0], content="src/api.mbt")
+  assert_true(tasks[3].scope.length() == 0)
 }
 
 ///|

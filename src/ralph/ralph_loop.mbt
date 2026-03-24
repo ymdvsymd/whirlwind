@@ -168,6 +168,14 @@ fn RalphLoop::run_wave(
 ) -> Bool {
   self.current_phase = ExecutingWave(milestone.id, wave)
   emit_info(self, "Executing wave \{wave} of \{milestone.id}")
+  let moved = self.resolve_scope_conflicts(milestone, wave)
+  if moved > 0 {
+    emit_info(
+      self,
+      "Pre-wave scope check: moved \{moved} tasks from wave \{wave}",
+    )
+    self.save_milestones()
+  }
   let tasks = milestone.get_wave_tasks(wave)
   let pending_tasks : Array[@types.RalphTask] = []
   let mut done_count = 0
@@ -307,8 +315,7 @@ fn RalphLoop::verify_milestone(
             }
             NeedsRework(items) => {
               if attempt >= self.max_rework_attempts {
-                let reason =
-                  "Max rework attempts reached with unresolved issues: " +
+                let reason = "Max rework attempts reached with unresolved issues: " +
                   @util.join_strings(items, " | ")
                 emit_info(
                   self,
@@ -446,12 +453,7 @@ fn RalphLoop::rework_task_list(
         }
       }
       let results = run_builder_tasks_serially(
-        self,
-        backend,
-        bid,
-        rework_tasks,
-        builder_tasks,
-        "task rework",
+        self, backend, bid, rework_tasks, builder_tasks, "task rework",
       )
       for i in 0..<rework_tasks.length() {
         let task = rework_tasks[i]
@@ -649,8 +651,7 @@ fn validate_builder_result(
       if missing_files.is_empty() {
         return result
       }
-      let err =
-        "post-run file verification failed for \{task.id}; missing files: " +
+      let err = "post-run file verification failed for \{task.id}; missing files: " +
         @util.join_strings(missing_files, ", ")
       emit_info(rl, err)
       {
@@ -752,4 +753,82 @@ pub fn detect_wave_file_conflicts(
     }
   }
   conflicts
+}
+
+///| Detect scope overlaps between planned tasks in a wave.
+
+///|
+
+///| Takes an array of tasks and returns an array of
+
+///|
+/// (file_path, conflicting_task_ids) for scoped files claimed by multiple tasks.
+pub fn detect_scope_overlaps(
+  tasks : Array[@types.RalphTask],
+) -> Array[(String, Array[String])] {
+  let file_owners : Map[String, Array[String]] = {}
+  for task in tasks {
+    if task.scope.is_empty() {
+      continue
+    }
+    for file in task.scope {
+      match file_owners.get(file) {
+        Some(owners) => owners.push(task.id)
+        None => file_owners[file] = [task.id]
+      }
+    }
+  }
+  let overlaps : Array[(String, Array[String])] = []
+  for entry in file_owners {
+    let (file, owners) = entry
+    if owners.length() > 1 {
+      overlaps.push((file, owners))
+    }
+  }
+  overlaps
+}
+
+///| Resolve planned scope overlaps by moving conflicting tasks to a new wave.
+
+///|
+
+///| For each overlap group, the first task remains in the current wave and the
+
+///|
+/// remaining tasks are moved to the next wave after the current last wave.
+pub fn RalphLoop::resolve_scope_conflicts(
+  self : RalphLoop,
+  milestone : @types.Milestone,
+  wave : Int,
+) -> Int {
+  let tasks = milestone.get_wave_tasks(wave)
+  let overlaps = detect_scope_overlaps(tasks)
+  if overlaps.is_empty() {
+    return 0
+  }
+
+  let target_wave = last_wave_number(milestone) + 1
+  let moved_task_ids : Array[String] = []
+  let seen_task_ids : Map[String, Bool] = {}
+  for overlap in overlaps {
+    let (_, task_ids) = overlap
+    for i in 1..<task_ids.length() {
+      let task_id = task_ids[i]
+      if not(seen_task_ids.contains(task_id)) {
+        seen_task_ids[task_id] = true
+        moved_task_ids.push(task_id)
+      }
+    }
+  }
+
+  for task in milestone.tasks {
+    if seen_task_ids.contains(task.id) {
+      task.wave = target_wave
+      emit_info(
+        self,
+        "Moved task \{task.id} to wave \{target_wave} due to scope overlap",
+      )
+    }
+  }
+  moved_task_ids.length()
 }
