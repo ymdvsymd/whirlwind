@@ -54,6 +54,9 @@ npx -y @ymdvsymd/whirlwind --config=./whirlwind.json --milestones=./milestones.j
 # override agent kinds
 npx -y @ymdvsymd/whirlwind --milestones=./milestones.json --builder=codex --verifier=claude-code
 
+# override models
+npx -y @ymdvsymd/whirlwind --milestones=./milestones.json --planner-model=sonnet --builder-model=opus
+
 # validate config
 npx -y @ymdvsymd/whirlwind validate ./whirlwind.json
 ```
@@ -71,6 +74,9 @@ whirlwind --config=./whirlwind.json --milestones=./milestones.json
 # override agent kinds
 whirlwind --milestones=./milestones.json --builder=codex --lang=ja
 
+# override models
+whirlwind --milestones=./milestones.json --planner-model=sonnet --verifier-model=haiku
+
 # validate config
 whirlwind validate ./whirlwind.json
 ```
@@ -84,6 +90,9 @@ whirlwind validate ./whirlwind.json
 | `--planner=KIND` | Override planner agent kind |
 | `--builder=KIND` | Override builder agent kind |
 | `--verifier=KIND` | Override verifier agent kind |
+| `--planner-model=MODEL` | Override planner model (default: `opus` for claude-code) |
+| `--builder-model=MODEL` | Override builder model (default: `opus` for claude-code) |
+| `--verifier-model=MODEL` | Override verifier model (default: `sonnet` for claude-code) |
 | `--lang=LANG` | Review language (`auto`/`ja`/`en`) |
 | `--log=PATH` | Log file path |
 
@@ -92,3 +101,15 @@ whirlwind validate ./whirlwind.json
 - `claude` / `claude-code`
 - `codex`
 - `mock`
+
+## Model defaults
+
+When using `claude-code` kind, models default to:
+
+| Role | Default model |
+|------|---------------|
+| Planner | `opus` |
+| Builder | `opus` |
+| Verifier | `sonnet` |
+
+Model aliases (`opus`, `sonnet`, `haiku`) resolve to the latest version automatically. You can also specify exact model IDs like `claude-sonnet-4-6`.

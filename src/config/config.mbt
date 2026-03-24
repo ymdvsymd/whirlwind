@@ -138,6 +138,44 @@ pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
 }
 
 ///|
+/// Apply default models for agents that have no model specified.
+/// ClaudeCode: planner/builder → "opus", verifier/review → "sonnet"
+/// Codex/Mock: no defaults (SDK handles it)
+pub fn ProjectConfig::apply_default_models(
+  self : ProjectConfig,
+) -> ProjectConfig {
+  let agents : Array[@types.AgentConfig] = []
+  for agent in self.agents {
+    let model = match agent.model {
+      Some(_) => agent.model
+      None =>
+        match agent.kind {
+          ClaudeCode =>
+            match agent.role {
+              Planner | Builder => Some("opus")
+              Verifier | Review => Some("sonnet")
+            }
+          _ => None
+        }
+    }
+    agents.push({ ..agent, model, })
+  }
+  { ..self, agents, }
+}
+
+///|
+/// Check if a model name looks like a Claude model
+fn is_claude_model(model : String) -> Bool {
+  model.contains("opus") || model.contains("sonnet") || model.contains("haiku")
+}
+
+///|
+/// Check if a model name looks like an OpenAI/Codex model
+fn is_codex_model(model : String) -> Bool {
+  model.contains("gpt") || model.contains("codex")
+}
+
+///|
 /// Validate the config. Returns errors and parse warnings.
 pub fn ProjectConfig::validate(self : ProjectConfig) -> Array[String] {
   let errors : Array[String] = []
@@ -167,6 +205,29 @@ pub fn ProjectConfig::validate(self : ProjectConfig) -> Array[String] {
   let has_planner = self.agents.iter().any(fn(a) { a.role == Planner })
   if not(has_planner) && not(self.agents.is_empty()) {
     errors.push("No planner agent configured")
+  }
+  // Kind + model combination checks
+  for agent in self.agents {
+    match agent.model {
+      Some(model) =>
+        match agent.kind {
+          Mock =>
+            errors.push("Agent '\{agent.id}': model is ignored for Mock kind")
+          ClaudeCode =>
+            if is_codex_model(model) {
+              errors.push(
+                "Agent '\{agent.id}': model '\{model}' may not be valid for claude-code kind",
+              )
+            }
+          Codex =>
+            if is_claude_model(model) {
+              errors.push(
+                "Agent '\{agent.id}': model '\{model}' may not be valid for codex kind",
+              )
+            }
+        }
+      None => ()
+    }
   }
   errors
 }

@@ -25,6 +25,9 @@ fn main {
       planner_kind~,
       builder_kind~,
       verifier_kind~,
+      planner_model~,
+      builder_model~,
+      verifier_model~,
       milestones_path=cli_milestones,
       log_path~,
       lang=cli_lang,
@@ -39,7 +42,8 @@ fn main {
         None => ()
       }
       run_ralph(
-        config_path, lang, planner_kind, builder_kind, verifier_kind, cli_milestones,
+        config_path, lang, planner_kind, builder_kind, verifier_kind, planner_model,
+        builder_model, verifier_model, cli_milestones,
       )
     }
     @cli.CliCommand::Validate(path) =>
@@ -66,16 +70,25 @@ fn print_usage() -> Unit {
   println("Agent kind options: claude | claude-code | codex | mock")
   println("")
   println("Options:")
-  println("  --config=<path>      Config file path (default: preset)")
-  println("  --planner=<kind>     Planner agent kind (default: claude-code)")
-  println("  --builder=<kind>     Builder agent kind (default: claude-code)")
-  println("  --verifier=<kind>    Verifier agent kind (default: codex)")
-  println("  --milestones=<path>  Milestones file path")
+  println("  --config=<path>         Config file path (default: preset)")
+  println("  --planner=<kind>        Planner agent kind (default: claude-code)")
+  println("  --builder=<kind>        Builder agent kind (default: claude-code)")
+  println("  --verifier=<kind>       Verifier agent kind (default: codex)")
   println(
-    "  --lang=auto|ja|en    Review language (default: auto, detected from LANG env)",
+    "  --planner-model=<model>  Planner model (default: opus for claude-code)",
   )
-  println("  --log=<path>         Log file path")
-  println("  --version, -v        Show version")
+  println(
+    "  --builder-model=<model>  Builder model (default: opus for claude-code)",
+  )
+  println(
+    "  --verifier-model=<model> Verifier model (default: sonnet for claude-code)",
+  )
+  println("  --milestones=<path>     Milestones file path")
+  println(
+    "  --lang=auto|ja|en       Review language (default: auto, detected from LANG env)",
+  )
+  println("  --log=<path>            Log file path")
+  println("  --version, -v           Show version")
   println("")
   println(
     "Ralph loop: milestone → plan → execute → verify → next milestone.",
@@ -90,6 +103,9 @@ fn run_ralph(
   planner_kind : @types.AgentKind?,
   builder_kind : @types.AgentKind?,
   verifier_kind : @types.AgentKind?,
+  planner_model : String?,
+  builder_model : String?,
+  verifier_model : String?,
   cli_milestones : String?,
 ) -> Unit {
   log("INFO", "Starting ralph loop mode...")
@@ -112,13 +128,18 @@ fn run_ralph(
     }
     None => @config.ProjectConfig::preset_ralph()
   }
-  // Apply kind overrides
+  // Apply kind and model overrides
   let config = @cli.apply_overrides(
     config,
     planner_kind~,
     builder_kind~,
     verifier_kind~,
+    planner_model~,
+    builder_model~,
+    verifier_model~,
   )
+  // Apply default models for agents without explicit model
+  let config = config.apply_default_models()
   // Apply CLI milestones path override
   let config : @config.ProjectConfig = match cli_milestones {
     Some(path) => { ..config, milestones_path: Some(path) }

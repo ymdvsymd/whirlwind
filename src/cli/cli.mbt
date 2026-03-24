@@ -5,6 +5,9 @@ pub(all) enum CliCommand {
     planner_kind~ : @types.AgentKind?,
     builder_kind~ : @types.AgentKind?,
     verifier_kind~ : @types.AgentKind?,
+    planner_model~ : String?,
+    builder_model~ : String?,
+    verifier_model~ : String?,
     milestones_path~ : String?,
     lang~ : String?,
     log_path~ : String?,
@@ -29,6 +32,9 @@ pub fn parse_cli_args(
       planner_kind=None,
       builder_kind=None,
       verifier_kind=None,
+      planner_model=None,
+      builder_model=None,
+      verifier_model=None,
       milestones_path=None,
       lang=None,
       log_path=None,
@@ -57,6 +63,9 @@ pub fn apply_overrides(
   planner_kind? : @types.AgentKind? = None,
   builder_kind? : @types.AgentKind? = None,
   verifier_kind? : @types.AgentKind? = None,
+  planner_model? : String? = None,
+  builder_model? : String? = None,
+  verifier_model? : String? = None,
 ) -> @config.ProjectConfig {
   let agents : Array[@types.AgentConfig] = []
   for agent in config.agents {
@@ -78,7 +87,25 @@ pub fn apply_overrides(
         }
       _ => agent.kind
     }
-    agents.push({ id: agent.id, kind, role: agent.role, model: agent.model })
+    let model = match agent.role {
+      Planner =>
+        match planner_model {
+          Some(_) => planner_model
+          None => agent.model
+        }
+      Builder =>
+        match builder_model {
+          Some(_) => builder_model
+          None => agent.model
+        }
+      Verifier =>
+        match verifier_model {
+          Some(_) => verifier_model
+          None => agent.model
+        }
+      _ => agent.model
+    }
+    agents.push({ id: agent.id, kind, role: agent.role, model })
   }
   { ..config, agents, }
 }
@@ -102,6 +129,9 @@ fn parse_run_args(
   let mut planner_kind : @types.AgentKind? = None
   let mut builder_kind : @types.AgentKind? = None
   let mut verifier_kind : @types.AgentKind? = None
+  let mut planner_model : String? = None
+  let mut builder_model : String? = None
+  let mut verifier_model : String? = None
   let mut milestones_path : String? = None
   let mut lang : String? = None
   let mut log_path : String? = None
@@ -136,6 +166,41 @@ fn parse_run_args(
       match parse_kind_alias(raw) {
         Some(kind) => verifier_kind = Some(kind)
         None => warnings.push("Unknown --verifier kind: \{raw}")
+      }
+      i += 1
+      continue
+    }
+
+    if token.has_prefix("--planner-model=") {
+      let val = token.view(start_offset="--planner-model=".length()).to_string()
+      if val.is_empty() {
+        warnings.push("Missing value for --planner-model")
+      } else {
+        planner_model = Some(val)
+      }
+      i += 1
+      continue
+    }
+
+    if token.has_prefix("--builder-model=") {
+      let val = token.view(start_offset="--builder-model=".length()).to_string()
+      if val.is_empty() {
+        warnings.push("Missing value for --builder-model")
+      } else {
+        builder_model = Some(val)
+      }
+      i += 1
+      continue
+    }
+
+    if token.has_prefix("--verifier-model=") {
+      let val = token
+        .view(start_offset="--verifier-model=".length())
+        .to_string()
+      if val.is_empty() {
+        warnings.push("Missing value for --verifier-model")
+      } else {
+        verifier_model = Some(val)
       }
       i += 1
       continue
@@ -239,6 +304,9 @@ fn parse_run_args(
     planner_kind~,
     builder_kind~,
     verifier_kind~,
+    planner_model~,
+    builder_model~,
+    verifier_model~,
     milestones_path~,
     lang~,
     log_path~,

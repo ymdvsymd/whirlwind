@@ -257,3 +257,132 @@ test "ProjectConfig::preset_ralph" {
   inspect(config.agents[1].role, content="Builder")
   inspect(config.agents[2].role, content="Verifier")
 }
+
+///|
+test "apply_default_models sets defaults for ClaudeCode" {
+  let config : @config.ProjectConfig = {
+    agents: [
+      { id: "p", kind: ClaudeCode, role: Planner, model: None },
+      { id: "b", kind: ClaudeCode, role: Builder, model: None },
+      { id: "v", kind: ClaudeCode, role: Verifier, model: None },
+      { id: "r", kind: ClaudeCode, role: Review, model: None },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let result = config.apply_default_models()
+  inspect(result.agents[0].model, content="Some(\"opus\")")
+  inspect(result.agents[1].model, content="Some(\"opus\")")
+  inspect(result.agents[2].model, content="Some(\"sonnet\")")
+  inspect(result.agents[3].model, content="Some(\"sonnet\")")
+}
+
+///|
+test "apply_default_models does not override existing model" {
+  let config : @config.ProjectConfig = {
+    agents: [
+      {
+        id: "p",
+        kind: ClaudeCode,
+        role: Planner,
+        model: Some("claude-sonnet-4-6"),
+      },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let result = config.apply_default_models()
+  inspect(result.agents[0].model, content="Some(\"claude-sonnet-4-6\")")
+}
+
+///|
+test "apply_default_models leaves Codex model as None" {
+  let config : @config.ProjectConfig = {
+    agents: [{ id: "b", kind: Codex, role: Builder, model: None }],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let result = config.apply_default_models()
+  inspect(result.agents[0].model, content="None")
+}
+
+///|
+test "apply_default_models leaves Mock model as None" {
+  let config : @config.ProjectConfig = {
+    agents: [{ id: "m", kind: Mock, role: Planner, model: None }],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let result = config.apply_default_models()
+  inspect(result.agents[0].model, content="None")
+}
+
+///|
+test "validate warns Mock with model" {
+  let config : @config.ProjectConfig = {
+    agents: [
+      { id: "p", kind: Mock, role: Planner, model: Some("opus") },
+      { id: "b", kind: Mock, role: Builder, model: None },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let errors = config.validate()
+  assert_true(
+    errors.iter().any(fn(e) { e.contains("model is ignored for Mock") }),
+  )
+}
+
+///|
+test "validate warns ClaudeCode with codex model" {
+  let config : @config.ProjectConfig = {
+    agents: [
+      { id: "p", kind: ClaudeCode, role: Planner, model: Some("gpt-4o") },
+      { id: "b", kind: ClaudeCode, role: Builder, model: None },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let errors = config.validate()
+  assert_true(
+    errors.iter().any(fn(e) { e.contains("may not be valid for claude-code") }),
+  )
+}
+
+///|
+test "validate warns Codex with claude model" {
+  let config : @config.ProjectConfig = {
+    agents: [
+      { id: "p", kind: ClaudeCode, role: Planner, model: None },
+      { id: "b", kind: Codex, role: Builder, model: Some("opus") },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let errors = config.validate()
+  assert_true(
+    errors.iter().any(fn(e) { e.contains("may not be valid for codex") }),
+  )
+}
+
+///|
+test "validate no warning for valid kind+model combinations" {
+  let config : @config.ProjectConfig = {
+    agents: [
+      { id: "p", kind: ClaudeCode, role: Planner, model: Some("opus") },
+      { id: "b", kind: Codex, role: Builder, model: Some("gpt-4o") },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let errors = config.validate()
+  assert_true(errors.is_empty())
+}

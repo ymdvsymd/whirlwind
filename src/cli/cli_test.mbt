@@ -227,6 +227,106 @@ test "apply_overrides keeps kinds when not overridden" {
 }
 
 ///|
+test "parse_cli_args --planner-model=opus" {
+  let args = ["whirlwind", "--planner-model=opus"]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Run(planner_model~, warnings~, ..) => {
+      inspect(planner_model, content="Some(\"opus\")")
+      assert_true(warnings.is_empty())
+    }
+    _ => panic()
+  }
+}
+
+///|
+test "parse_cli_args --builder-model=sonnet" {
+  let args = ["whirlwind", "--builder-model=sonnet"]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Run(builder_model~, warnings~, ..) => {
+      inspect(builder_model, content="Some(\"sonnet\")")
+      assert_true(warnings.is_empty())
+    }
+    _ => panic()
+  }
+}
+
+///|
+test "parse_cli_args --verifier-model=claude-sonnet-4-6" {
+  let args = ["whirlwind", "--verifier-model=claude-sonnet-4-6"]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Run(verifier_model~, warnings~, ..) => {
+      inspect(verifier_model, content="Some(\"claude-sonnet-4-6\")")
+      assert_true(warnings.is_empty())
+    }
+    _ => panic()
+  }
+}
+
+///|
+test "parse_cli_args all model flags together" {
+  let args = [
+    "whirlwind", "--planner-model=opus", "--builder-model=opus", "--verifier-model=sonnet",
+  ]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Run(planner_model~, builder_model~, verifier_model~, warnings~, ..) => {
+      inspect(planner_model, content="Some(\"opus\")")
+      inspect(builder_model, content="Some(\"opus\")")
+      inspect(verifier_model, content="Some(\"sonnet\")")
+      assert_true(warnings.is_empty())
+    }
+    _ => panic()
+  }
+}
+
+///|
+test "parse_cli_args --planner-model= empty warns" {
+  let args = ["whirlwind", "--planner-model="]
+  let parsed = @cli.parse_cli_args(args, file_exists_mock)
+  match parsed {
+    Run(planner_model~, warnings~, ..) => {
+      inspect(planner_model, content="None")
+      assert_true(warnings.length() == 1)
+      assert_true(warnings[0].contains("Missing value for --planner-model"))
+    }
+    _ => panic()
+  }
+}
+
+///|
+test "apply_overrides rewrites models" {
+  let base = @config.ProjectConfig::preset_ralph()
+  let updated = @cli.apply_overrides(
+    base,
+    planner_model=Some("sonnet"),
+    builder_model=Some("opus"),
+    verifier_model=Some("haiku"),
+  )
+  inspect(updated.agents[0].model, content="Some(\"sonnet\")")
+  inspect(updated.agents[1].model, content="Some(\"opus\")")
+  inspect(updated.agents[2].model, content="Some(\"haiku\")")
+}
+
+///|
+test "apply_overrides keeps models when not overridden" {
+  let base : @config.ProjectConfig = {
+    agents: [
+      { id: "p", kind: ClaudeCode, role: Planner, model: Some("custom") },
+      { id: "b", kind: ClaudeCode, role: Builder, model: None },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let updated = @cli.apply_overrides(base)
+  inspect(updated.agents[0].model, content="Some(\"custom\")")
+  inspect(updated.agents[1].model, content="None")
+}
+
+///|
 test "ProjectConfig::preset_ralph" {
   let config = @config.ProjectConfig::preset_ralph()
   assert_true(config.agents.length() == 3)
