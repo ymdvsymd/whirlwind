@@ -186,35 +186,35 @@ async function startWithTimeout(
   debugClaude("startWithTimeout: creating SDK stream");
   const sdkStream = queryFn({ prompt: opts.prompt, options: queryOpts });
 
-  // Race the first event from the SDK stream against a timeout.
-  // If the first event arrives within the timeout, yield it and continue
-  // consuming the SDK stream. If the timeout fires first, abandon the SDK
-  // stream and switch to the CLI fallback.
   const iterator = sdkStream[Symbol.asyncIterator]();
   const firstResult = await raceFirstEvent(iterator, timeoutMs);
 
   if (firstResult.timedOut) {
-    debugClaude(
-      "startWithTimeout: SDK query() timed out, switching to CLI fallback",
-    );
-    // Attempt to clean up the hung iterator
+    const reason = firstResult.error
+      ? `SDK error: ${firstResult.error}`
+      : `timeout after ${timeoutMs}ms`;
+    debugClaude(`startWithTimeout: ${reason}, switching to CLI fallback`);
     if (typeof iterator.return === "function") {
-      iterator.return(undefined).catch(() => {});
+      iterator.return(undefined).catch((err) => {
+        debugClaude(`startWithTimeout: iterator cleanup failed: ${err}`);
+      });
     }
     const fallbackStream = cliFallbackFn(opts, queryOpts);
     return { stream: fallbackStream, usedFallback: true };
   }
 
   debugClaude("startWithTimeout: first event received from SDK stream");
-  // Wrap the already-started iterator so the first event is not lost
-  const stream = prependEvent(firstResult.value!, iterator);
+  const stream = prependEvent(firstResult.value, iterator);
   return { stream, usedFallback: false };
 }
 
 async function raceFirstEvent(
   iterator: AsyncIterator<ClaudeMessage>,
   timeoutMs: number,
-): Promise<{ timedOut: boolean; value?: ClaudeMessage }> {
+): Promise<
+  | { timedOut: true; error?: unknown }
+  | { timedOut: false; value: ClaudeMessage | undefined }
+> {
   return new Promise((resolve) => {
     let settled = false;
     const timer = setTimeout(() => {
@@ -238,12 +238,12 @@ async function raceFirstEvent(
           }
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!settled) {
           settled = true;
           clearTimeout(timer);
-          // SDK threw an error — fall back to CLI
-          resolve({ timedOut: true });
+          debugClaude(`raceFirstEvent: SDK query() threw: ${err}`);
+          resolve({ timedOut: true, error: err });
         }
       });
   });
@@ -282,50 +282,53 @@ function defaultCliFallback(
     args.push("--dangerously-skip-permissions");
   }
 
-  const cwd = (queryOpts.cwd as string) || opts.cwd || process.cwd();
+  const cwd = queryOpts.cwd as string;
 
   debugClaude(`CLI fallback: claude ${args.join(" ")}`);
 
   const child = spawn("claude", args, {
     cwd,
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
+    stdio: ["ignore", "pipe", "ignore"],
   });
 
   return {
     async *[Symbol.asyncIterator]() {
-      let buffer = "";
-      const stdout = child.stdout!;
+      try {
+        let buffer = "";
+        const stdout = child.stdout!;
 
-      for await (const chunk of stdout) {
-        buffer += chunk.toString();
-        const lines = buffer.split("\n");
-        buffer = lines.pop()!;
+        for await (const chunk of stdout) {
+          buffer += chunk.toString();
+          const lines = buffer.split("\n");
+          buffer = lines.pop()!;
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
-          try {
-            yield JSON.parse(trimmed) as ClaudeMessage;
-          } catch {
-            // Skip non-JSON lines
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            try {
+              yield JSON.parse(trimmed) as ClaudeMessage;
+            } catch {
+              // Skip non-JSON lines
+            }
           }
         }
-      }
 
-      // Process remaining buffer
-      if (buffer.trim()) {
-        try {
-          yield JSON.parse(buffer.trim()) as ClaudeMessage;
-        } catch {
-          // Skip non-JSON trailing content
+        if (buffer.trim()) {
+          try {
+            yield JSON.parse(buffer.trim()) as ClaudeMessage;
+          } catch {
+            // Skip non-JSON trailing content
+          }
+        }
+
+        await new Promise<void>((resolve) => {
+          child.on("close", () => resolve());
+        });
+      } finally {
+        if (!child.killed) {
+          child.kill();
         }
       }
-
-      // Wait for process to exit
-      await new Promise<void>((resolve) => {
-        child.on("close", () => resolve());
-      });
     },
   };
 }
