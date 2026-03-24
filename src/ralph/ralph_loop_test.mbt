@@ -2456,3 +2456,48 @@ test "whirlwind-khq: resume retries failed milestones instead of skipping them" 
   inspect(mgr.milestones[0].status, content="Done")
   assert_true(infos.iter().any(fn(m) { m.contains("Planning") }))
 }
+
+///|
+test "whirlwind-261: planner retries when first attempt produces 0 tasks" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    { "id": "m1", "goal": "Build auth", "status": "pending", "tasks": [] }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  // First call: empty response (no WAVE lines → 0 tasks parsed)
+  // Second call: valid plan
+  let planner_seq = @agent.SequenceMockBackend::new([
+    "(session exhausted)", "WAVE 0:\n1. Create schema\nSCOPE: src/schema.mbt",
+  ])
+  let builder_mock = @agent.MockBackend::new(
+    default_response="Task completed successfully",
+  )
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_seq.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  // Should succeed after retry
+  inspect(mgr.milestones[0].status, content="Done")
+  // Should see retry message
+  assert_true(
+    infos.iter().any(fn(m) { m.contains("retry") || m.contains("Retry") }),
+  )
+}

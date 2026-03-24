@@ -191,10 +191,32 @@ fn RalphLoop::ensure_milestone_tasks(
             on_event=fn(e) { handle_event(self, planner.agent_id, e) },
           )
           if tasks.is_empty() {
-            emit_info(self, "Planner produced no tasks for \{milestone.id}")
-            milestone.status = Failed("No tasks planned")
+            // Retry once with a fresh session (session exhaustion recovery)
+            emit_info(
+              self,
+              "Planner produced no tasks for \{milestone.id}, retrying with new session",
+            )
+            backend.set_session_id("")
+            let retry_tasks = planner.plan(
+              milestone,
+              backend,
+              self.milestone_manager.brief,
+              self.milestone_manager.milestones,
+              self.milestone_manager,
+              on_event=fn(e) { handle_event(self, planner.agent_id, e) },
+            )
+            if retry_tasks.is_empty() {
+              emit_info(
+                self,
+                "Planner retry also produced no tasks for \{milestone.id}",
+              )
+              milestone.status = Failed("No tasks planned")
+              self.save_milestones()
+              return false
+            }
+            milestone.tasks = retry_tasks
             self.save_milestones()
-            return false
+            return true
           }
           milestone.tasks = tasks
           self.save_milestones()

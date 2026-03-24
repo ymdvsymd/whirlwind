@@ -128,3 +128,57 @@ impl AgentBackend for FailingMockBackend with get_session_id(_self) {
 pub fn FailingMockBackend::boxed(self : FailingMockBackend) -> BoxedBackend {
   BoxedBackend::new(self)
 }
+
+///|
+/// SequenceMockBackend returns responses in order, cycling back to the last one
+pub struct SequenceMockBackend {
+  responses : Array[String]
+  mut call_index : Int
+}
+
+///|
+pub fn SequenceMockBackend::new(
+  responses : Array[String],
+) -> SequenceMockBackend {
+  { responses, call_index: 0 }
+}
+
+///|
+impl AgentBackend for SequenceMockBackend with run(
+  self,
+  _task,
+  _system_prompt,
+  on_output,
+) {
+  let idx = if self.call_index < self.responses.length() {
+    self.call_index
+  } else {
+    self.responses.length() - 1
+  }
+  let response = self.responses[idx]
+  self.call_index += 1
+  on_output(@types.AgentEvent::StatusChange(@types.AgentStatus::Running))
+  on_output(@types.AgentEvent::OutputLine(response))
+  on_output(@types.AgentEvent::StatusChange(@types.AgentStatus::Completed))
+  { content: response, status: Completed, error: None, session_id: "" }
+}
+
+///|
+impl AgentBackend for SequenceMockBackend with name(_self) {
+  "sequence-mock"
+}
+
+///|
+impl AgentBackend for SequenceMockBackend with set_session_id(_self, _sid) {
+
+}
+
+///|
+impl AgentBackend for SequenceMockBackend with get_session_id(_self) {
+  ""
+}
+
+///|
+pub fn SequenceMockBackend::boxed(self : SequenceMockBackend) -> BoxedBackend {
+  BoxedBackend::new(self)
+}
