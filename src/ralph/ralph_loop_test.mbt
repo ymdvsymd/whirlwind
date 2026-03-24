@@ -74,6 +74,50 @@ test "RalphLoop full cycle with single milestone" {
 }
 
 ///|
+test "RalphLoop dry-run skips planner execution and leaves milestones pending" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "brief": "Generate tasks only.",
+    #|  "milestones": [
+    #|    { "id": "m1", "goal": "Build auth", "status": "pending", "tasks": [] }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(
+    default_response="WAVE 0:\n1. Create schema\n2. Write tests",
+  )
+  let builder_mock = @agent.MockBackend::new(default_response="should not run")
+  let verifier_mock = @agent.MockBackend::new(default_response="should not run")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, dry_run=true)
+  rl.run()
+
+  inspect(mgr.milestones[0].status, content="Pending")
+  inspect(mgr.milestones[0].tasks.length(), content="0")
+  inspect(planner_mock.get_history().length(), content="0")
+  inspect(builder_mock.get_history().length(), content="0")
+  inspect(verifier_mock.get_history().length(), content="0")
+  assert_true(
+    infos.iter().any(fn(m) { m.contains("Dry-run: validated milestone m1") }),
+  )
+  inspect(rl.current_phase, content="AllComplete")
+}
+
+///|
 test "planner receives system prompt with brief and completed milestone summaries" {
   let config = make_ralph_config()
   let json =

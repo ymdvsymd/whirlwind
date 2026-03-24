@@ -13,6 +13,16 @@ pub fn MilestoneManager::new() -> MilestoneManager {
 }
 
 ///|
+/// Create a milestone manager from explicit parts
+pub fn MilestoneManager::from_parts(
+  milestones : Array[@types.Milestone],
+  next_task_id : Int,
+  brief : String,
+) -> MilestoneManager {
+  { milestones, next_task_id, brief }
+}
+
+///|
 /// Load milestones from JSON string
 pub fn MilestoneManager::load_from_json(
   s : String,

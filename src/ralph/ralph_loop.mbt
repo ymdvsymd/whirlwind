@@ -8,6 +8,7 @@ pub struct RalphLoop {
   backends : Map[String, @agent.BoxedBackend]
   callbacks : @types.OrchestratorCallbacks
   mut current_phase : @types.RalphPhase
+  dry_run : Bool
   max_rework_attempts : Int
   file_checker : (String) -> Bool
 }
@@ -19,6 +20,7 @@ pub fn RalphLoop::new(
   milestone_manager : MilestoneManager,
   backends : Map[String, @agent.BoxedBackend],
   callbacks : @types.OrchestratorCallbacks,
+  dry_run? : Bool = false,
   lang? : String = "en",
   file_checker? : (String) -> Bool = path_exists,
 ) -> RalphLoop {
@@ -40,6 +42,7 @@ pub fn RalphLoop::new(
     backends,
     callbacks,
     current_phase: @types.RalphPhase::LoadingMilestones,
+    dry_run,
     max_rework_attempts: config.max_rework_attempts,
     file_checker,
   }
@@ -50,6 +53,10 @@ pub fn RalphLoop::new(
 pub fn RalphLoop::run(self : RalphLoop) -> Unit {
   self.current_phase = LoadingMilestones
   emit_info(self, "Ralph loop started")
+  if self.dry_run {
+    self.run_dry_run()
+    return
+  }
   while true {
     // Get next pending milestone
     let milestone = self.milestone_manager.next_pending_milestone()
@@ -70,47 +77,32 @@ pub fn RalphLoop::run(self : RalphLoop) -> Unit {
 }
 
 ///|
+/// Dry-run validates milestone loading/output without spawning planner, builder, or verifier.
+fn RalphLoop::run_dry_run(self : RalphLoop) -> Unit {
+  for milestone in self.milestone_manager.milestones {
+    match milestone.status {
+      @types.MilestoneStatus::Done | @types.MilestoneStatus::Failed(_) => ()
+      _ =>
+        emit_info(
+          self,
+          "Dry-run: validated milestone \{milestone.id}; skipping planner, execution, and verification",
+        )
+    }
+  }
+  self.save_milestones()
+  self.current_phase = AllComplete
+  emit_info(self, "Dry-run complete")
+}
+
+///|
 /// Run a single milestone through planning, execution, and verification
 fn RalphLoop::run_milestone(
   self : RalphLoop,
   milestone : @types.Milestone,
 ) -> Bool {
-  // Plan if no tasks
-  if milestone.tasks.is_empty() {
-    match self.planner {
-      Some(planner) => {
-        self.current_phase = Planning(milestone.id)
-        emit_info(self, "Planning milestone: \{milestone.id}")
-        let planner_backend = find_backend(self.backends, planner.agent_id)
-        match planner_backend {
-          Some(backend) => {
-            let tasks = planner.plan(
-              milestone,
-              backend,
-              self.milestone_manager.brief,
-              self.milestone_manager.milestones,
-              self.milestone_manager,
-              on_event=fn(e) { handle_event(self, planner.agent_id, e) },
-            )
-            if tasks.is_empty() {
-              emit_info(self, "Planner produced no tasks for \{milestone.id}")
-              milestone.status = Failed("No tasks planned")
-              self.save_milestones()
-              return false
-            }
-            milestone.tasks = tasks
-            self.save_milestones()
-          }
-          None => {
-            emit_info(self, "No backend found for planner")
-            milestone.status = Failed("No planner backend")
-            self.save_milestones()
-            return false
-          }
-        }
-      }
-      None => emit_info(self, "No planner configured, skipping planning")
-    }
+  let planned = self.ensure_milestone_tasks(milestone)
+  if not(planned) {
+    return false
   }
   // Execute waves
   let completed_tasks = milestone.tasks
@@ -157,6 +149,55 @@ fn RalphLoop::run_milestone(
   self.save_milestones()
   emit_info(self, "Milestone \{milestone.id} complete")
   true
+}
+
+///|
+/// Ensure milestone has planner-generated tasks before execution.
+fn RalphLoop::ensure_milestone_tasks(
+  self : RalphLoop,
+  milestone : @types.Milestone,
+) -> Bool {
+  if not(milestone.tasks.is_empty()) {
+    return true
+  }
+  match self.planner {
+    Some(planner) => {
+      self.current_phase = Planning(milestone.id)
+      emit_info(self, "Planning milestone: \{milestone.id}")
+      let planner_backend = find_backend(self.backends, planner.agent_id)
+      match planner_backend {
+        Some(backend) => {
+          let tasks = planner.plan(
+            milestone,
+            backend,
+            self.milestone_manager.brief,
+            self.milestone_manager.milestones,
+            self.milestone_manager,
+            on_event=fn(e) { handle_event(self, planner.agent_id, e) },
+          )
+          if tasks.is_empty() {
+            emit_info(self, "Planner produced no tasks for \{milestone.id}")
+            milestone.status = Failed("No tasks planned")
+            self.save_milestones()
+            return false
+          }
+          milestone.tasks = tasks
+          self.save_milestones()
+          true
+        }
+        None => {
+          emit_info(self, "No backend found for planner")
+          milestone.status = Failed("No planner backend")
+          self.save_milestones()
+          false
+        }
+      }
+    }
+    None => {
+      emit_info(self, "No planner configured, skipping planning")
+      true
+    }
+  }
 }
 
 ///|
