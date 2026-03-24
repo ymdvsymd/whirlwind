@@ -1,6 +1,6 @@
 {
   "name": "ymdvsymd/whirlwind",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "deps": {
     "moonbitlang/x": "0.4.40"
   },
