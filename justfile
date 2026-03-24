@@ -18,8 +18,8 @@ mock: pack
 mock-flags: pack
   bash tests/e2e-ralph.sh mock-flags
 
-live: pack
-  bash tests/e2e-ralph.sh live
+live *args: pack
+  bash tests/e2e-ralph.sh live {{args}}
 
 live-flags: pack
   bash tests/e2e-ralph.sh live-flags
