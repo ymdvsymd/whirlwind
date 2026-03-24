@@ -206,11 +206,13 @@ test "builder receives system prompt with brief" {
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   let (_, system_prompt) = builder_mock.get_history()[0]
-  let expected =
-    #|## Brief
-    #|Keep public APIs stable while refactoring internals.
-    #|
-  inspect(system_prompt, content=expected)
+  assert_true(system_prompt.contains("## Brief"))
+  assert_true(
+    system_prompt.contains(
+      "Keep public APIs stable while refactoring internals.",
+    ),
+  )
+  assert_true(system_prompt.contains("## Compile Error Policy"))
 }
 
 ///|
@@ -2418,6 +2420,46 @@ test "single task wave does not trigger conflict detection" {
 }
 
 ///|
+test "whirlwind-4hy: builder system prompt instructs to fix all compile errors" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "brief": "Build a REST API",
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let callbacks = @types.OrchestratorCallbacks::noop()
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  let (_, system_prompt) = builder_mock.get_history()[0]
+  // Must contain instruction about fixing compile errors including those from prior tasks
+  assert_true(system_prompt.contains("compile"))
+  assert_true(system_prompt.contains("error"))
+  // Must explicitly mention errors introduced by prior tasks are NOT pre-existing
+  assert_true(
+    system_prompt.contains("prior") ||
+    system_prompt.contains("previous") ||
+    system_prompt.contains("earlier"),
+  )
+}
+
+///|
 test "whirlwind-khq: resume retries failed milestones instead of skipping them" {
   let config = make_ralph_config()
   let json =
@@ -2538,4 +2580,75 @@ test "whirlwind-cgf: planner already-complete signal marks milestone Done" {
   // Milestone should be marked Done (not Failed)
   inspect(mgr.milestones[0].status, content="Done")
   assert_true(infos.iter().any(fn(m) { m.contains("already complete") }))
+}
+
+///|
+test "whirlwind-4hy: builder system prompt with empty brief still has compile error instruction" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let callbacks = @types.OrchestratorCallbacks::noop()
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  let (_, system_prompt) = builder_mock.get_history()[0]
+  assert_true(system_prompt.contains("compile"))
+  assert_true(system_prompt.contains("error"))
+}
+
+///|
+test "whirlwind-4hy: rework prompt includes compile error priority when feedback mentions build failure" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done v1")
+  builder_mock.add_response("Feedback from verifier", "Done v2 FIXED")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  verifier_mock.add_response(
+    "Done v1", "<needs_rework>m1-t1: compile error in src/auth.mbt - type mismatch</needs_rework>",
+  )
+  verifier_mock.add_response("FIXED", "<wave_approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let callbacks = @types.OrchestratorCallbacks::noop()
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  // The builder system prompt should always contain compile error instruction
+  let history = builder_mock.get_history()
+  assert_true(history.length() >= 2)
+  let (_, rework_system) = history[1]
+  assert_true(rework_system.contains("compile"))
 }

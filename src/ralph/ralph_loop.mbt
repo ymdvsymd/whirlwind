@@ -626,12 +626,21 @@ fn build_planner_system_prompt(
 }
 
 ///|
-/// Build system prompt for Builder/Rework: brief only
+/// Build system prompt for Builder/Rework: brief + compile error policy
 fn build_builder_system_prompt(brief : String) -> String {
-  if brief.is_empty() {
-    return ""
+  let buf = StringBuilder::new()
+  if not(brief.is_empty()) {
+    buf.write_string("## Brief\n")
+    buf.write_string(brief)
+    buf.write_string("\n\n")
   }
-  "## Brief\n" + brief + "\n"
+  buf.write_string(
+    "## Compile Error Policy\n" +
+    "If the build has compile errors, you MUST fix them — even if they appear to be pre-existing.\n" +
+    "Errors introduced by prior tasks in the same run are your responsibility, not pre-existing issues.\n" +
+    "Always run the build command, and if it fails, fix every compile error before reporting completion.\n",
+  )
+  buf.to_string()
 }
 
 ///|
