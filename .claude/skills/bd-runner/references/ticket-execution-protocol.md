@@ -13,6 +13,27 @@
 
 ### Step 1: チケット取得
 
+**ステータス確認（実行前ガード）**:
+
+実行開始前にチケットの現在のステータスを確認する:
+
+```bash
+bd show <TICKET_ID> --json
+```
+
+ステータスが `open` または `in_progress` でない場合（`closed`, `deferred`, `blocked` 等）:
+- スキップ理由をログ出力: `"SKIP: <TICKET_ID> — status is '<status>', skipping execution"`
+- 以下の結果を返して終了:
+  ```
+  STATUS: skipped
+  TICKET_ID: <ticket-id>
+  REASON: Ticket status is '<status>', not open/in_progress
+  ```
+
+ステータスが有効な場合、以下の claim 処理に続行する。
+
+---
+
 チケットが既に `in_progress`（前セッションからの復帰、`RESUMED=true`）の場合:
 - claim をスキップする（既にアサイン済み）
 - 前セッションの未コミット変更をリセットしてクリーンスタート:
@@ -115,12 +136,13 @@ EOF
 以下の情報をオーケストレーターに返す:
 
 ```
-STATUS: success | failure
+STATUS: success | failure | skipped
 TICKET_ID: <ticket-id>
 COMMIT_HASH: <hash>  (成功時のみ)
 FILES_CHANGED: <file1>, <file2>, ...
 TEST_SUMMARY: <pass_count>/<total_count> tests passed
 ERROR: <error details>  (失敗時のみ)
+REASON: <skip reason>  (スキップ時のみ)
 ```
 
 ## 失敗時の処理
