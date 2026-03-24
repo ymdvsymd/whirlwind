@@ -1,8 +1,23 @@
 #!/usr/bin/env bash
+# ============================================================
+# whirlwind E2E test runner
+#
+# Modes:
+#   mock        — mock agents, --plan + --dry-run (plan→milestones 変換のみ検証)
+#   live        — real agents, --plan full 実行
+#   live --dry-run              — real agents, plan 変換のみ (LLM 分類あり)
+#   mock-flags  — mock agents, CLI フラグ経由 (--milestones パス)
+#   live-flags  — real agents, CLI フラグ経由 (--milestones パス)
+#
+# Examples:
+#   just mock                              # plan→milestones dry-run (CI 向け)
+#   just live                              # plan full 実行
+#   just live -- --dry-run                 # plan 変換のみ (LLM 分類)
+# ============================================================
 set -euo pipefail
 MODE="${1:-mock}"   # "mock", "live", "mock-flags", "live-flags"
 shift || true
-EXTRA_ARGS=("$@")
+EXTRA_ARGS=("$@")  # live モードで --dry-run 等を渡す
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -11,7 +26,6 @@ case "$MODE" in
     PLANNER_KIND="mock"
     BUILDER_KIND="mock"
     VERIFIER_KIND="mock"
-    BRIEF='Fix bugs and add tests'
     ;;
   live|live-flags)
     PLANNER_KIND="claude-code"
@@ -24,17 +38,7 @@ case "$MODE" in
     ;;
 esac
 
-has_arg_prefix() {
-  local prefix="$1"
-  local arg
-  for arg in "${EXTRA_ARGS[@]}"; do
-    if [[ "$arg" == "$prefix"* ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
+# --- EXTRA_ARGS helper (live モードで --dry-run の有無を判定) ---
 has_arg_exact() {
   local expected="$1"
   local arg
@@ -44,29 +48,6 @@ has_arg_exact() {
     fi
   done
   return 1
-}
-
-build_live_brief() {
-  local plan_file="$1"
-  node -e '
-    const fs = require("fs");
-    const path = process.argv[1];
-    const text = fs.readFileSync(path, "utf8");
-    const lines = text.split(/\r?\n/);
-    let section = "";
-    const parts = [];
-    for (const line of lines) {
-      if (/^##\s+/.test(line)) {
-        section = line.replace(/^##\s+/, "").trim().toLowerCase();
-        continue;
-      }
-      if (!line.trim()) continue;
-      if (section === "goals" || section === "constraints") {
-        parts.push(line.replace(/^[-*]\s*/, "").trim());
-      }
-    }
-    process.stdout.write(parts.join("\n"));
-  ' "$plan_file"
 }
 
 cd "$ROOT_DIR"
@@ -91,63 +72,31 @@ OUTPUT_FILE="$TMP_DIR/whirlwind.stdout.log"
 # Initialize git repo in temp dir (required by Codex SDK for file operations)
 git init -q "$TMP_DIR"
 
-if [ "$MODE" = "live" ] || [ "$MODE" = "live-flags" ]; then
+# --- テスト入力ファイルの生成 ---
+# mock/live: shared plan.md → --plan で変換・実行
+# *-flags:   milestones.json → --milestones で直接実行
+
+# Shared plan.md for mock and live modes
+if [ "$MODE" = "mock" ] || [ "$MODE" = "live" ]; then
   cat >"$TMP_DIR/plan.md" <<'EOF'
 # Ralph e2e plan
 
-## Goals
-- Create a minimal Node.js hello-world project with one source file and one test file
+Create a minimal Node.js hello-world project with one source file and one test file.
+Do not install any npm packages.
 
-## Constraints
-- Do not install any npm packages
-EOF
-  BRIEF="$(build_live_brief "$TMP_DIR/plan.md")"
-fi
+## Step 1: Create hello module and tests
+Create src/hello.js exporting greet(name) that returns 'Hello, <name>!' and create tests/hello.test.js using Node assert to verify greet('World') === 'Hello, World!'
 
-# Config file is only needed for config-based modes (mock, live)
-if [ "$MODE" = "mock" ] || [ "$MODE" = "live" ]; then
-  cat >"$TMP_DIR/whirlwind.json" <<EOF
-{
-  "max_review_cycles": 3,
-  "review_interval": 1,
-  "milestones_path": "milestones.json",
-  "max_rework_attempts": 2,
-  "agents": [
-    {
-      "id": "planner",
-      "kind": "$PLANNER_KIND",
-      "role": "planner"
-    },
-    {
-      "id": "builder",
-      "kind": "$BUILDER_KIND",
-      "role": "builder"
-    },
-    {
-      "id": "verifier",
-      "kind": "$VERIFIER_KIND",
-      "role": "verifier"
-    }
-  ]
-}
+## Step 2: Run tests and verify
+Run 'node tests/hello.test.js' and verify it exits with code 0 with no assertion errors
 EOF
 fi
 
-if [ "$MODE" = "mock" ]; then
-  cat >"$TMP_DIR/plan.md" <<'EOF'
-# Dry Run Plan
-
-## Context
-This is brief context for the dry-run e2e test.
-
-## Step 1
-Implement the CLI flow for --plan and verify milestone generation.
-EOF
-else
-  if ! has_arg_prefix "--plan="; then
-    cat >"$TMP_DIR/milestones.json" <<EOF
+# milestones.json for *-flags modes (tests --milestones code path)
+if [ "$MODE" = "mock-flags" ] || [ "$MODE" = "live-flags" ]; then
+  cat >"$TMP_DIR/milestones.json" <<'EOF'
 {
-  "brief": $(node -p 'JSON.stringify(process.argv[1])' "$BRIEF"),
+  "brief": "Create a minimal Node.js hello-world project with one source file and one test file.\nDo not install any npm packages.",
   "milestones": [
     {
       "id": "m1",
@@ -166,13 +115,17 @@ else
   ]
 }
 EOF
-  fi
 fi
 
 cd "$TMP_DIR"
 # Unset CLAUDECODE to allow Claude Agent SDK to spawn Claude Code subprocesses
 # (prevents "nested session" error when running inside a Claude Code session)
 unset CLAUDECODE
+
+# --- 実行 ---
+# mock:       --plan + --dry-run (plan→milestones 変換のみ)
+# live:       --plan + EXTRA_ARGS (--dry-run 渡せば変換のみ、なければ full 実行)
+# *-flags:    CLI フラグで直接 milestones を指定
 set +e
 case "$MODE" in
   mock)
@@ -180,11 +133,7 @@ case "$MODE" in
     CMD_STATUS=${PIPESTATUS[0]}
     ;;
   live)
-    if [ "${#EXTRA_ARGS[@]}" -gt 0 ]; then
-      node "$ROOT_DIR/bin/whirlwind.js" --planner="$PLANNER_KIND" --builder="$BUILDER_KIND" --verifier="$VERIFIER_KIND" --log="$LOG_FILE" "${EXTRA_ARGS[@]}" 2>&1 | tee "$OUTPUT_FILE"
-    else
-      node "$ROOT_DIR/bin/whirlwind.js" --config=whirlwind.json --log="$LOG_FILE" 2>&1 | tee "$OUTPUT_FILE"
-    fi
+    node "$ROOT_DIR/bin/whirlwind.js" --plan="$TMP_DIR/plan.md" --planner="$PLANNER_KIND" --builder="$BUILDER_KIND" --verifier="$VERIFIER_KIND" --log="$LOG_FILE" "${EXTRA_ARGS[@]}" 2>&1 | tee "$OUTPUT_FILE"
     CMD_STATUS=${PIPESTATUS[0]}
     ;;
   mock-flags|live-flags)
@@ -195,9 +144,13 @@ esac
 set -e
 
 OUTPUT="$(cat "$OUTPUT_FILE")"
-LIVE_PLAN_DRY_RUN=false
-if [ "$MODE" = "live" ] && has_arg_prefix "--plan=" && has_arg_exact "--dry-run"; then
-  LIVE_PLAN_DRY_RUN=true
+
+# live + --dry-run の組み合わせはアサーションを dry-run 系に切り替える
+IS_DRY_RUN=false
+if [ "$MODE" = "mock" ]; then
+  IS_DRY_RUN=true
+elif [ "$MODE" = "live" ] && has_arg_exact "--dry-run"; then
+  IS_DRY_RUN=true
 fi
 
 if [ "$CMD_STATUS" -ne 0 ]; then
@@ -265,17 +218,39 @@ assert_pending_milestone_exists() {
   ' "$file"
 }
 
-if [ "$MODE" = "mock" ] || [ "$LIVE_PLAN_DRY_RUN" = true ]; then
+# --- アサーション ---
+# USES_PLAN_MODE: mock, live → .runs/ 下の milestones.json を検証
+# IS_DRY_RUN:     mock, live+--dry-run → pending milestones を検証
+USES_PLAN_MODE=false
+case "$MODE" in
+  mock|live) USES_PLAN_MODE=true ;;
+esac
+
+if [ "$USES_PLAN_MODE" = true ]; then
+  # --plan mode: milestones.json は .runs/ 下に生成される
   RUN_MILESTONES="$(find "$TMP_DIR/.runs" -name milestones.json -print -quit 2>/dev/null || true)"
   if [ -z "$RUN_MILESTONES" ]; then
     echo "FAIL: expected generated milestones.json under $TMP_DIR/.runs" >&2
     exit 1
   fi
-  assert_pending_milestone_exists "$RUN_MILESTONES"
+  assert_file_contains "$LOG_FILE" "Generated milestones at .runs/"
+  if [ "$IS_DRY_RUN" = true ]; then
+    assert_pending_milestone_exists "$RUN_MILESTONES"
+    assert_contains "Dry-run complete"
+  else
+    assert_contains "Milestone m1 complete"
+    assert_contains "Milestone m2 complete"
+    assert_file_contains "$LOG_FILE" "Milestone m1 complete"
+    assert_file_contains "$LOG_FILE" "Milestone m2 complete"
+    assert_milestone_summary_non_empty "$RUN_MILESTONES" "m1"
+  fi
 else
+  # *-flags mode: milestones.json は $TMP_DIR 直下
   assert_contains "Milestone m1 complete"
   assert_contains "Milestone m2 complete"
   assert_contains "Milestones saved to milestones.json"
+  assert_file_contains "$LOG_FILE" "Milestone m1 complete"
+  assert_file_contains "$LOG_FILE" "Milestone m2 complete"
   assert_milestone_summary_non_empty "$TMP_DIR/milestones.json" "m1"
 fi
 
@@ -289,15 +264,7 @@ if grep -P '\x1b\[' "$LOG_FILE" 2>/dev/null; then
   exit 1
 fi
 
-if [ "$MODE" = "mock" ] || [ "$LIVE_PLAN_DRY_RUN" = true ]; then
-  assert_file_contains "$LOG_FILE" "Generated milestones at .runs/"
-  assert_contains "Dry-run complete"
-else
-  assert_file_contains "$LOG_FILE" "Milestone m1 complete"
-  assert_file_contains "$LOG_FILE" "Milestone m2 complete"
-fi
-
-if { [ "$MODE" = "live" ] || [ "$MODE" = "live-flags" ]; } && [ "$LIVE_PLAN_DRY_RUN" != true ]; then
+if { [ "$MODE" = "live" ] || [ "$MODE" = "live-flags" ]; } && [ "$IS_DRY_RUN" != true ]; then
   assert_contains "SCOPE:"
   assert_file_contains "$LOG_FILE" "SCOPE:"
 fi
