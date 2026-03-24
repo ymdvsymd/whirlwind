@@ -4,6 +4,23 @@ Multi-agent development orchestrator — milestone-driven autonomous development
 
 ## Quick start
 
+### From a plan file (recommended)
+
+1. Write a Markdown plan with `## Heading` sections for each milestone
+2. Run whirlwind:
+
+```bash
+npx -y @ymdvsymd/whirlwind --plan=./plan.md
+```
+
+Use `--dry-run` to validate the plan without executing agents:
+
+```bash
+npx -y @ymdvsymd/whirlwind --plan=./plan.md --dry-run
+```
+
+### From milestones.json
+
 1. Create a `milestones.json` (see format below)
 2. Run whirlwind:
 
@@ -46,16 +63,23 @@ Default path: `.whirlwind/milestones.json` (override with `--milestones=PATH`).
 ### Pattern 1: Run with `npx`
 
 ```bash
+# from a plan file
+npx -y @ymdvsymd/whirlwind --plan=./plan.md
+
+# dry-run (validate plan without running agents)
+npx -y @ymdvsymd/whirlwind --plan=./plan.md --dry-run
+
+# from milestones.json
 npx -y @ymdvsymd/whirlwind --milestones=./milestones.json
 
 # with config file
 npx -y @ymdvsymd/whirlwind --config=./whirlwind.json --milestones=./milestones.json
 
 # override agent kinds
-npx -y @ymdvsymd/whirlwind --milestones=./milestones.json --builder=codex --verifier=claude-code
+npx -y @ymdvsymd/whirlwind --plan=./plan.md --builder=codex --verifier=claude-code
 
 # override models
-npx -y @ymdvsymd/whirlwind --milestones=./milestones.json --planner-model=sonnet --builder-model=opus
+npx -y @ymdvsymd/whirlwind --plan=./plan.md --planner-model=sonnet --builder-model=opus
 
 # validate config
 npx -y @ymdvsymd/whirlwind validate ./whirlwind.json
@@ -66,16 +90,23 @@ npx -y @ymdvsymd/whirlwind validate ./whirlwind.json
 ```bash
 npm i -g @ymdvsymd/whirlwind
 
+# from a plan file
+whirlwind --plan=./plan.md
+
+# dry-run
+whirlwind --plan=./plan.md --dry-run
+
+# from milestones.json
 whirlwind --milestones=./milestones.json
 
 # with config file
 whirlwind --config=./whirlwind.json --milestones=./milestones.json
 
 # override agent kinds
-whirlwind --milestones=./milestones.json --builder=codex --lang=ja
+whirlwind --plan=./plan.md --builder=codex --lang=ja
 
 # override models
-whirlwind --milestones=./milestones.json --planner-model=sonnet --verifier-model=haiku
+whirlwind --plan=./plan.md --planner-model=sonnet --verifier-model=haiku
 
 # validate config
 whirlwind validate ./whirlwind.json
@@ -85,7 +116,9 @@ whirlwind validate ./whirlwind.json
 
 | Flag | Description |
 |------|-------------|
+| `--plan=PATH` | Plan markdown file path (sections become milestones) |
 | `--milestones=PATH` | Milestones JSON file path (default: `.whirlwind/milestones.json`) |
+| `--dry-run` | Validate plan/milestones without executing agents |
 | `--config=PATH` | Config file path |
 | `--planner=KIND` | Override planner agent kind |
 | `--builder=KIND` | Override builder agent kind |
