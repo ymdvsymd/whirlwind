@@ -60,6 +60,13 @@ pub fn PlannerAgent::parse_plan(
 }
 
 ///|
+/// Plan result containing parsed tasks and the raw planner output
+pub struct PlanResult {
+  tasks : Array[@types.RalphTask]
+  raw_output : String
+}
+
+///|
 /// Run the planner agent to generate tasks for a milestone
 pub fn PlannerAgent::plan(
   self : PlannerAgent,
@@ -69,12 +76,25 @@ pub fn PlannerAgent::plan(
   milestones : Array[@types.Milestone],
   mgr : MilestoneManager,
   on_event? : (@types.AgentEvent) -> Unit = fn(_e) {  },
-) -> Array[@types.RalphTask] {
+) -> PlanResult {
   let prompt = self.build_plan_prompt(milestone)
   let system_prompt = build_planner_system_prompt(brief, milestones)
   let result = backend.run(prompt, system_prompt, on_event)
   match result.status {
-    Completed => self.parse_plan(result.content, milestone.id, mgr)
-    _ => []
+    Completed => {
+      let tasks = self.parse_plan(result.content, milestone.id, mgr)
+      { tasks, raw_output: result.content }
+    }
+    _ => { tasks: [], raw_output: result.content }
   }
+}
+
+///|
+/// Check if planner output indicates the milestone is already complete
+pub fn is_already_complete_signal(output : String) -> Bool {
+  let lower = output.to_lower()
+  lower.contains("already complete") ||
+  lower.contains("already been completed") ||
+  lower.contains("already done") ||
+  lower.contains("既に完了")
 }

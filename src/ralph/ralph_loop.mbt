@@ -119,6 +119,12 @@ fn RalphLoop::run_milestone(
   if not(planned) {
     return false
   }
+  // Planner may have marked milestone as already complete
+  if milestone.status == Done {
+    self.current_phase = MilestoneComplete(milestone.id)
+    emit_info(self, "Milestone \{milestone.id} complete")
+    return true
+  }
   // Execute waves
   let completed_tasks = milestone.tasks
     .iter()
@@ -182,7 +188,7 @@ fn RalphLoop::ensure_milestone_tasks(
       let planner_backend = find_backend(self.backends, planner.agent_id)
       match planner_backend {
         Some(backend) => {
-          let tasks = planner.plan(
+          let plan_result = planner.plan(
             milestone,
             backend,
             self.milestone_manager.brief,
@@ -190,14 +196,25 @@ fn RalphLoop::ensure_milestone_tasks(
             self.milestone_manager,
             on_event=fn(e) { handle_event(self, planner.agent_id, e) },
           )
-          if tasks.is_empty() {
+          if plan_result.tasks.is_empty() {
+            // Check if planner says milestone is already complete
+            if is_already_complete_signal(plan_result.raw_output) {
+              emit_info(
+                self,
+                "Planner reports milestone \{milestone.id} already complete",
+              )
+              milestone.status = Done
+              milestone.summary = "Marked complete by planner (already done)"
+              self.save_milestones()
+              return true
+            }
             // Retry once with a fresh session (session exhaustion recovery)
             emit_info(
               self,
               "Planner produced no tasks for \{milestone.id}, retrying with new session",
             )
             backend.set_session_id("")
-            let retry_tasks = planner.plan(
+            let retry_result = planner.plan(
               milestone,
               backend,
               self.milestone_manager.brief,
@@ -205,7 +222,17 @@ fn RalphLoop::ensure_milestone_tasks(
               self.milestone_manager,
               on_event=fn(e) { handle_event(self, planner.agent_id, e) },
             )
-            if retry_tasks.is_empty() {
+            if retry_result.tasks.is_empty() {
+              if is_already_complete_signal(retry_result.raw_output) {
+                emit_info(
+                  self,
+                  "Planner reports milestone \{milestone.id} already complete",
+                )
+                milestone.status = Done
+                milestone.summary = "Marked complete by planner (already done)"
+                self.save_milestones()
+                return true
+              }
               emit_info(
                 self,
                 "Planner retry also produced no tasks for \{milestone.id}",
@@ -214,11 +241,11 @@ fn RalphLoop::ensure_milestone_tasks(
               self.save_milestones()
               return false
             }
-            milestone.tasks = retry_tasks
+            milestone.tasks = retry_result.tasks
             self.save_milestones()
             return true
           }
-          milestone.tasks = tasks
+          milestone.tasks = plan_result.tasks
           self.save_milestones()
           true
         }

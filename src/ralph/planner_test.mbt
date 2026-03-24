@@ -59,8 +59,8 @@ test "PlannerAgent::plan with mock backend" {
     tasks: [],
     summary: "",
   }
-  let tasks = planner.plan(milestone, backend, "", [], mgr)
-  assert_true(tasks.length() == 3)
-  inspect(tasks[0].description, content="Create schema")
-  inspect(tasks[2].wave, content="1")
+  let result = planner.plan(milestone, backend, "", [], mgr)
+  assert_true(result.tasks.length() == 3)
+  inspect(result.tasks[0].description, content="Create schema")
+  inspect(result.tasks[2].wave, content="1")
 }
