@@ -2448,10 +2448,8 @@ test "whirlwind-4hy: builder system prompt instructs to fix all compile errors" 
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
   let (_, system_prompt) = builder_mock.get_history()[0]
-  // Must contain instruction about fixing compile errors including those from prior tasks
   assert_true(system_prompt.contains("compile"))
   assert_true(system_prompt.contains("error"))
-  // Must explicitly mention errors introduced by prior tasks are NOT pre-existing
   assert_true(
     system_prompt.contains("prior") ||
     system_prompt.contains("previous") ||
@@ -2509,8 +2507,6 @@ test "whirlwind-261: planner retries when first attempt produces 0 tasks" {
     #|  ]
     #|}
   let mgr = @ralph.MilestoneManager::load_from_json(json)
-  // First call: empty response (no WAVE lines → 0 tasks parsed)
-  // Second call: valid plan
   let planner_seq = @agent.SequenceMockBackend::new([
     "(session exhausted)", "WAVE 0:\n1. Create schema\nSCOPE: src/schema.mbt",
   ])
@@ -2536,9 +2532,7 @@ test "whirlwind-261: planner retries when first attempt produces 0 tasks" {
   }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
-  // Should succeed after retry
   inspect(mgr.milestones[0].status, content="Done")
-  // Should see retry message
   assert_true(
     infos.iter().any(fn(m) { m.contains("retry") || m.contains("Retry") }),
   )
@@ -2554,8 +2548,6 @@ test "whirlwind-cgf: planner already-complete signal marks milestone Done" {
     #|  ]
     #|}
   let mgr = @ralph.MilestoneManager::load_from_json(json)
-  // Planner returns "already complete" text with no WAVE lines → 0 tasks
-  // Both first and retry return the same "already complete" signal
   let planner_mock = @agent.MockBackend::new(
     default_response="This milestone is already complete. All required changes were implemented in previous milestones.",
   )
@@ -2577,7 +2569,6 @@ test "whirlwind-cgf: planner already-complete signal marks milestone Done" {
   }
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
-  // Milestone should be marked Done (not Failed)
   inspect(mgr.milestones[0].status, content="Done")
   assert_true(infos.iter().any(fn(m) { m.contains("already complete") }))
 }
@@ -2646,9 +2637,50 @@ test "whirlwind-4hy: rework prompt includes compile error priority when feedback
   let callbacks = @types.OrchestratorCallbacks::noop()
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
   rl.run()
-  // The builder system prompt should always contain compile error instruction
   let history = builder_mock.get_history()
   assert_true(history.length() >= 2)
   let (_, rework_system) = history[1]
   assert_true(rework_system.contains("compile"))
+}
+
+///|
+test "whirlwind-d35: rework prompt includes scope limitation" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "implement feature X", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done v1")
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  verifier_mock.add_response(
+    "### Task: m1-t1\nDone v1\n\n## Review Focus: Code Quality", "<needs_rework>m1-t1: add input validation</needs_rework>",
+  )
+  verifier_mock.add_response("REWORKED", "<wave_approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let callbacks = @types.OrchestratorCallbacks::noop()
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  let history = builder_mock.get_history()
+  assert_true(history.length() == 2)
+  let (_, rework_system_prompt) = history[1]
+  assert_true(rework_system_prompt.contains("scope"))
+  assert_true(rework_system_prompt.contains("Do not restructure"))
+  assert_true(rework_system_prompt.contains("minimal"))
 }

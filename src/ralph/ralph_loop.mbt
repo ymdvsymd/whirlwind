@@ -517,7 +517,7 @@ fn RalphLoop::rework_task_list(
     None => ()
     Some(backend) => {
       let bid = builder_id.unwrap()
-      let builder_system_prompt = build_builder_system_prompt(
+      let rework_system_prompt = build_rework_system_prompt(
         self.milestone_manager.brief,
       )
       let rework_tasks : Array[@types.RalphTask] = []
@@ -552,7 +552,7 @@ fn RalphLoop::rework_task_list(
               feedback_str
             emit_info(self, "Reworking task \{task.id}")
             rework_tasks.push(task)
-            builder_tasks.push((rework_prompt, builder_system_prompt))
+            builder_tasks.push((rework_prompt, rework_system_prompt))
           }
           _ => ()
         }
@@ -641,6 +641,20 @@ fn build_builder_system_prompt(brief : String) -> String {
     "Always run the build command, and if it fails, fix every compile error before reporting completion.\n",
   )
   buf.to_string()
+}
+
+///|
+/// Build system prompt for rework tasks: brief + scope limitation instructions.
+/// Rework builders must make minimal, targeted fixes — not broad refactors.
+fn build_rework_system_prompt(brief : String) -> String {
+  let base = build_builder_system_prompt(brief)
+  let scope_rules = "## Rework scope constraints\n" +
+    "You are fixing specific issues identified by the verifier. Keep changes minimal and focused.\n" +
+    "- Only address the feedback items listed — do not fix unrelated issues.\n" +
+    "- Do not restructure, rename, or reorganize existing files or code beyond what is needed for the fix.\n" +
+    "- Do not add new features, refactor adjacent code, or change public APIs unless explicitly required by the feedback.\n" +
+    "- Limit file changes to the smallest set necessary. Aim to modify no more than 5 files per task.\n"
+  base + scope_rules
 }
 
 ///|
