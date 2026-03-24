@@ -364,6 +364,130 @@ test("createClaudeAdapter emits only the new generating suffix on stop", () => {
   assert.deepEqual(stopLog, ["Generating: Let me implement all three fixes:"]);
 });
 
+// whirlwind-964: query() hangs in sandbox — timeout and CLI fallback
+test("whirlwind-964: start() falls back to CLI streaming when query() hangs past timeout", async () => {
+  // Simulate query() that never yields (hangs forever)
+  const hangingQuery = () => ({
+    async *[Symbol.asyncIterator]() {
+      await new Promise(() => {}); // never resolves
+    },
+  });
+
+  const cliEvents = [
+    { type: "system", subtype: "init", session_id: "cli-1" },
+    { type: "result", subtype: "success" },
+  ];
+
+  const fakeCliFallback = (_opts) => ({
+    async *[Symbol.asyncIterator]() {
+      for (const event of cliEvents) {
+        yield event;
+      }
+    },
+  });
+
+  const adapter = createClaudeAdapter({
+    queryFn: hangingQuery,
+    cliFallbackFn: fakeCliFallback,
+    queryTimeoutMs: 100, // 100ms timeout for fast test
+  });
+
+  const result = await adapter.start({ prompt: "hello" });
+
+  // Should get a working stream (the CLI fallback), not hang
+  const collected = [];
+  for await (const item of result.stream) {
+    collected.push(item);
+  }
+
+  assert.ok(collected.length > 0, "should receive events from CLI fallback");
+  assert.equal(collected[0].type, "system");
+  assert.equal(collected[1].subtype, "success");
+});
+
+test("whirlwind-964: start() uses SDK query() when it yields events within timeout", async () => {
+  const sdkEvents = [
+    { type: "system", subtype: "init", session_id: "sdk-1" },
+    { type: "result", subtype: "success" },
+  ];
+
+  const workingQuery = () => ({
+    async *[Symbol.asyncIterator]() {
+      for (const event of sdkEvents) {
+        yield event;
+      }
+    },
+  });
+
+  const fakeCliFallback = () => {
+    throw new Error("CLI fallback should not be called");
+  };
+
+  const adapter = createClaudeAdapter({
+    queryFn: workingQuery,
+    cliFallbackFn: fakeCliFallback,
+    queryTimeoutMs: 500,
+  });
+
+  const result = await adapter.start({ prompt: "hello" });
+
+  const collected = [];
+  for await (const item of result.stream) {
+    collected.push(item);
+  }
+
+  assert.equal(collected.length, 2);
+  assert.equal(collected[0].session_id, "sdk-1");
+});
+
+test("whirlwind-964: start() initLogs includes fallback notice when query() times out", async () => {
+  const hangingQuery = () => ({
+    async *[Symbol.asyncIterator]() {
+      await new Promise(() => {});
+    },
+  });
+
+  const fakeCliFallback = (_opts) => ({
+    async *[Symbol.asyncIterator]() {
+      yield { type: "result", subtype: "success" };
+    },
+  });
+
+  const adapter = createClaudeAdapter({
+    queryFn: hangingQuery,
+    cliFallbackFn: fakeCliFallback,
+    queryTimeoutMs: 100,
+  });
+
+  const result = await adapter.start({ prompt: "hello" });
+
+  assert.ok(
+    result.initLogs && result.initLogs.length > 0,
+    "should have init logs",
+  );
+  const fallbackLog = result.initLogs.find(
+    (l) => l.includes("fallback") || l.includes("timeout") || l.includes("CLI"),
+  );
+  assert.ok(fallbackLog, "should include a log about CLI fallback");
+
+  // Drain the stream
+  for await (const _ of result.stream) {
+  }
+});
+
+test("whirlwind-964: createClaudeAdapter without deps still exports the same emit behavior", () => {
+  // Existing behavior must be preserved when no deps are passed
+  const adapter = createClaudeAdapter();
+  const emissions = adapter.emit({
+    type: "system",
+    subtype: "status",
+    status: "compacting",
+    session_id: "s-1",
+  });
+  const logs = logsOf(emissions);
+  assert.deepEqual(logs, ["Status: compacting"]);
+});
+
 function logsOf(emissions) {
   return emissions.flatMap((emission) => (emission.log ? [emission.log] : []));
 }

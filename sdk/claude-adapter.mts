@@ -1,4 +1,5 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query as sdkQuery } from "@anthropic-ai/claude-agent-sdk";
+import { spawn } from "node:child_process";
 import { truncate, collapseWhitespace } from "./runner-io.mjs";
 import type {
   AdapterEmission,
@@ -6,6 +7,22 @@ import type {
   AgentAdapter,
   RunnerOptions,
 } from "./agent-adapter.mjs";
+
+type QueryFn = (opts: {
+  prompt: string;
+  options: Record<string, unknown>;
+}) => AsyncIterable<ClaudeMessage>;
+
+type CliFallbackFn = (
+  opts: RunnerOptions,
+  queryOpts: Record<string, unknown>,
+) => AsyncIterable<ClaudeMessage>;
+
+type ClaudeAdapterDeps = {
+  queryFn?: QueryFn;
+  cliFallbackFn?: CliFallbackFn;
+  queryTimeoutMs?: number;
+};
 
 type ClaudeMessage = {
   type?: string;
@@ -69,12 +86,21 @@ type ClaudeLogState = {
   streamBlocks: Map<number, ClaudeStreamBlockState>;
 };
 
-export function createClaudeAdapter(): AgentAdapter<ClaudeMessage> {
+const DEFAULT_QUERY_TIMEOUT_MS = 30_000;
+
+export function createClaudeAdapter(
+  deps: ClaudeAdapterDeps = {},
+): AgentAdapter<ClaudeMessage> {
   const state: ClaudeLogState = {
     lastStatus: undefined,
     lastToolProgressById: new Map(),
     streamBlocks: new Map(),
   };
+
+  const queryFn: QueryFn =
+    deps.queryFn || ((opts) => sdkQuery(opts) as AsyncIterable<ClaudeMessage>);
+  const cliFallbackFn: CliFallbackFn = deps.cliFallbackFn || defaultCliFallback;
+  const timeoutMs = deps.queryTimeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS;
 
   return {
     tag: "Claude",
@@ -85,15 +111,28 @@ export function createClaudeAdapter(): AgentAdapter<ClaudeMessage> {
       debugClaude(
         `start: cwd=${String(queryOpts.cwd || process.cwd())} model=${opts.model || "default"} resume=${opts.sessionId || "new"}`,
       );
-      debugClaude("start: calling claude-agent-sdk query()");
-      const stream = query({
-        prompt: opts.prompt,
-        options: queryOpts,
-      }) as AsyncIterable<ClaudeMessage>;
-      debugClaude("start: query() returned stream");
+
+      debugClaude("start: calling query() with timeout detection");
+      const { stream, usedFallback } = await startWithTimeout(
+        queryFn,
+        cliFallbackFn,
+        opts,
+        queryOpts,
+        timeoutMs,
+      );
+
+      const initLogs: string[] = [];
+      if (usedFallback) {
+        initLogs.push(
+          `SDK query() timed out after ${timeoutMs}ms, falling back to CLI streaming`,
+        );
+      }
+
+      debugClaude(`start: stream ready (fallback=${String(usedFallback)})`);
       return {
         sessionId: opts.sessionId || "",
         stream: withClaudeDebugStream(stream),
+        initLogs: initLogs.length > 0 ? initLogs : undefined,
       };
     },
     emit(raw: ClaudeMessage): readonly AdapterEmission[] {
@@ -135,6 +174,160 @@ function withClaudeDebugStream(
 function debugClaude(message: string): void {
   if (!claudeDebugEnabled) return;
   process.stderr.write(`[ClaudeAdapterDebug] ${message}\n`);
+}
+
+async function startWithTimeout(
+  queryFn: QueryFn,
+  cliFallbackFn: CliFallbackFn,
+  opts: RunnerOptions,
+  queryOpts: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<{ stream: AsyncIterable<ClaudeMessage>; usedFallback: boolean }> {
+  debugClaude("startWithTimeout: creating SDK stream");
+  const sdkStream = queryFn({ prompt: opts.prompt, options: queryOpts });
+
+  // Race the first event from the SDK stream against a timeout.
+  // If the first event arrives within the timeout, yield it and continue
+  // consuming the SDK stream. If the timeout fires first, abandon the SDK
+  // stream and switch to the CLI fallback.
+  const iterator = sdkStream[Symbol.asyncIterator]();
+  const firstResult = await raceFirstEvent(iterator, timeoutMs);
+
+  if (firstResult.timedOut) {
+    debugClaude(
+      "startWithTimeout: SDK query() timed out, switching to CLI fallback",
+    );
+    // Attempt to clean up the hung iterator
+    if (typeof iterator.return === "function") {
+      iterator.return(undefined).catch(() => {});
+    }
+    const fallbackStream = cliFallbackFn(opts, queryOpts);
+    return { stream: fallbackStream, usedFallback: true };
+  }
+
+  debugClaude("startWithTimeout: first event received from SDK stream");
+  // Wrap the already-started iterator so the first event is not lost
+  const stream = prependEvent(firstResult.value!, iterator);
+  return { stream, usedFallback: false };
+}
+
+async function raceFirstEvent(
+  iterator: AsyncIterator<ClaudeMessage>,
+  timeoutMs: number,
+): Promise<{ timedOut: boolean; value?: ClaudeMessage }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve({ timedOut: true });
+      }
+    }, timeoutMs);
+
+    iterator
+      .next()
+      .then((result) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          if (result.done) {
+            // Stream ended immediately with no events — treat as success (empty stream)
+            resolve({ timedOut: false, value: undefined });
+          } else {
+            resolve({ timedOut: false, value: result.value });
+          }
+        }
+      })
+      .catch(() => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          // SDK threw an error — fall back to CLI
+          resolve({ timedOut: true });
+        }
+      });
+  });
+}
+
+async function* prependEvent(
+  first: ClaudeMessage | undefined,
+  iterator: AsyncIterator<ClaudeMessage>,
+): AsyncGenerator<ClaudeMessage> {
+  if (first !== undefined) {
+    yield first;
+  }
+  while (true) {
+    const result = await iterator.next();
+    if (result.done) break;
+    yield result.value;
+  }
+}
+
+function defaultCliFallback(
+  opts: RunnerOptions,
+  queryOpts: Record<string, unknown>,
+): AsyncIterable<ClaudeMessage> {
+  const args = ["-p", opts.prompt, "--output-format", "stream-json"];
+
+  if (opts.model) {
+    args.push("--model", opts.model);
+  }
+  if (opts.sessionId) {
+    args.push("--resume", opts.sessionId);
+  }
+  if (opts.systemPrompt) {
+    args.push("--system-prompt", opts.systemPrompt);
+  }
+  if (queryOpts.allowDangerouslySkipPermissions) {
+    args.push("--dangerously-skip-permissions");
+  }
+
+  const cwd = (queryOpts.cwd as string) || opts.cwd || process.cwd();
+
+  debugClaude(`CLI fallback: claude ${args.join(" ")}`);
+
+  const child = spawn("claude", args, {
+    cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env },
+  });
+
+  return {
+    async *[Symbol.asyncIterator]() {
+      let buffer = "";
+      const stdout = child.stdout!;
+
+      for await (const chunk of stdout) {
+        buffer += chunk.toString();
+        const lines = buffer.split("\n");
+        buffer = lines.pop()!;
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            yield JSON.parse(trimmed) as ClaudeMessage;
+          } catch {
+            // Skip non-JSON lines
+          }
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        try {
+          yield JSON.parse(buffer.trim()) as ClaudeMessage;
+        } catch {
+          // Skip non-JSON trailing content
+        }
+      }
+
+      // Wait for process to exit
+      await new Promise<void>((resolve) => {
+        child.on("close", () => resolve());
+      });
+    },
+  };
 }
 
 function buildQueryOptions(opts: RunnerOptions): Record<string, unknown> {
