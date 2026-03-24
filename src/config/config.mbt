@@ -91,12 +91,7 @@ pub fn ProjectConfig::from_json(json : Json) -> ProjectConfig raise Failure {
       }
       let milestones_path = @util.get_string_opt(json, "milestones_path")
       let max_rework_attempts = @util.get_int(json, "max_rework_attempts", 3)
-      {
-        agents,
-        parse_warnings,
-        milestones_path,
-        max_rework_attempts,
-      }
+      { agents, parse_warnings, milestones_path, max_rework_attempts }
     }
     _ => raise Failure::Failure("Config must be a JSON object")
   }
