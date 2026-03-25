@@ -1,6 +1,6 @@
 {
   "name": "@ymdvsymd/whirlwind",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Multi-agent development orchestrator with TUI",
   "bin": {
     "whirlwind": "bin/whirlwind.js"
