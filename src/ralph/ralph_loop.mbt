@@ -397,20 +397,12 @@ fn RalphLoop::run_dag(self : RalphLoop, milestone : @types.Milestone) -> Bool {
         deps_remaining[t.id] = count
       }
 
-      // Propagate already-done tasks and seed ready queue
+      // Propagate already-done tasks
       let done_set : Map[String, Bool] = {}
+      let mut already_done = 0
       for t in milestone.tasks {
         if t.status == Done {
-          done_set[t.id] = true
-        }
-      }
-      let already_done = done_set.length()
-      if already_done > 0 {
-        emit_info(self, "Skipping \{already_done} already-done tasks")
-      }
-      for t in milestone.tasks {
-        if t.status == Done {
-          // Propagate through explicit deps
+          already_done += 1
           match reverse_deps.get(t.id) {
             Some(succs) =>
               for succ in succs {
@@ -423,6 +415,10 @@ fn RalphLoop::run_dag(self : RalphLoop, milestone : @types.Milestone) -> Bool {
           }
         }
       }
+      if already_done > 0 {
+        emit_info(self, "Skipping \{already_done} already-done tasks")
+      }
+      // Seed ready queue with tasks whose deps are all satisfied
       let ready_queue : Array[@types.RalphTask] = []
       for t in milestone.tasks {
         if t.status != Done {
@@ -645,9 +641,9 @@ pub fn is_server_error(err : String) -> Bool {
   err.contains("Service unavailable") ||
   err.contains("overloaded") ||
   err.contains("529") ||
-  err.contains("500 ") ||
-  err.contains("502 ") ||
-  err.contains("503 ")
+  err.contains("500") ||
+  err.contains("502") ||
+  err.contains("503")
 }
 
 ///|
