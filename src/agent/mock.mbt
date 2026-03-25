@@ -182,3 +182,71 @@ impl AgentBackend for SequenceMockBackend with get_session_id(_self) {
 pub fn SequenceMockBackend::boxed(self : SequenceMockBackend) -> BoxedBackend {
   BoxedBackend::new(self)
 }
+
+///|
+/// FailNTimesMockBackend fails for the first N calls, then returns success
+pub struct FailNTimesMockBackend {
+  fail_count : Int
+  error_msg : String
+  success_response : String
+  mut call_count : Int
+}
+
+///|
+pub fn FailNTimesMockBackend::new(
+  fail_count : Int,
+  error_msg? : String = "mock error",
+  success_response? : String = "mock success",
+) -> FailNTimesMockBackend {
+  { fail_count, error_msg, success_response, call_count: 0 }
+}
+
+///|
+impl AgentBackend for FailNTimesMockBackend with run(
+  self,
+  _task,
+  _system_prompt,
+  on_output,
+) {
+  self.call_count += 1
+  on_output(@types.AgentEvent::StatusChange(@types.AgentStatus::Running))
+  if self.call_count <= self.fail_count {
+    on_output(
+      @types.AgentEvent::StatusChange(
+        @types.AgentStatus::Failed(self.error_msg),
+      ),
+    )
+    @types.AgentResult::failed(self.error_msg)
+  } else {
+    on_output(@types.AgentEvent::OutputLine(self.success_response))
+    on_output(@types.AgentEvent::StatusChange(@types.AgentStatus::Completed))
+    {
+      content: self.success_response,
+      status: Completed,
+      error: None,
+      session_id: "",
+    }
+  }
+}
+
+///|
+impl AgentBackend for FailNTimesMockBackend with name(_self) {
+  "fail-n-times-mock"
+}
+
+///|
+impl AgentBackend for FailNTimesMockBackend with set_session_id(_self, _sid) {
+
+}
+
+///|
+impl AgentBackend for FailNTimesMockBackend with get_session_id(_self) {
+  ""
+}
+
+///|
+pub fn FailNTimesMockBackend::boxed(
+  self : FailNTimesMockBackend,
+) -> BoxedBackend {
+  BoxedBackend::new(self)
+}

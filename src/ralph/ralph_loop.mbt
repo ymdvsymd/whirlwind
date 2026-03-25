@@ -512,11 +512,9 @@ fn RalphLoop::run_dag(self : RalphLoop, milestone : @types.Milestone) -> Bool {
         if ei < qi {
           let task = ready_queue[ei]
           ei = ei + 1
-          let result = backend.run(task.description, builder_system_prompt, fn(
-            e,
-          ) {
-            handle_event(self, bid, e)
-          })
+          let result = self.run_with_retry(
+            backend, task, builder_system_prompt, bid,
+          )
           let validated = validate_builder_result(self, task, result)
           in_flight = in_flight - 1
           match validated.status {
@@ -742,6 +740,22 @@ fn apply_scope_edges(
 }
 
 ///|
+/// Check if an error message indicates a server-side error (5xx) that should be retried
+pub fn is_server_error(err : String) -> Bool {
+  if err.is_empty() {
+    return false
+  }
+  err.contains("Internal server error") ||
+  err.contains("Bad gateway") ||
+  err.contains("Service unavailable") ||
+  err.contains("overloaded") ||
+  err.contains("529") ||
+  err.contains("500 ") ||
+  err.contains("502 ") ||
+  err.contains("503 ")
+}
+
+///|
 /// Check if all NeedsRework items are from infrastructure failures
 /// (backend errors, not actual code review verdicts)
 pub fn is_infra_failure(items : Array[String]) -> Bool {
@@ -749,6 +763,41 @@ pub fn is_infra_failure(items : Array[String]) -> Bool {
     return false
   }
   items.iter().all(fn(item) { item.contains("Verification failed:") })
+}
+
+///|
+/// Run a builder task with retry logic for server-side errors (5xx)
+fn RalphLoop::run_with_retry(
+  self : RalphLoop,
+  backend : @agent.BoxedBackend,
+  task : @types.RalphTask,
+  system_prompt : String,
+  agent_id : String,
+) -> @types.AgentResult {
+  let max_retries = 3
+  let mut attempt = 0
+  let mut result = backend.run(task.description, system_prompt, fn(e) {
+    handle_event(self, agent_id, e)
+  })
+  while attempt < max_retries {
+    match result.status {
+      Failed(err) =>
+        if is_server_error(err) {
+          attempt = attempt + 1
+          emit_info(
+            self,
+            "Task \{task.id} server error, retry \{attempt}/\{max_retries}: \{err}",
+          )
+          result = backend.run(task.description, system_prompt, fn(e) {
+            handle_event(self, agent_id, e)
+          })
+        } else {
+          break
+        }
+      _ => break
+    }
+  }
+  result
 }
 
 ///|

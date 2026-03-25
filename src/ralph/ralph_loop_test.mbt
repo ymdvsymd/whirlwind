@@ -4230,3 +4230,178 @@ test "normal rework cycle still works when changes are made" {
   assert_true(infos.iter().any(fn(msg) { msg.contains("rework needed") }))
   assert_true(infos.iter().any(fn(msg) { msg.contains("approved") }))
 }
+
+///|
+test "is_server_error detects 500 Internal server error" {
+  assert_true(@ralph.is_server_error("Internal server error"))
+}
+
+///|
+test "is_server_error detects 529 overloaded" {
+  assert_true(@ralph.is_server_error("API error: 529 overloaded"))
+}
+
+///|
+test "is_server_error rejects 400 client error" {
+  assert_false(@ralph.is_server_error("Bad request: invalid parameter"))
+}
+
+///|
+test "is_server_error rejects 401 authentication error" {
+  assert_false(@ralph.is_server_error("Authentication failed"))
+}
+
+///|
+test "is_server_error rejects empty error" {
+  assert_false(@ralph.is_server_error(""))
+}
+
+///|
+test "builder task retries on server error and succeeds" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  // Builder fails twice with server error, then succeeds
+  let builder_mock = @agent.FailNTimesMockBackend::new(
+    2,
+    error_msg="Internal server error",
+    success_response="Task completed successfully",
+  )
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  // Milestone should complete (retry succeeded)
+  inspect(mgr.milestones[0].status, content="Done")
+  // Should log retry attempts
+  assert_true(
+    infos.iter().any(fn(msg) { msg.contains("retry") && msg.contains("1/3") }),
+  )
+  assert_true(
+    infos.iter().any(fn(msg) { msg.contains("retry") && msg.contains("2/3") }),
+  )
+}
+
+///|
+test "builder task fails after max retries on persistent server error" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  // Builder always fails with server error (more failures than max retries)
+  let builder_mock = @agent.FailNTimesMockBackend::new(
+    10,
+    error_msg="Internal server error",
+    success_response="never reached",
+  )
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  // Milestone should fail after exhausting retries
+  assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
+  // Should have 3 retry attempts logged
+  assert_true(
+    infos.iter().any(fn(msg) { msg.contains("retry") && msg.contains("3/3") }),
+  )
+  // Should log final failure
+  assert_true(infos.iter().any(fn(msg) { msg.contains("failed") }))
+}
+
+///|
+test "builder task does not retry on client error (4xx)" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  // Builder fails with a client error (should not retry)
+  let builder_mock = @agent.FailingMockBackend::new(
+    error_msg="Bad request: invalid prompt format",
+  )
+  let verifier_mock = @agent.MockBackend::new(
+    default_response="<wave_approved>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+  // Milestone should fail immediately (no retries)
+  assert_true(mgr.milestones[0].status is @types.MilestoneStatus::Failed(_))
+  // No retry messages should appear
+  assert_false(
+    infos.iter().any(fn(msg) { msg.contains("retry") && msg.contains("/3") }),
+  )
+}
