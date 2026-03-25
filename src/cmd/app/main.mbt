@@ -78,10 +78,10 @@ fn print_usage() -> Unit {
   println("  --builder=<kind>        Builder agent kind (default: claude-code)")
   println("  --verifier=<kind>       Verifier agent kind (default: codex)")
   println(
-    "  --planner-model=<model>  Planner model (default: opus for claude-code)",
+    "  --planner-model=<model>  Planner model (default: sonnet for claude-code)",
   )
   println(
-    "  --builder-model=<model>  Builder model (default: opus for claude-code)",
+    "  --builder-model=<model>  Builder model (default: sonnet for claude-code)",
   )
   println(
     "  --verifier-model=<model> Verifier model (default: sonnet for claude-code)",

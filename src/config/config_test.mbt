@@ -272,8 +272,8 @@ test "apply_default_models sets defaults for ClaudeCode" {
     max_rework_attempts: 3,
   }
   let result = config.apply_default_models()
-  inspect(result.agents[0].model, content="Some(\"opus\")")
-  inspect(result.agents[1].model, content="Some(\"opus\")")
+  inspect(result.agents[0].model, content="Some(\"sonnet\")")
+  inspect(result.agents[1].model, content="Some(\"sonnet\")")
   inspect(result.agents[2].model, content="Some(\"sonnet\")")
   inspect(result.agents[3].model, content="Some(\"sonnet\")")
 }
@@ -370,6 +370,22 @@ test "validate warns Codex with claude model" {
   assert_true(
     errors.iter().any(fn(e) { e.contains("may not be valid for codex") }),
   )
+}
+
+///|
+test "apply_default_models uses sonnet for Planner and Builder" {
+  let config : @config.ProjectConfig = {
+    agents: [
+      { id: "p", kind: ClaudeCode, role: Planner, model: None },
+      { id: "b", kind: ClaudeCode, role: Builder, model: None },
+    ],
+    parse_warnings: [],
+    milestones_path: None,
+    max_rework_attempts: 3,
+  }
+  let result = config.apply_default_models()
+  inspect(result.agents[0].model, content="Some(\"sonnet\")")
+  inspect(result.agents[1].model, content="Some(\"sonnet\")")
 }
 
 ///|

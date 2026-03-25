@@ -139,7 +139,7 @@ pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
 
 ///|
 /// Apply default models for agents that have no model specified.
-/// ClaudeCode: planner/builder → "opus", verifier/review → "sonnet"
+/// ClaudeCode: planner/builder → "sonnet", verifier/review → "sonnet"
 /// Codex/Mock: no defaults (SDK handles it)
 pub fn ProjectConfig::apply_default_models(
   self : ProjectConfig,
@@ -152,7 +152,7 @@ pub fn ProjectConfig::apply_default_models(
         match agent.kind {
           ClaudeCode =>
             match agent.role {
-              Planner | Builder => Some("opus")
+              Planner | Builder => Some("sonnet")
               Verifier | Review => Some("sonnet")
             }
           _ => None
