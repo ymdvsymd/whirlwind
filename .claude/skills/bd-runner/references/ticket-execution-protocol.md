@@ -1,7 +1,5 @@
 # チケット実行プロトコル（サブエージェント用）
 
-このドキュメントは bd-runner のサブエージェントがチケットを実行する際の手順を定義する。
-
 ## 前提
 
 - プロジェクトは MoonBit + TypeScript で構成
@@ -15,15 +13,11 @@
 
 **ステータス確認（実行前ガード）**:
 
-実行開始前にチケットの現在のステータスを確認する:
-
 ```bash
 bd show <TICKET_ID> --json
 ```
 
-ステータスが `open` または `in_progress` でない場合（`closed`, `deferred`, `blocked` 等）:
-- スキップ理由をログ出力: `"SKIP: <TICKET_ID> — status is '<status>', skipping execution"`
-- 以下の結果を返して終了:
+ステータスが `open` または `in_progress` でない場合（`closed`, `deferred`, `blocked` 等）、以下の結果を返して終了:
   ```
   STATUS: skipped
   TICKET_ID: <ticket-id>
