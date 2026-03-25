@@ -89,9 +89,14 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 
    ```bash
    bd show <ticket-id>
+   bd sql "SELECT acceptance_criteria, notes, design FROM issues WHERE id='<ticket-id>'"
+   bd comments <ticket-id>
    ```
 
-   タイトル、説明、種別、優先度を記録する。
+   以下を記録する:
+   - タイトル、説明、種別、優先度（`bd show` から）
+   - acceptance_criteria、notes、design（`bd sql` から。値が空/NULLでないもののみ）
+   - comments（`bd comments` から。コメントが存在する場合のみ）
 
 7. **並列安全性の分析**（`SEQUENTIAL=true` の場合はスキップ、全て直列）:
    - 各チケットの説明から対象ファイルパス・モジュール名を抽出
@@ -135,6 +140,10 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
 - `references/ticket-execution-protocol.md` の全内容
 - 対象チケットID
 - チケットのタイトルと説明（`bd show` の出力）
+- acceptance_criteria（存在する場合）
+- notes（存在する場合）
+- design（存在する場合）
+- comments（存在する場合）
 - プロジェクトのテストコマンド: `just test`, `just live`
 
 サブエージェントは以下を返す:
@@ -167,7 +176,7 @@ arguments: priority:優先度閾値(P0-P4、デフォルトP3)
        subagent_type: "general-purpose"
        isolation: "worktree"
        mode: "bypassPermissions"
-       prompt: <ticket-execution-protocol + チケット詳細>
+       prompt: <ticket-execution-protocol + チケット詳細（タイトル・説明・AC・notes・design・comments）>
      ```
 
    - 全サブエージェントの完了を待機する
