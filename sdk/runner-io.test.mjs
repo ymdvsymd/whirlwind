@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-import { formatResultLog } from "./runner-io.mjs";
+import { createLogger, formatResultLog } from "./runner-io.mjs";
 
 test("formatResultLog with subtype only", () => {
   const result = formatResultLog({ subtype: "success" });
@@ -61,4 +64,54 @@ test("formatResultLog omits zero-value optional fields", () => {
     cachedTokens: 0,
   });
   assert.equal(result, "Result: success");
+});
+
+// whirlwind-08x: createLogger writes to log file when WHIRLWIND_LOG_FILE is set
+test("createLogger writes to log file when WHIRLWIND_LOG_FILE is set (whirlwind-08x)", () => {
+  const logFile = path.join(os.tmpdir(), `whirlwind-test-${Date.now()}.log`);
+  const origEnv = process.env.WHIRLWIND_LOG_FILE;
+  try {
+    process.env.WHIRLWIND_LOG_FILE = logFile;
+    const stderrChunks = [];
+    const fakeStderr = { write: (chunk) => stderrChunks.push(chunk) };
+    const log = createLogger("Claude", fakeStderr);
+
+    log("Task started: do something");
+    log("Result: success");
+
+    // Verify stderr still receives messages
+    assert.equal(stderrChunks.length, 2);
+    assert.match(stderrChunks[0], /\[Claude\] Task started: do something\n/);
+    assert.match(stderrChunks[1], /\[Claude\] Result: success\n/);
+
+    // Verify log file contains the same messages
+    const content = fs.readFileSync(logFile, "utf-8");
+    assert.match(content, /\[Claude\] Task started: do something/);
+    assert.match(content, /\[Claude\] Result: success/);
+  } finally {
+    process.env.WHIRLWIND_LOG_FILE = origEnv || "";
+    if (origEnv === undefined) delete process.env.WHIRLWIND_LOG_FILE;
+    try {
+      fs.unlinkSync(logFile);
+    } catch {}
+  }
+});
+
+// whirlwind-08x: createLogger does NOT write to file when WHIRLWIND_LOG_FILE is unset
+test("createLogger does not write to file when WHIRLWIND_LOG_FILE is unset (whirlwind-08x)", () => {
+  const origEnv = process.env.WHIRLWIND_LOG_FILE;
+  try {
+    delete process.env.WHIRLWIND_LOG_FILE;
+    const stderrChunks = [];
+    const fakeStderr = { write: (chunk) => stderrChunks.push(chunk) };
+    const log = createLogger("Claude", fakeStderr);
+
+    log("some message");
+
+    // Stderr still works
+    assert.equal(stderrChunks.length, 1);
+    assert.match(stderrChunks[0], /\[Claude\] some message\n/);
+  } finally {
+    if (origEnv !== undefined) process.env.WHIRLWIND_LOG_FILE = origEnv;
+  }
 });

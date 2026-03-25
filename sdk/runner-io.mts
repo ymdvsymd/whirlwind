@@ -1,3 +1,4 @@
+import { appendFileSync } from "node:fs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 export const {
@@ -23,7 +24,16 @@ export function createLogger(
   stream: NodeJS.WritableStream = process.stderr,
 ): (message: string) => void {
   return function log(message: string): void {
-    stream.write(`[${tag}] ${message}\n`);
+    const line = `[${tag}] ${message}\n`;
+    stream.write(line);
+    const logFile = process.env.WHIRLWIND_LOG_FILE;
+    if (logFile) {
+      try {
+        appendFileSync(logFile, line);
+      } catch {
+        // Silently ignore file write errors to avoid breaking the runner
+      }
+    }
   };
 }
 

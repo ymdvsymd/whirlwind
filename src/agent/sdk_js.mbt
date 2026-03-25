@@ -31,6 +31,7 @@ extern "js" fn js_run_sdk(runner : String, opts_json : String) -> String =
   #|    const runnerPath = path.join(__dirname, '..', 'sdk', runner);
   #|    const env = Object.assign({}, process.env);
   #|    delete env.CLAUDECODE;
+  #|    if (globalThis.__whirlwind_log_file) env.WHIRLWIND_LOG_FILE = globalThis.__whirlwind_log_file;
   #|    const result = spawnSync(process.execPath, [runnerPath, optsJson], {
   #|      encoding: 'utf-8',
   #|      stdio: ['pipe', 'pipe', 'inherit'],
