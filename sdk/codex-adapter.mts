@@ -22,7 +22,7 @@ type CodexThreadOptions = {
   model?: string;
   workingDirectory: string;
   approvalPolicy: "never";
-  sandboxMode: "workspace-write";
+  sandboxMode: "danger-full-access";
 };
 
 type CodexThread = {
@@ -86,7 +86,7 @@ export function createCodexAdapter(
         model: opts.model || undefined,
         workingDirectory: opts.cwd || process.cwd(),
         approvalPolicy: "never",
-        sandboxMode: "workspace-write",
+        sandboxMode: "danger-full-access",
       };
 
       const { thread, log } = opts.threadId

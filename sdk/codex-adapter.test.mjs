@@ -71,7 +71,7 @@ test("createCodexAdapter creates Codex with no config when systemPrompt is absen
   assert.equal(result.sessionId, "thread-2");
 });
 
-test("createCodexAdapter passes sandboxMode workspace-write to startThread", async () => {
+test("createCodexAdapter passes sandboxMode danger-full-access to startThread", async () => {
   let threadOpts;
   const fakeThread = {
     id: "thread-3",
@@ -96,7 +96,7 @@ test("createCodexAdapter passes sandboxMode workspace-write to startThread", asy
   const adapter = createCodexAdapter({ CodexClient: FakeCodex });
   await adapter.start({ prompt: "Test task" });
 
-  assert.equal(threadOpts.sandboxMode, "workspace-write");
+  assert.equal(threadOpts.sandboxMode, "danger-full-access");
   assert.equal(threadOpts.skipGitRepoCheck, undefined);
 });
 

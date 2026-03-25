@@ -738,6 +738,7 @@ fn emit_info(rl : RalphLoop, msg : String) -> Unit {
 }
 
 ///|
+/// Run builder tasks serially to avoid shared-worktree overwrites.
 fn run_builder_tasks_serially(
   rl : RalphLoop,
   backend : @agent.BoxedBackend,
