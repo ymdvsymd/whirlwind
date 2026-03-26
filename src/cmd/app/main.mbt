@@ -94,7 +94,7 @@ fn print_usage() -> Unit {
   )
   println("  --log=<path>            Log file path")
   println(
-    "  --max-in-flight=<N>     Max concurrent tasks in DAG execution (default: 1)",
+    "  --max-in-flight=<N>     Max concurrent tasks in DAG execution (default: 3)",
   )
   println("  --version, -v           Show version")
   println("")

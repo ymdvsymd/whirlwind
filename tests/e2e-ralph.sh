@@ -271,9 +271,9 @@ fi
 if [ "$MODE" = "mock" ]; then
   # DAG dispatch was used (not wave-based)
   assert_file_contains "$LOG_FILE" "Executing DAG for"
-  # Tasks were dispatched with in_flight tracking
+  # Tasks were dispatched with batch tracking
   assert_file_contains "$LOG_FILE" "Dispatching task"
-  assert_file_contains "$LOG_FILE" "in_flight:"
+  assert_file_contains "$LOG_FILE" "batch:"
 fi
 
 echo "PASS: All e2e assertions passed ($MODE)"

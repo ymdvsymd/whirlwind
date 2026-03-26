@@ -23,7 +23,7 @@ pub fn RalphLoop::new(
   callbacks : @types.OrchestratorCallbacks,
   dry_run? : Bool = false,
   lang? : String = "en",
-  max_in_flight? : Int = 1,
+  max_in_flight? : Int = 3,
   file_checker? : (String) -> Bool = path_exists,
 ) -> RalphLoop {
   let planner_id = find_agent_id(config, @types.AgentRole::Planner)
@@ -398,7 +398,6 @@ fn RalphLoop::run_dag(self : RalphLoop, milestone : @types.Milestone) -> Bool {
       }
 
       // Propagate already-done tasks
-      let done_set : Map[String, Bool] = {}
       let mut already_done = 0
       for t in milestone.tasks {
         if t.status == Done {
@@ -432,90 +431,137 @@ fn RalphLoop::run_dag(self : RalphLoop, milestone : @types.Milestone) -> Bool {
       // Track all results for post-execution file conflict check
       let all_completed : Array[(@types.RalphTask, @types.AgentResult)] = []
 
-      // Ready-queue dispatch loop with slot-refilling after each completion.
-      // Two indices: qi = next to dispatch, ei = next to execute.
-      // After executing ONE task, we return to dispatch phase to refill
-      // open slots — enabling successors unblocked by the completion to
-      // start immediately rather than waiting for an entire batch.
-      let mut qi = 0
-      let mut ei = 0
-      let mut in_flight = 0
-      let mut failed = false
-      while qi < ready_queue.length() || ei < qi {
-        // Dispatch phase: fill slots up to max_in_flight
-        let dispatched_any = qi < ready_queue.length() &&
-          in_flight < self.max_in_flight
-        while qi < ready_queue.length() && in_flight < self.max_in_flight {
-          let task = ready_queue[qi]
+      // Batch-parallel dispatch loop.
+      // Collects up to max_in_flight ready tasks per batch, executes them
+      // via run_parallel (true concurrency for SDK backends), then
+      // propagates completions to unlock the next batch.
+      let mut batch_start = 0
+      while batch_start < ready_queue.length() {
+        let batch_end = if batch_start + self.max_in_flight <
+          ready_queue.length() {
+          batch_start + self.max_in_flight
+        } else {
+          ready_queue.length()
+        }
+        let batch_size = batch_end - batch_start
+
+        // Mark all batch tasks as InProgress and log dispatch
+        for i in batch_start..<batch_end {
+          let task = ready_queue[i]
           task.status = InProgress(bid)
-          in_flight = in_flight + 1
           emit_info(
             self,
-            "Dispatching task \{task.id} (in_flight: \{in_flight}/\{self.max_in_flight})",
+            "Dispatching task \{task.id} (batch: \{batch_size}, max: \{self.max_in_flight})",
           )
-          qi = qi + 1
-        }
-        if not(dispatched_any) && ei >= qi {
-          break
         }
 
-        // Execute ONE task (slot-refilling: return to dispatch after each)
-        if ei < qi {
-          let task = ready_queue[ei]
-          ei = ei + 1
+        // Execute batch
+        let mut failed = false
+        if batch_size == 1 {
+          // Single task: use run_with_retry for server error retry
+          let task = ready_queue[batch_start]
           let result = self.run_with_retry(
             backend, task, builder_system_prompt, bid,
           )
           let validated = validate_builder_result(self, task, result)
-          in_flight = in_flight - 1
           match validated.status {
             Completed => {
               task.status = Done
               task.result = Some(validated.content)
-              done_set[task.id] = true
               all_completed.push((task, validated))
               emit_info(self, "Task \{task.id} completed")
-              // Propagate completion: unblock dependents (explicit deps)
-              match reverse_deps.get(task.id) {
-                Some(succs) =>
-                  for succ in succs {
-                    match deps_remaining.get(succ) {
-                      Some(d) => {
-                        let new_d = d - 1
-                        deps_remaining[succ] = new_d
-                        if new_d == 0 {
-                          match task_map.get(succ) {
-                            Some(t) =>
-                              if not(t.status is Done) &&
-                                not(t.status is Failed(_)) {
-                                ready_queue.push(t)
-                              }
-                            None => ()
-                          }
-                        }
-                      }
-                      None => ()
-                    }
-                  }
-                None => ()
-              }
             }
             _ => {
               let err = validated.error.unwrap_or("unknown error")
               task.status = Failed(err)
               task.result = Some(validated.content)
               emit_info(self, "Task \{task.id} failed: \{err}")
-              // Cascade failure to all transitive dependents
               self.cascade_fail(task.id, task_map, reverse_deps)
               failed = true
             }
           }
-          self.save_milestones()
-          if failed {
-            emit_info(self, "DAG execution failed: task failure")
-            return false
+        } else {
+          // Multiple tasks: use run_parallel for concurrent execution
+          let prompts : Array[(String, String)] = []
+          for i in batch_start..<batch_end {
+            prompts.push((ready_queue[i].description, builder_system_prompt))
+          }
+          let results = @agent.run_parallel(backend, prompts, fn(e) {
+            handle_event(self, bid, e)
+          })
+          for i in 0..<batch_size {
+            let task = ready_queue[batch_start + i]
+            let mut result = results[i]
+            // Retry server errors individually
+            match result.status {
+              Failed(err) =>
+                if is_server_error(err) {
+                  emit_info(
+                    self,
+                    "Task \{task.id} server error in batch, retrying individually",
+                  )
+                  result = self.run_with_retry(
+                    backend, task, builder_system_prompt, bid,
+                  )
+                }
+              _ => ()
+            }
+            let validated = validate_builder_result(self, task, result)
+            match validated.status {
+              Completed => {
+                task.status = Done
+                task.result = Some(validated.content)
+                all_completed.push((task, validated))
+                emit_info(self, "Task \{task.id} completed")
+              }
+              _ => {
+                let err = validated.error.unwrap_or("unknown error")
+                task.status = Failed(err)
+                task.result = Some(validated.content)
+                emit_info(self, "Task \{task.id} failed: \{err}")
+                self.cascade_fail(task.id, task_map, reverse_deps)
+                failed = true
+              }
+            }
           }
         }
+
+        self.save_milestones()
+        if failed {
+          emit_info(self, "DAG execution failed: task failure")
+          return false
+        }
+
+        // Propagate completions: unblock dependents for next batch
+        for i in batch_start..<batch_end {
+          let task = ready_queue[i]
+          if task.status == Done {
+            match reverse_deps.get(task.id) {
+              Some(succs) =>
+                for succ in succs {
+                  match deps_remaining.get(succ) {
+                    Some(d) => {
+                      let new_d = d - 1
+                      deps_remaining[succ] = new_d
+                      if new_d == 0 {
+                        match task_map.get(succ) {
+                          Some(t) =>
+                            if not(t.status is Done) &&
+                              not(t.status is Failed(_)) {
+                              ready_queue.push(t)
+                            }
+                          None => ()
+                        }
+                      }
+                    }
+                    None => ()
+                  }
+                }
+              None => ()
+            }
+          }
+        }
+        batch_start = batch_end
       }
 
       // Check for stuck tasks (pending but never became ready — cycle fallback)

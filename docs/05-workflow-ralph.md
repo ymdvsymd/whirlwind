@@ -361,27 +361,25 @@ Milestone (目標単位)
 ```
 
 - **Milestone**: 達成すべき目標。複数定義でき、順番に処理される。
-- **Wave**: タスクのグループ。Wave 0 → Wave 1 → ... と順序実行される。
-- **Task**: 個別の実行単位。同一 Wave 内のタスクも現在は順序実行される。
+- **Layer**: DAG のトポロジカルレイヤー。依存が解決されたタスクが同一レイヤーに配置される。
+- **Task**: 個別の実行単位。`depends_on` で明示的依存を宣言する。
 
-### Wave の役割
+### DAG スケジューリング
 
-Wave はタスクの依存順序を表す。同一 Wave 内のタスクは並列実行される（v0.8.0）。
+タスク間の依存は `depends_on` フィールドで宣言される。Kahn's アルゴリズムでレイヤーを計算し、依存が解決されたタスクからバッチ並列実行する。
 
 **1. タスクの実行順序** (`ralph_loop.mbt`)
 
-Wave 0 のタスクがすべて完了してから Wave 1 が実行される。同一 Wave 内のタスクは `@agent.run_parallel()` で並列実行される。
+同一レイヤーのタスクは `@agent.run_parallel()` でバッチ並列実行される（`--max-in-flight` で同時実行数を制御、デフォルト 3）。レイヤー内の全タスク完了後に依存解決し、次のバッチを構成する。
 
-**2. 検証のタイミング（v0.9.0 で変更）**
+**2. 検証のタイミング**
 
-v0.8.0 までは Wave 単位で検証していたが、v0.9.0 で**マイルストーン単位の一括検証**に変更。全 Wave 完了後に 4 観点（CodeQuality, Performance, Security, GoalAlignment）を並列で1回だけ実行する。
+全タスク完了後に**マイルストーン単位の一括検証**を実行。4 観点（CodeQuality, Performance, Security, GoalAlignment）を並列で1回だけ実行する。
 
 ```
-Wave 0 並列実行 → Wave 1 並列実行 → ... → 全 Wave 完了
+Layer 0 バッチ並列 → Layer 1 バッチ並列 → ... → 全タスク完了
 → マイルストーン検証 (4観点並列) → [NeedsRework なら rework → 再検証]
 ```
-
-この変更により、3 Wave のマイルストーンで検証呼び出しが 10 回 → 4 回に削減された。トレードオフとして、Wave 0 の問題が Wave 2 完了まで検出されなくなる。
 
 ---
 
@@ -910,9 +908,9 @@ task.description + "\n\nFeedback from verifier:\n" + "- feedback1\n- feedback2\n
 - リワークプロンプト: `task.description + "\n\nFeedback from verifier:\n" + feedback`
 - 5つのユニットテストで動作を検証済み（`ralph_loop_test.mbt`）
 
-### 14.2 Wave 内タスクの並列実行は未対応
+### 14.2 DAG バッチ並列実行
 
-同一 Wave のタスクは設計上独立だが、現在は `for task in tasks` で順序実行。
+同一レイヤーのタスクは `@agent.run_parallel()` でバッチ並列実行される。`--max-in-flight=N` で同時実行数を制御（デフォルト 3）。単一タスクバッチではサーバーエラーリトライが自動適用される。
 
 ### 14.3 途中中断時の状態保存
 
@@ -996,7 +994,7 @@ Verifier にはまだ適用されていない。
 
 ### 14.8 その他
 
-- Wave 内タスクの並列実行: 同一 Wave 内のタスクは `@agent.run_parallel()` で並列実行される（v0.8.0）。検証は全 Wave 完了後にマイルストーン単位で実行される（v0.9.0）
+- DAG バッチ並列実行: 依存解決済みタスクは `@agent.run_parallel()` でバッチ並列実行される（v0.3.0）。検証は全タスク完了後にマイルストーン単位で実行される
 - `review_interval` が Config で定義されるが Ralph では未使用
 - `current_wave` フィールドが resume 機能の準備か不明
 - プログレッシブなマイルストーン追加/削除は未対応

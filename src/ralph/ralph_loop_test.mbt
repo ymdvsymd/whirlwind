@@ -3202,20 +3202,19 @@ test "E2E DAG: planner outputs DEPENDS_ON format with max_in_flight=2 batches di
   inspect(mgr.milestones[0].status, content="Done")
   assert_true(builder_mock.get_history().length() == 3)
 
-  // max_in_flight=2: slot-refilling dispatch — after executing one task,
-  // the dispatch phase immediately refills open slots before executing the next.
+  // max_in_flight=2: batch-parallel dispatch — first batch of 2, then batch of 1.
   let dispatch_msgs : Array[String] = infos
     .iter()
     .filter(fn(msg) {
-      msg.contains("Dispatching task") && msg.contains("in_flight:")
+      msg.contains("Dispatching task") && msg.contains("batch:")
     })
     .collect()
   assert_true(dispatch_msgs.length() == 3)
-  // Initial dispatch: fills 2 slots (A at 1/2, B at 2/2)
-  assert_true(dispatch_msgs[0].contains("in_flight: 1/2"))
-  assert_true(dispatch_msgs[1].contains("in_flight: 2/2"))
-  // After A completes (in_flight drops to 1), C refills the open slot (2/2)
-  assert_true(dispatch_msgs[2].contains("in_flight: 2/2"))
+  // Batch 1: 2 tasks dispatched together
+  assert_true(dispatch_msgs[0].contains("batch: 2"))
+  assert_true(dispatch_msgs[1].contains("batch: 2"))
+  // Batch 2: 1 remaining task
+  assert_true(dispatch_msgs[2].contains("batch: 1"))
 }
 
 ///|
@@ -3284,7 +3283,7 @@ test "E2E DAG: max_in_flight=2 mid-batch ready resolution dispatches dependent i
   let dispatch_msgs : Array[String] = infos
     .iter()
     .filter(fn(msg) {
-      msg.contains("Dispatching task") && msg.contains("in_flight:")
+      msg.contains("Dispatching task") && msg.contains("batch:")
     })
     .collect()
   let complete_msgs : Array[String] = infos
@@ -3296,22 +3295,20 @@ test "E2E DAG: max_in_flight=2 mid-batch ready resolution dispatches dependent i
   assert_true(dispatch_msgs.length() == 4)
   assert_true(complete_msgs.length() == 4)
 
-  // Initial dispatch: A at 1/2, B at 2/2 (both layer 0, no deps)
+  // Batch 1: A and B dispatched together (both layer 0, no deps)
   assert_true(dispatch_msgs[0].contains(tasks[0].id))
-  assert_true(dispatch_msgs[0].contains("in_flight: 1/2"))
+  assert_true(dispatch_msgs[0].contains("batch: 2"))
   assert_true(dispatch_msgs[1].contains(tasks[1].id))
-  assert_true(dispatch_msgs[1].contains("in_flight: 2/2"))
+  assert_true(dispatch_msgs[1].contains("batch: 2"))
 
-  // Mid-batch ready resolution: C dispatched at 2/2 (after A completes,
-  // slot refilled — C was NOT ready at start, only became ready mid-batch)
+  // Batch 2: C and D dispatched together (after batch 1 completes,
+  // A→C and B→D deps resolved — inter-batch dependency resolution)
   assert_true(dispatch_msgs[2].contains(tasks[2].id))
-  assert_true(dispatch_msgs[2].contains("in_flight: 2/2"))
-
-  // Mid-batch ready resolution: D dispatched at 2/2 (after B completes)
+  assert_true(dispatch_msgs[2].contains("batch: 2"))
   assert_true(dispatch_msgs[3].contains(tasks[3].id))
-  assert_true(dispatch_msgs[3].contains("in_flight: 2/2"))
+  assert_true(dispatch_msgs[3].contains("batch: 2"))
 
-  // Find log indices for interleaving verification
+  // Find log indices for ordering verification
   let mut a_complete_idx = -1
   let mut b_complete_idx = -1
   let mut c_dispatch_idx = -1
@@ -3334,20 +3331,17 @@ test "E2E DAG: max_in_flight=2 mid-batch ready resolution dispatches dependent i
       d_dispatch_idx = i
     }
   }
-  // All events must have been found
   assert_true(a_complete_idx >= 0)
   assert_true(b_complete_idx >= 0)
   assert_true(c_dispatch_idx >= 0)
   assert_true(d_dispatch_idx >= 0)
 
-  // A must complete before C can be dispatched (C depends on A)
+  // Both A and B must complete before C and D are dispatched
+  // (inter-batch resolution: entire batch 1 completes, then deps unlock batch 2)
   assert_true(a_complete_idx < c_dispatch_idx)
-  // B must complete before D can be dispatched (D depends on B)
   assert_true(b_complete_idx < d_dispatch_idx)
-
-  // Key assertion: C is dispatched BEFORE B completes — proving mid-batch
-  // slot-refilling (C was ready after A, not waiting for entire batch)
-  assert_true(c_dispatch_idx < b_complete_idx)
+  assert_true(a_complete_idx < d_dispatch_idx)
+  assert_true(b_complete_idx < c_dispatch_idx)
 }
 
 ///|
@@ -3621,8 +3615,14 @@ test "E2E DAG: default max_in_flight=1 dispatches strictly serially" {
     },
     on_save: fn() {  },
   }
-  // Default max_in_flight = 1 (omitted to test the default)
-  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  // Explicit max_in_flight = 1 for serial dispatch test
+  let rl = @ralph.RalphLoop::new(
+    config,
+    mgr,
+    backends,
+    callbacks,
+    max_in_flight=1,
+  )
   rl.run()
 
   // All tasks should complete
@@ -3634,17 +3634,17 @@ test "E2E DAG: default max_in_flight=1 dispatches strictly serially" {
   }
   assert_true(builder_mock.get_history().length() == 3)
 
-  // Verify strict serial dispatch: every dispatch log shows in_flight: 1/1
+  // Verify strict serial dispatch: every dispatch log shows batch: 1
   let dispatch_msgs : Array[String] = infos
     .iter()
     .filter(fn(msg) {
-      msg.contains("Dispatching task") && msg.contains("in_flight:")
+      msg.contains("Dispatching task") && msg.contains("batch:")
     })
     .collect()
   assert_true(dispatch_msgs.length() == 3)
-  // Each dispatch must show exactly 1/1 — never 2/1 or higher
+  // Each dispatch must show batch: 1 — single task per batch (serial)
   for msg in dispatch_msgs {
-    assert_true(msg.contains("in_flight: 1/1"))
+    assert_true(msg.contains("batch: 1"))
   }
 
   // Verify interleaving: dispatch and completion alternate strictly
