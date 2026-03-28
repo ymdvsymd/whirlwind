@@ -63,6 +63,7 @@ test "VerifierAgent::build_perspective_prompt includes code quality checklist" {
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = v.build_perspective_prompt(CodeQuality, milestone, 0, [], "")
   assert_true(
@@ -80,6 +81,7 @@ test "VerifierAgent::build_perspective_prompt includes performance checklist" {
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = v.build_perspective_prompt(Performance, milestone, 0, [], "")
   assert_true(
@@ -97,6 +99,7 @@ test "VerifierAgent::build_perspective_prompt includes security checklist" {
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = v.build_perspective_prompt(Security, milestone, 0, [], "")
   assert_true(
@@ -114,6 +117,7 @@ test "VerifierAgent::build_perspective_prompt goal alignment includes milestone 
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = v.build_perspective_prompt(GoalAlignment, milestone, 0, [], "")
   assert_true(prompt.contains("Ship milestone goal text"))
@@ -129,6 +133,7 @@ test "VerifierAgent::build_perspective_prompt includes goal alignment instructio
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = v.build_perspective_prompt(GoalAlignment, milestone, 0, [], "")
   assert_true(prompt.contains("## Instructions"))
@@ -222,6 +227,7 @@ test "VerifierAgent::verify with mock backend approved calls all four perspectiv
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let verdict = v.verify(milestone, 0, [], backend, "")
   let history = mock.get_history()
@@ -240,6 +246,7 @@ test "VerifierAgent::verify with explicit perspectives skips goal alignment" {
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let verdict = v.verify(milestone, 0, [], backend, "", perspectives=[
     CodeQuality,
@@ -262,6 +269,7 @@ test "VerifierAgent::verify with goal alignment only calls backend once" {
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let verdict = v.verify(milestone, 0, [], backend, "", perspectives=[
     GoalAlignment,
@@ -282,6 +290,7 @@ test "VerifierAgent::verify with failing mock backend is not approved" {
     status: @types.MilestoneStatus::InProgress,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let verdict = v.verify(milestone, 0, [], backend, "")
   match verdict {

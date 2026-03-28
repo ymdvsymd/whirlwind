@@ -258,6 +258,26 @@ test "MilestoneManager::load_from_json defaults perspectives when key is absent"
 }
 
 ///|
+test "MilestoneManager::load_from_json roundtrip preserves perspectives" {
+  let mgr = @ralph.MilestoneManager::new()
+  mgr.milestones.push({
+    id: "m1",
+    goal: "Serialize perspectives",
+    status: @types.MilestoneStatus::Pending,
+    tasks: [],
+    summary: "",
+    perspectives: ["CodeQuality", "GoalAlignment"],
+  })
+
+  let serialized = mgr.to_json()
+  let reloaded = @ralph.MilestoneManager::load_from_json(serialized)
+  let perspectives = reloaded.milestones[0].perspectives
+  assert_true(perspectives.length() == 2)
+  inspect(perspectives[0], content="CodeQuality")
+  inspect(perspectives[1], content="GoalAlignment")
+}
+
+///|
 test "MilestoneManager::load_from_json preserves explicit empty perspectives" {
   let json =
     #|{
@@ -276,24 +296,56 @@ test "MilestoneManager::load_from_json preserves explicit empty perspectives" {
 }
 
 ///|
-test "MilestoneManager::load_from_json uses explicit perspectives as-is" {
-  let json =
-    #|{
-    #|  "milestones": [
-    #|    {
-    #|      "id": "m1",
-    #|      "goal": "Test-only change",
-    #|      "status": "pending",
-    #|      "perspectives": ["CodeQuality", "GoalAlignment"],
-    #|      "tasks": []
-    #|    }
-    #|  ]
-    #|}
-  let mgr = @ralph.MilestoneManager::load_from_json(json)
-  let perspectives = mgr.milestones[0].perspectives
+test "parse_perspectives_line returns None when PERSPECTIVES line is absent" {
+  let output =
+    #|TASKS:
+    #|1. Add tests
+  let perspectives = @ralph.parse_perspectives_line(output)
+  assert_true(perspectives is None)
+}
+
+///|
+test "parse_perspectives_line returns Some([]) for PERSPECTIVES: (none)" {
+  let output =
+    #|PERSPECTIVES: (none)
+    #|TASKS:
+    #|1. Verify behavior
+  let parsed = @ralph.parse_perspectives_line(output)
+  assert_true(parsed is Some(_))
+  let perspectives = parsed.unwrap()
+  assert_true(perspectives.length() == 0)
+}
+
+///|
+test "parse_perspectives_line returns Some([CodeQuality, GoalAlignment])" {
+  let output =
+    #|Goal: update planner
+    #|PERSPECTIVES: CodeQuality, GoalAlignment
+    #|TASKS:
+    #|1. Update parser
+  let parsed = @ralph.parse_perspectives_line(output)
+  assert_true(parsed is Some(_))
+  let perspectives = parsed.unwrap()
   assert_true(perspectives.length() == 2)
   inspect(perspectives[0], content="CodeQuality")
   inspect(perspectives[1], content="GoalAlignment")
+}
+
+///|
+test "parse_perspectives_line returns Some(all 4 perspectives)" {
+  let output =
+    #|Goal: update production code
+    #|PERSPECTIVES: CodeQuality, Performance, Security, GoalAlignment
+    #|TASKS:
+    #|1. Update verifier
+  let parsed = @ralph.parse_perspectives_line(output)
+  assert_true(parsed is Some(_))
+  let perspectives = parsed.unwrap()
+  assert_true(perspectives.length() == 4)
+  inspect(perspectives[0], content="CodeQuality")
+  inspect(perspectives[1], content="Performance")
+  inspect(perspectives[2], content="Security")
+  inspect(perspectives[3], content="GoalAlignment")
 }
 
 ///|

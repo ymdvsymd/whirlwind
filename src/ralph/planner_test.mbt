@@ -7,10 +7,16 @@ test "PlannerAgent::build_plan_prompt includes milestone info and DAG format" {
     status: @types.MilestoneStatus::Pending,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = planner.build_plan_prompt(milestone)
   assert_true(prompt.contains("m1"))
   assert_true(prompt.contains("Build authentication system"))
+  assert_true(prompt.contains("PERSPECTIVES:"))
+  assert_true(
+    prompt.contains("CodeQuality, Performance, Security, GoalAlignment"),
+  )
+  assert_true(prompt.contains("(none)"))
   // DAG format: TASKS header and DEPENDS_ON instructions
   assert_true(prompt.contains("TASKS:"))
   assert_true(prompt.contains("DEPENDS_ON:"))
@@ -28,6 +34,7 @@ test "PlannerAgent::build_plan_prompt lang=ja" {
     status: @types.MilestoneStatus::Pending,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = planner.build_plan_prompt(milestone)
   assert_true(prompt.contains("Japanese"))
@@ -54,6 +61,7 @@ test "whirlwind-bqm: planner prompt warns against duplicate work across mileston
     status: @types.MilestoneStatus::Pending,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let prompt = planner.build_plan_prompt(milestone)
   // The prompt must contain a scope boundary instruction telling the planner
@@ -79,6 +87,7 @@ test "PlannerAgent::plan with mock backend" {
     status: @types.MilestoneStatus::Pending,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   let result = planner.plan(milestone, backend, "", [], mgr)
   assert_true(result.tasks.length() == 3)

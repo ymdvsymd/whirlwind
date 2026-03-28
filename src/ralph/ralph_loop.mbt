@@ -111,10 +111,7 @@ fn RalphLoop::run_dry_run(self : RalphLoop) -> Unit {
             "Dry-run: milestone \{milestone.id} planned \{milestone.tasks.length()} tasks; skipping execution and verification",
           )
         } else if not(planned) {
-          emit_info(
-            self,
-            "Dry-run: milestone \{milestone.id} planning failed",
-          )
+          emit_info(self, "Dry-run: milestone \{milestone.id} planning failed")
         }
       }
     }
@@ -192,7 +189,7 @@ fn RalphLoop::run_milestone(
 fn RalphLoop::ensure_milestone_tasks(
   self : RalphLoop,
   milestone : @types.Milestone,
-  persist~ : Bool = true,
+  persist? : Bool = true,
 ) -> Bool {
   if not(milestone.tasks.is_empty()) {
     return true
@@ -215,6 +212,16 @@ fn RalphLoop::ensure_milestone_tasks(
           match plan_result.status {
             Planned => {
               milestone.tasks = plan_result.tasks
+              let should_apply_planner_perspectives = match self.config.milestones_path {
+                Some(_) => false
+                None => true
+              }
+              if should_apply_planner_perspectives {
+                match parse_perspectives_line(plan_result.raw_output) {
+                  Some(perspectives) => milestone.perspectives = perspectives
+                  None => ()
+                }
+              }
               if persist {
                 self.save_milestones()
               }
@@ -774,6 +781,30 @@ fn results_equal(
 }
 
 ///|
+pub fn resolve_perspectives(
+  names : Array[String],
+) -> Array[@prompts.Perspective] {
+  let resolved : Array[@prompts.Perspective] = []
+  for name in names {
+    match @prompts.parse_perspective(name) {
+      Some(perspective) => resolved.push(perspective)
+      None =>
+        println("[WARN] Ignoring invalid verification perspective: \{name}")
+    }
+  }
+  if resolved.is_empty() {
+    [
+      @prompts.Perspective::CodeQuality,
+      @prompts.Perspective::Performance,
+      @prompts.Perspective::Security,
+      @prompts.Perspective::GoalAlignment,
+    ]
+  } else {
+    resolved
+  }
+}
+
+///|
 /// Verify milestone after all waves are complete (all 4 perspectives)
 fn RalphLoop::verify_milestone(
   self : RalphLoop,
@@ -798,12 +829,21 @@ fn RalphLoop::verify_milestone(
           true
         }
         Some(backend) => {
+          if milestone.perspectives.is_empty() {
+            emit_info(
+              self,
+              "No verification perspectives for milestone \{milestone.id}, auto-approving",
+            )
+            return true
+          }
+          let perspectives = resolve_perspectives(milestone.perspectives)
           let verdict = verifier.verify(
             milestone,
             verification_wave,
             all_results,
             backend,
             "",
+            perspectives~,
             on_event=fn(e) { handle_event(self, verifier.agent_id, e) },
           )
           match verdict {

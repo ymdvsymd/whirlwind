@@ -334,6 +334,7 @@ pub(all) struct Milestone {
   mut status : MilestoneStatus
   mut tasks : Array[RalphTask]
   mut summary : String
+  mut perspectives : Array[String]
 }
 
 ///|

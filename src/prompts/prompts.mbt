@@ -8,6 +8,17 @@ pub(all) enum Perspective {
 } derive(Eq, Show)
 
 ///|
+pub fn parse_perspective(s : String) -> Perspective? {
+  match s {
+    "CodeQuality" => Some(CodeQuality)
+    "Performance" => Some(Performance)
+    "Security" => Some(Security)
+    "GoalAlignment" => Some(GoalAlignment)
+    _ => None
+  }
+}
+
+///|
 pub fn code_quality_checklist(lang : String) -> String {
   let buf = StringBuilder::new()
   if lang == "ja" {

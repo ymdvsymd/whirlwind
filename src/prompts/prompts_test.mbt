@@ -72,3 +72,37 @@ test "Perspective::to_string displays correctly" {
   let p2 : @prompts.Perspective = GoalAlignment
   inspect(p2, content="GoalAlignment")
 }
+
+///|
+test "parse_perspective returns CodeQuality for known string" {
+  inspect(
+    @prompts.parse_perspective("CodeQuality"),
+    content="Some(CodeQuality)",
+  )
+}
+
+///|
+test "parse_perspective returns Performance for known string" {
+  inspect(
+    @prompts.parse_perspective("Performance"),
+    content="Some(Performance)",
+  )
+}
+
+///|
+test "parse_perspective returns Security for known string" {
+  inspect(@prompts.parse_perspective("Security"), content="Some(Security)")
+}
+
+///|
+test "parse_perspective returns GoalAlignment for known string" {
+  inspect(
+    @prompts.parse_perspective("GoalAlignment"),
+    content="Some(GoalAlignment)",
+  )
+}
+
+///|
+test "parse_perspective returns None for unknown string" {
+  inspect(@prompts.parse_perspective("Unknown"), content="None")
+}

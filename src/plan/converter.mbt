@@ -34,6 +34,7 @@ pub fn convert_to_milestones(
           status: @types.MilestoneStatus::Pending,
           tasks: [],
           summary: "",
+          perspectives: [],
         })
         milestone_index += 1
       }

@@ -101,6 +101,7 @@ if [ "$MODE" = "mock-flags" ] || [ "$MODE" = "live-flags" ]; then
     {
       "id": "m1",
       "goal": "Create src/hello.js exporting greet(name) that returns 'Hello, <name>!' and create tests/hello.test.js using Node assert to verify greet('World') === 'Hello, World!'",
+      "perspectives": ["CodeQuality", "Performance", "Security", "GoalAlignment"],
       "status": "pending",
       "summary": "",
       "tasks": []
@@ -108,6 +109,7 @@ if [ "$MODE" = "mock-flags" ] || [ "$MODE" = "live-flags" ]; then
     {
       "id": "m2",
       "goal": "Run 'node tests/hello.test.js' and verify it exits with code 0 with no assertion errors",
+      "perspectives": [],
       "status": "pending",
       "summary": "",
       "tasks": []
@@ -195,6 +197,34 @@ assert_milestone_summary_non_empty() {
   ' "$file" "$milestone_id"
 }
 
+assert_milestone_perspectives() {
+  local file="$1"
+  local milestone_id="$2"
+  local expected_length="$3"
+  node -e '
+    const fs = require("fs");
+    const file = process.argv[1];
+    const milestoneId = process.argv[2];
+    const expectedLength = Number(process.argv[3]);
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    const milestone = (data.milestones || []).find((m) => m.id === milestoneId);
+    if (!milestone) {
+      console.error(`FAIL: milestone not found: ${milestoneId}`);
+      process.exit(1);
+    }
+    if (!Array.isArray(milestone.perspectives)) {
+      console.error(`FAIL: expected perspectives array for ${milestoneId}`);
+      process.exit(1);
+    }
+    if (milestone.perspectives.length !== expectedLength) {
+      console.error(
+        `FAIL: expected perspectives length ${expectedLength} for ${milestoneId}, got ${milestone.perspectives.length}`,
+      );
+      process.exit(1);
+    }
+  ' "$file" "$milestone_id" "$expected_length"
+}
+
 assert_pending_milestone_exists() {
   local file="$1"
   node -e '
@@ -234,22 +264,36 @@ if [ "$USES_PLAN_MODE" = true ]; then
   assert_file_contains "$LOG_FILE" "Generated milestones at .runs/"
   if [ "$IS_DRY_RUN" = true ]; then
     assert_pending_milestone_exists "$RUN_MILESTONES"
+    assert_file_contains "$LOG_FILE" "PERSPECTIVES:"
     assert_contains "Dry-run complete"
   else
     assert_contains "Milestone m1 complete"
     assert_contains "Milestone m2 complete"
+    assert_contains "PERSPECTIVES:"
     assert_file_contains "$LOG_FILE" "Milestone m1 complete"
     assert_file_contains "$LOG_FILE" "Milestone m2 complete"
+    assert_file_contains "$LOG_FILE" "PERSPECTIVES: CodeQuality, GoalAlignment"
+    assert_file_contains "$LOG_FILE" "PERSPECTIVES: (none)"
+    assert_file_contains "$LOG_FILE" "Verifying perspective: CodeQuality"
+    assert_file_contains "$LOG_FILE" "Verifying perspective: GoalAlignment"
+    assert_file_contains "$LOG_FILE" "No verification perspectives for milestone m2"
     assert_milestone_summary_non_empty "$RUN_MILESTONES" "m1"
+    assert_milestone_perspectives "$RUN_MILESTONES" "m1" 2
+    assert_milestone_perspectives "$RUN_MILESTONES" "m2" 0
   fi
 else
   # *-flags mode: milestones.json は $TMP_DIR 直下
   assert_contains "Milestone m1 complete"
   assert_contains "Milestone m2 complete"
   assert_contains "Milestones saved to milestones.json"
+  assert_contains "PERSPECTIVES:"
+  assert_file_contains "$LOG_FILE" "Verifying milestone m1"
+  assert_file_contains "$LOG_FILE" "No verification perspectives for milestone m2"
   assert_file_contains "$LOG_FILE" "Milestone m1 complete"
   assert_file_contains "$LOG_FILE" "Milestone m2 complete"
   assert_milestone_summary_non_empty "$TMP_DIR/milestones.json" "m1"
+  assert_milestone_perspectives "$TMP_DIR/milestones.json" "m1" 4
+  assert_milestone_perspectives "$TMP_DIR/milestones.json" "m2" 0
 fi
 
 if [ ! -f "$LOG_FILE" ]; then

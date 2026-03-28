@@ -252,6 +252,11 @@ fn milestone_to_json_value(m : @types.Milestone) -> Json {
   }
   obj["tasks"] = Json::array(task_arr)
   obj["summary"] = m.summary.to_json()
+  let perspectives_arr : Array[Json] = []
+  for perspective in m.perspectives {
+    perspectives_arr.push(perspective.to_json())
+  }
+  obj["perspectives"] = Json::array(perspectives_arr)
   Json::object(obj)
 }
 
@@ -470,6 +475,31 @@ fn parse_scope_line(s : String) -> Array[String]? {
     }
   }
   Some(items)
+}
+
+///|
+/// Scan planner output for a PERSPECTIVES line.
+/// Returns None if absent, Some([]) for "(none)", or trimmed comma-separated values.
+pub fn parse_perspectives_line(output : String) -> Array[String]? {
+  let lines = @util.split_lines(output)
+  for line in lines {
+    let trimmed = @util.trim(line)
+    if trimmed.has_prefix("PERSPECTIVES:") {
+      let rest = @util.trim(String::from_array(trimmed.to_array()[13:]))
+      if rest == "(none)" {
+        return Some([])
+      }
+      let items : Array[String] = []
+      for part_view in rest.split(",") {
+        let part = @util.trim(part_view.to_string())
+        if not(part.is_empty()) {
+          items.push(part)
+        }
+      }
+      return Some(items)
+    }
+  }
+  None
 }
 
 ///|

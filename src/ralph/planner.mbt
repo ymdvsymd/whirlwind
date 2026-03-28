@@ -47,7 +47,14 @@ pub fn PlannerAgent::build_plan_prompt(
     "For each task, declare which earlier tasks it depends on using DEPENDS_ON.\n" +
     "Tasks with no dependencies can execute in parallel.\n" +
     "A task will not start until all of its dependencies have completed.\n\n" +
-    "## Output Format\n" +
+    "## Output Format\n\n" +
+    "PERSPECTIVES: <comma-separated verification perspectives for this milestone>\n" +
+    "Valid values: CodeQuality, Performance, Security, GoalAlignment\n" +
+    "Guidelines:\n" +
+    "- Production source code changes: CodeQuality, Performance, Security, GoalAlignment\n" +
+    "- Test-only changes: CodeQuality, GoalAlignment\n" +
+    "- Command execution / verification only (no code changes): (none)\n" +
+    "- When uncertain, include all four\n\n" +
     "TASKS:\n" +
     "1. First task description\nSCOPE: src/foo.mbt, test/foo_test.mbt\nDEPENDS_ON: (none)\n\n" +
     "2. Second task description\nSCOPE: src/bar.mbt\nDEPENDS_ON: 1\n\n" +

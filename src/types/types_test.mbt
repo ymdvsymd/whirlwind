@@ -136,6 +136,7 @@ test "Milestone creation and mutation" {
     status: @types.MilestoneStatus::Pending,
     tasks: [],
     summary: "",
+    perspectives: [],
   }
   inspect(m.status, content="Pending")
   m.status = @types.MilestoneStatus::InProgress

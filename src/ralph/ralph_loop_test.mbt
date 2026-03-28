@@ -27,6 +27,74 @@ fn make_ralph_config() -> @config.ProjectConfig {
 }
 
 ///|
+test "resolve_perspectives filters invalid names" {
+  let perspectives = @ralph.resolve_perspectives([
+    "CodeQuality", "Nope", "GoalAlignment",
+  ])
+  assert_true(perspectives.length() == 2)
+  inspect(perspectives[0], content="CodeQuality")
+  inspect(perspectives[1], content="GoalAlignment")
+}
+
+///|
+test "resolve_perspectives falls back to all four when empty" {
+  let perspectives = @ralph.resolve_perspectives([])
+  assert_true(perspectives.length() == 4)
+  inspect(perspectives[0], content="CodeQuality")
+  inspect(perspectives[1], content="Performance")
+  inspect(perspectives[2], content="Security")
+  inspect(perspectives[3], content="GoalAlignment")
+}
+
+///|
+test "RalphLoop skips verification when milestone perspectives are empty" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Run checks", "status": "pending",
+    #|      "perspectives": [],
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Run command", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(default_response="<approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  inspect(mgr.milestones[0].status, content="Done")
+  assert_true(verifier_mock.get_history().is_empty())
+  assert_true(
+    infos
+    .iter()
+    .any(fn(msg) {
+      msg.contains("No verification perspectives for milestone m1")
+    }),
+  )
+}
+
+///|
 test "RalphLoop full cycle with single milestone" {
   let config = make_ralph_config()
   let json =
@@ -72,6 +140,70 @@ test "RalphLoop full cycle with single milestone" {
 }
 
 ///|
+test "RalphLoop stores planner perspectives from raw output" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    { "id": "m1", "goal": "Build auth", "status": "pending", "tasks": [] }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(
+    default_response="PERSPECTIVES: CodeQuality, GoalAlignment\nTASKS:\n1. Create schema\n2. Write tests",
+  )
+  let builder_mock = @agent.MockBackend::new(
+    default_response="Task completed successfully",
+  )
+  let verifier_mock = @agent.MockBackend::new(default_response="<approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let callbacks = @types.OrchestratorCallbacks::noop()
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+  rl.run()
+
+  assert_true(mgr.milestones[0].perspectives.length() == 2)
+  inspect(mgr.milestones[0].perspectives[0], content="CodeQuality")
+  inspect(mgr.milestones[0].perspectives[1], content="GoalAlignment")
+}
+
+///|
+test "RalphLoop preserves milestone perspectives loaded from file" {
+  let config = { ..make_ralph_config(), milestones_path: Some("milestones.json") }
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Run checks", "status": "pending",
+    #|      "perspectives": [],
+    #|      "tasks": []
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(
+    default_response="PERSPECTIVES: CodeQuality, GoalAlignment\nTASKS:\n1. Run command",
+  )
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(default_response="<approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let rl = @ralph.RalphLoop::new(
+    config,
+    mgr,
+    backends,
+    @types.OrchestratorCallbacks::noop(),
+  )
+  rl.run()
+
+  assert_true(mgr.milestones[0].perspectives.length() == 0)
+}
+
+///|
 test "RalphLoop dry-run runs planner but skips execution and verification" {
   let config = make_ralph_config()
   let json =
@@ -114,7 +246,9 @@ test "RalphLoop dry-run runs planner but skips execution and verification" {
   inspect(builder_mock.get_history().length(), content="0")
   inspect(verifier_mock.get_history().length(), content="0")
   assert_true(
-    infos.iter().any(fn(m) {
+    infos
+    .iter()
+    .any(fn(m) {
       m.contains("Dry-run: milestone m1 planned") &&
       m.contains("skipping execution and verification")
     }),
@@ -134,7 +268,9 @@ test "RalphLoop dry-run logs planning failed when planner returns no tasks" {
     #|}
   let mgr = @ralph.MilestoneManager::load_from_json(json)
   // FailingMockBackend causes planner to return a failed AgentResult → PlanFailed
-  let failing_planner = @agent.FailingMockBackend::new(error_msg="planner error")
+  let failing_planner = @agent.FailingMockBackend::new(
+    error_msg="planner error",
+  )
   let builder_mock = @agent.MockBackend::new(default_response="should not run")
   let verifier_mock = @agent.MockBackend::new(default_response="should not run")
   let backends : Map[String, @agent.BoxedBackend] = {}
@@ -159,15 +295,14 @@ test "RalphLoop dry-run logs planning failed when planner returns no tasks" {
   // タスクは生成されない
   inspect(mgr.milestones[0].tasks.length(), content="0")
   // マイルストーンは Failed になる
-  inspect(
-    mgr.milestones[0].status,
-    content="Failed(\"No tasks planned\")",
-  )
+  inspect(mgr.milestones[0].status, content="Failed(\"No tasks planned\")")
   // builder・verifier は呼ばれないべき
   inspect(builder_mock.get_history().length(), content="0")
   inspect(verifier_mock.get_history().length(), content="0")
   assert_true(
-    infos.iter().any(fn(m) { m.contains("Dry-run: milestone m1 planning failed") }),
+    infos
+    .iter()
+    .any(fn(m) { m.contains("Dry-run: milestone m1 planning failed") }),
   )
   inspect(rl.current_phase, content="AllComplete")
 }
@@ -1442,6 +1577,49 @@ test "RalphLoop multi-wave full cycle verifies all 4 perspectives once at milest
   assert_true(first_prompt.contains("m1-t1"))
   assert_true(first_prompt.contains("m1-t2"))
   assert_true(first_prompt.contains("m1-t3"))
+}
+
+///|
+test "RalphLoop verifies only configured milestone perspectives" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Add tests", "status": "pending",
+    #|      "perspectives": ["CodeQuality", "GoalAlignment"],
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Write tests", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done")
+  let verifier_mock = @agent.MockBackend::new(default_response="<approved>")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let rl = @ralph.RalphLoop::new(
+    config,
+    mgr,
+    backends,
+    @types.OrchestratorCallbacks::noop(),
+  )
+
+  rl.run()
+
+  inspect(mgr.milestones[0].status, content="Done")
+  let history = verifier_mock.get_history()
+  assert_true(history.length() == 2)
+  let (first_prompt, first_system_prompt) = history[0]
+  let (second_prompt, second_system_prompt) = history[1]
+  assert_true(first_prompt.contains("## Review Focus: Code Quality"))
+  assert_true(second_prompt.contains("## Review Focus: Goal Alignment"))
+  assert_true(first_system_prompt.contains("CodeQuality"))
+  assert_true(second_system_prompt.contains("GoalAlignment"))
 }
 
 ///|

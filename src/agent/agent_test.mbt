@@ -144,7 +144,8 @@ test "create_backend uses parseable planner mock response" {
   let result = backend.run("plan milestone", "", fn(_) {  })
   inspect(
     result.content,
-    content="TASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
+    content="PERSPECTIVES: CodeQuality, Performance, Security, GoalAlignment\n" +
+      "TASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
   )
 }
 
