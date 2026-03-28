@@ -65,7 +65,7 @@ test "VerifierAgent::build_perspective_prompt includes code quality checklist" {
     summary: "",
     perspectives: [],
   }
-  let prompt = v.build_perspective_prompt(CodeQuality, milestone, 0, [], "")
+  let prompt = v.build_perspective_prompt(CodeQuality, milestone, [], "")
   assert_true(
     prompt.contains("Code Quality") || prompt.contains("コード品質"),
   )
@@ -83,7 +83,7 @@ test "VerifierAgent::build_perspective_prompt includes performance checklist" {
     summary: "",
     perspectives: [],
   }
-  let prompt = v.build_perspective_prompt(Performance, milestone, 0, [], "")
+  let prompt = v.build_perspective_prompt(Performance, milestone, [], "")
   assert_true(
     prompt.contains("Performance") || prompt.contains("パフォーマンス"),
   )
@@ -101,7 +101,7 @@ test "VerifierAgent::build_perspective_prompt includes security checklist" {
     summary: "",
     perspectives: [],
   }
-  let prompt = v.build_perspective_prompt(Security, milestone, 0, [], "")
+  let prompt = v.build_perspective_prompt(Security, milestone, [], "")
   assert_true(
     prompt.contains("Security") || prompt.contains("セキュリティ"),
   )
@@ -119,7 +119,7 @@ test "VerifierAgent::build_perspective_prompt goal alignment includes milestone 
     summary: "",
     perspectives: [],
   }
-  let prompt = v.build_perspective_prompt(GoalAlignment, milestone, 0, [], "")
+  let prompt = v.build_perspective_prompt(GoalAlignment, milestone, [], "")
   assert_true(prompt.contains("Ship milestone goal text"))
   assert_true(prompt.contains("<approved>"))
 }
@@ -135,11 +135,11 @@ test "VerifierAgent::build_perspective_prompt includes goal alignment instructio
     summary: "",
     perspectives: [],
   }
-  let prompt = v.build_perspective_prompt(GoalAlignment, milestone, 0, [], "")
+  let prompt = v.build_perspective_prompt(GoalAlignment, milestone, [], "")
   assert_true(prompt.contains("## Instructions"))
-  assert_true(prompt.contains("Verify ALL tasks across all waves"))
+  assert_true(prompt.contains("Verify ALL tasks in this milestone"))
   assert_false(prompt.contains("Verify ONLY the tasks"))
-  assert_false(prompt.contains("other waves"))
+  assert_false(prompt.contains("other tasks"))
 }
 
 ///|
@@ -229,7 +229,7 @@ test "VerifierAgent::verify with mock backend approved calls all four perspectiv
     summary: "",
     perspectives: [],
   }
-  let verdict = v.verify(milestone, 0, [], backend, "")
+  let verdict = v.verify(milestone, [], backend, "")
   let history = mock.get_history()
   assert_true(history.length() == 4)
   inspect(verdict, content="Approved")
@@ -248,7 +248,7 @@ test "VerifierAgent::verify with explicit perspectives skips goal alignment" {
     summary: "",
     perspectives: [],
   }
-  let verdict = v.verify(milestone, 0, [], backend, "", perspectives=[
+  let verdict = v.verify(milestone, [], backend, "", perspectives=[
     CodeQuality,
     Performance,
     Security,
@@ -271,7 +271,7 @@ test "VerifierAgent::verify with goal alignment only calls backend once" {
     summary: "",
     perspectives: [],
   }
-  let verdict = v.verify(milestone, 0, [], backend, "", perspectives=[
+  let verdict = v.verify(milestone, [], backend, "", perspectives=[
     GoalAlignment,
   ])
   let history = mock.get_history()
@@ -292,7 +292,7 @@ test "VerifierAgent::verify with failing mock backend is not approved" {
     summary: "",
     perspectives: [],
   }
-  let verdict = v.verify(milestone, 0, [], backend, "")
+  let verdict = v.verify(milestone, [], backend, "")
   match verdict {
     Approved => panic()
     NeedsRework(items) => assert_true(not(items.is_empty()))

@@ -11,19 +11,25 @@ import {
 // Values
 pub fn add_scope_edges(Array[@types.RalphTask]) -> Array[(String, String)]
 
-pub fn build_wave_barriers(Array[@types.RalphTask]) -> Array[(Array[String], Array[String])]
-
 pub fn compute_layers(Array[@types.RalphTask]) -> (Map[String, Int], Array[String], Array[String])
 
-pub fn detect_scope_overlaps(Array[@types.RalphTask]) -> Array[(String, Array[String])]
+pub fn detect_file_conflicts(Array[(@types.RalphTask, Array[String])]) -> Array[(String, Array[String])]
 
-pub fn detect_wave_file_conflicts(Array[(@types.RalphTask, Array[String])]) -> Array[(String, Array[String])]
+pub fn detect_scope_overlaps(Array[@types.RalphTask]) -> Array[(String, Array[String])]
 
 pub fn extract_changed_files(String) -> Array[String]
 
 pub fn inject_perspective_tag(String, @prompts.Perspective) -> String
 
 pub fn is_already_complete_signal(String) -> Bool
+
+pub fn is_infra_failure(Array[String]) -> Bool
+
+pub fn is_server_error(String) -> Bool
+
+pub fn parse_perspectives_line(String) -> Array[String]?
+
+pub fn resolve_perspectives(Array[String]) -> Array[@prompts.Perspective]
 
 // Errors
 
@@ -79,18 +85,17 @@ pub struct RalphLoop {
   file_checker : (String) -> Bool
 }
 pub fn RalphLoop::new(@config.ProjectConfig, MilestoneManager, Map[String, @agent.BoxedBackend], @types.OrchestratorCallbacks, dry_run? : Bool, lang? : String, max_in_flight? : Int, file_checker? : (String) -> Bool) -> Self
-pub fn RalphLoop::resolve_scope_conflicts(Self, @types.Milestone, Int) -> Int
 pub fn RalphLoop::run(Self) -> Unit
 
 pub struct VerifierAgent {
   agent_id : String
   lang : String
 }
-pub fn VerifierAgent::build_perspective_prompt(Self, @prompts.Perspective, @types.Milestone, Int, Array[(String, String)], String) -> String
+pub fn VerifierAgent::build_perspective_prompt(Self, @prompts.Perspective, @types.Milestone, Array[(String, String)], String) -> String
 pub fn VerifierAgent::merge_verdicts(Self, Array[(@prompts.Perspective, @types.VerifierVerdict)]) -> @types.VerifierVerdict
 pub fn VerifierAgent::new(agent_id? : String, lang? : String) -> Self
 pub fn VerifierAgent::parse_verdict(Self, String) -> @types.VerifierVerdict
-pub fn VerifierAgent::verify(Self, @types.Milestone, Int, Array[(String, String)], @agent.BoxedBackend, String, perspectives? : Array[@prompts.Perspective], on_event? : (@types.AgentEvent) -> Unit) -> @types.VerifierVerdict
+pub fn VerifierAgent::verify(Self, @types.Milestone, Array[(String, String)], @agent.BoxedBackend, String, perspectives? : Array[@prompts.Perspective], on_event? : (@types.AgentEvent) -> Unit) -> @types.VerifierVerdict
 
 // Type aliases
 

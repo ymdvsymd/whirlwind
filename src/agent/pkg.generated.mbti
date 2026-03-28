@@ -46,6 +46,15 @@ pub fn BoxedBackend::new(&AgentBackend) -> Self
 pub fn BoxedBackend::run(Self, String, String, (@types.AgentEvent) -> Unit) -> @types.AgentResult
 pub fn BoxedBackend::set_session_id(Self, String) -> Unit
 
+pub struct FailNTimesMockBackend {
+  fail_count : Int
+  error_msg : String
+  success_response : String
+  mut call_count : Int
+}
+pub fn FailNTimesMockBackend::boxed(Self) -> BoxedBackend
+pub fn FailNTimesMockBackend::new(Int, error_msg? : String, success_response? : String) -> Self
+
 pub struct FailingMockBackend {
   error_msg : String
   mut call_count : Int

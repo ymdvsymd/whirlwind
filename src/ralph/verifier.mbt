@@ -19,7 +19,6 @@ pub fn VerifierAgent::build_perspective_prompt(
   self : VerifierAgent,
   perspective : @prompts.Perspective,
   milestone : @types.Milestone,
-  wave : Int,
   task_results : Array[(String, String)],
   project_context : String,
 ) -> String {
@@ -37,15 +36,13 @@ pub fn VerifierAgent::build_perspective_prompt(
   buf.write_string(milestone.id)
   buf.write_string("\nGoal: ")
   buf.write_string(milestone.goal)
-  buf.write_string("\nWave: ")
-  buf.write_string(wave.to_string())
   buf.write_string("\n\n")
   if not(project_context.is_empty()) {
     buf.write_string("## Project Context\n")
     buf.write_string(project_context)
     buf.write_string("\n\n")
   }
-  buf.write_string("## Wave Results\n")
+  buf.write_string("## Task Results\n")
   for pair in task_results {
     buf.write_string("### Task: ")
     buf.write_string(pair.0)
@@ -63,15 +60,15 @@ pub fn VerifierAgent::build_perspective_prompt(
   match perspective {
     GoalAlignment =>
       buf.write_string(
-        "\n## Instructions\n" + "Verify ALL tasks across all waves.\n\n",
+        "\n## Instructions\n" + "Verify ALL tasks in this milestone.\n\n",
       )
     _ =>
       buf.write_string(
         "\n## Instructions\n" +
-        "Verify ONLY the tasks listed in the Wave Results section above.\n" +
-        "The milestone goal may contain supplementary context referencing work from other waves.\n" +
-        "Do NOT flag incomplete implementations or missing deliverables that belong to other waves.\n" +
-        "Focus your review exclusively on the current wave's output.\n\n",
+        "Verify ONLY the tasks listed in the Task Results section above.\n" +
+        "The milestone goal may contain supplementary context referencing work from other tasks.\n" +
+        "Do NOT flag incomplete implementations or missing deliverables that belong to other tasks.\n" +
+        "Focus your review exclusively on the listed tasks' output.\n\n",
       )
   }
   buf.write_string(
@@ -120,7 +117,6 @@ pub fn VerifierAgent::parse_verdict(
 pub fn VerifierAgent::verify(
   self : VerifierAgent,
   milestone : @types.Milestone,
-  wave : Int,
   task_results : Array[(String, String)],
   backend : @agent.BoxedBackend,
   project_context : String,
@@ -136,7 +132,7 @@ pub fn VerifierAgent::verify(
   for perspective in perspectives {
     on_event(Info("Verifying perspective: " + perspective.to_string()))
     let prompt = self.build_perspective_prompt(
-      perspective, milestone, wave, task_results, project_context,
+      perspective, milestone, task_results, project_context,
     )
     let system_prompt = "You are a verification agent focusing on " +
       perspective.to_string() +

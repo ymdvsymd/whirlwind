@@ -31,10 +31,9 @@ test "MilestoneManager::load_from_json roundtrip" {
     #|      "id": "m1",
     #|      "goal": "Build auth",
     #|      "status": "pending",
-    #|      "current_wave": 0,
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Build handlers", "wave": 1, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Build handlers", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -178,10 +177,9 @@ test "MilestoneManager::load_from_json converts in-progress tasks back to pendin
     #|      "id": "m1",
     #|      "goal": "Build auth",
     #|      "status": "in_progress",
-    #|      "current_wave": 1,
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done" },
-    #|        { "id": "m1-t2", "description": "Build handlers", "wave": 1, "status": "in_progress" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "done" },
+    #|        { "id": "m1-t2", "description": "Build handlers", "status": "in_progress" }
     #|      ]
     #|    }
     #|  ]
@@ -363,7 +361,6 @@ test "to_json produces valid JSON parseable by @json.parse" {
     #|        {
     #|          "id": "m1-t1",
     #|          "description": "Task with\nnewline",
-    #|          "wave": 0,
     #|          "status": "done",
     #|          "result": "Result with\ttab",
     #|          "plan_doc": "Plan\nwith\nnewlines"
@@ -790,7 +787,7 @@ test "load_from_json sets next_task_id correctly" {
     #|    {
     #|      "id": "m1", "goal": "A", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t5", "description": "a", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t5", "description": "a", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
