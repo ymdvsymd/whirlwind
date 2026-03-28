@@ -141,11 +141,15 @@ test "create_backend uses parseable planner mock response" {
     role: @types.AgentRole::Planner,
     model: None,
   })
-  let result = backend.run("plan milestone", "", fn(_) {  })
+  let result1 = backend.run("plan milestone m1", "", fn(_) {  })
   inspect(
-    result.content,
-    content="PERSPECTIVES: CodeQuality, Performance, Security, GoalAlignment\n" +
-      "TASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
+    result1.content,
+    content="PERSPECTIVES: CodeQuality, GoalAlignment\nTASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
+  )
+  let result2 = backend.run("plan milestone m2", "", fn(_) {  })
+  inspect(
+    result2.content,
+    content="PERSPECTIVES: (none)\nTASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
   )
 }
 

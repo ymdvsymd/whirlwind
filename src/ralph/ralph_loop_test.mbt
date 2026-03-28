@@ -171,7 +171,10 @@ test "RalphLoop stores planner perspectives from raw output" {
 
 ///|
 test "RalphLoop preserves milestone perspectives loaded from file" {
-  let config = { ..make_ralph_config(), milestones_path: Some("milestones.json") }
+  let config = {
+    ..make_ralph_config(),
+    milestones_path: Some("milestones.json"),
+  }
   let json =
     #|{
     #|  "milestones": [

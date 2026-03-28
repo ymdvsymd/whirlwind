@@ -212,7 +212,8 @@ fn RalphLoop::ensure_milestone_tasks(
           match plan_result.status {
             Planned => {
               milestone.tasks = plan_result.tasks
-              let should_apply_planner_perspectives = match self.config.milestones_path {
+              let should_apply_planner_perspectives = match
+                self.config.milestones_path {
                 Some(_) => false
                 None => true
               }
