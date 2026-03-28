@@ -306,8 +306,8 @@ test "apply_overrides keeps kinds when not overridden" {
   let base = @config.ProjectConfig::preset_ralph()
   let updated = @cli.apply_overrides(base)
   inspect(updated.agents[0].kind, content="ClaudeCode")
-  inspect(updated.agents[1].kind, content="ClaudeCode")
-  inspect(updated.agents[2].kind, content="Codex")
+  inspect(updated.agents[1].kind, content="Codex")
+  inspect(updated.agents[2].kind, content="ClaudeCode")
 }
 
 ///|
@@ -534,6 +534,9 @@ test "ProjectConfig::preset_ralph" {
   let config = @config.ProjectConfig::preset_ralph()
   assert_true(config.agents.length() == 3)
   inspect(config.agents[0].role, content="Planner")
+  inspect(config.agents[0].kind, content="ClaudeCode")
   inspect(config.agents[1].role, content="Builder")
+  inspect(config.agents[1].kind, content="Codex")
   inspect(config.agents[2].role, content="Verifier")
+  inspect(config.agents[2].kind, content="ClaudeCode")
 }

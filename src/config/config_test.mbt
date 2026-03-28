@@ -254,8 +254,11 @@ test "ProjectConfig::preset_ralph" {
 
   assert_true(config.agents.length() == 3)
   inspect(config.agents[0].role, content="Planner")
+  inspect(config.agents[0].kind, content="ClaudeCode")
   inspect(config.agents[1].role, content="Builder")
+  inspect(config.agents[1].kind, content="Codex")
   inspect(config.agents[2].role, content="Verifier")
+  inspect(config.agents[2].kind, content="ClaudeCode")
 }
 
 ///|

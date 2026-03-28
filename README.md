@@ -136,6 +136,16 @@ whirlwind validate ./whirlwind.json
 - `codex`
 - `mock`
 
+## Ralph preset defaults
+
+The `--ralph` flag configures a three-agent loop with these defaults:
+
+| Role | Agent kind | Default model |
+|------|-----------|---------------|
+| Planner | `claude-code` | `sonnet` |
+| Builder | `codex` | _(SDK default)_ |
+| Verifier | `claude-code` | `sonnet` |
+
 ## Model defaults
 
 When using `claude-code` kind, models default to:

@@ -109,7 +109,7 @@ pub fn ProjectConfig::default() -> ProjectConfig {
 }
 
 ///|
-/// Preset for ralph loop: planner=claude-code, builder=claude-code, verifier=codex
+/// Preset for ralph loop: planner=claude-code, builder=codex, verifier=claude-code
 pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
   let planner : @types.AgentConfig = {
     id: "planner",
@@ -119,13 +119,13 @@ pub fn ProjectConfig::preset_ralph() -> ProjectConfig {
   }
   let builder : @types.AgentConfig = {
     id: "builder",
-    kind: ClaudeCode,
+    kind: Codex,
     role: Builder,
     model: None,
   }
   let verifier : @types.AgentConfig = {
     id: "verifier",
-    kind: Codex,
+    kind: ClaudeCode,
     role: Verifier,
     model: None,
   }
