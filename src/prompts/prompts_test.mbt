@@ -42,12 +42,16 @@ test "security_checklist ja contains 静的分析のみ" {
 test "goal_alignment_checklist en contains Goal Alignment" {
   let content = @prompts.goal_alignment_checklist("en")
   assert_true(content.contains("Goal Alignment"))
+  assert_false(content.contains("static code analysis only"))
+  assert_false(content.contains("静的分析のみ"))
 }
 
 ///|
 test "goal_alignment_checklist ja contains ゴール整合性" {
   let content = @prompts.goal_alignment_checklist("ja")
   assert_true(content.contains("ゴール整合性"))
+  assert_false(content.contains("static code analysis only"))
+  assert_false(content.contains("静的分析のみ"))
 }
 
 ///|
