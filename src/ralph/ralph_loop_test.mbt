@@ -171,7 +171,10 @@ test "RalphLoop stores planner perspectives from raw output" {
 
 ///|
 test "RalphLoop preserves milestone perspectives loaded from file" {
-  let config = { ..make_ralph_config(), milestones_path: Some("milestones.json") }
+  let config = {
+    ..make_ralph_config(),
+    milestones_path: Some("milestones.json"),
+  }
   let json =
     #|{
     #|  "milestones": [
@@ -3261,6 +3264,46 @@ test "whirlwind-d35: rework prompt includes scope limitation" {
   assert_true(rework_system_prompt.contains("scope"))
   assert_true(rework_system_prompt.contains("Do not restructure"))
   assert_true(rework_system_prompt.contains("minimal"))
+}
+
+///|
+test "whirlwind-z9r: rework resets builder session_id before re-execution" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "milestones": [
+    #|    {
+    #|      "id": "m1", "goal": "Build auth", "status": "pending",
+    #|      "tasks": [
+    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" }
+    #|      ]
+    #|    }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  let planner_mock = @agent.MockBackend::new(default_response="unused")
+  let builder_mock = @agent.MockBackend::new(default_response="Done v1")
+  builder_mock.add_response("Feedback from verifier", "Done v2 REWORKED")
+  let verifier_mock = @agent.MockBackend::new(default_response="<approved>")
+  // First verification triggers rework
+  verifier_mock.add_response(
+    "Done v1", "<needs_rework>m1-t1: missing validation</needs_rework>",
+  )
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = planner_mock.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let callbacks = @types.OrchestratorCallbacks::noop()
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks)
+
+  rl.run()
+
+  // After initial builder run, session_id should be set (simulating real behavior).
+  // Before rework, session_id must be cleared to "" to start a new session.
+  let sid_history = builder_mock.get_session_id_history()
+  assert_true(sid_history.length() >= 1) // at least one set_session_id call
+  // The first set_session_id call should be "" (clearing before rework)
+  inspect(sid_history[0], content="")
 }
 
 ///|
