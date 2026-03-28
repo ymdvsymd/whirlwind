@@ -13,10 +13,10 @@ pub fn create_backend(config : @types.AgentConfig) -> BoxedBackend {
     Mock =>
       match config.role {
         Planner =>
-          MockBackend::new(
-            default_response="PERSPECTIVES: CodeQuality, Performance, Security, GoalAlignment\n" +
-              "TASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
-          ).boxed()
+          SequenceMockBackend::new([
+            "PERSPECTIVES: CodeQuality, GoalAlignment\nTASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
+            "PERSPECTIVES: (none)\nTASKS:\n1. Mock planned task\nDEPENDS_ON: (none)",
+          ]).boxed()
         Verifier => MockBackend::new(default_response="<approved>").boxed()
         _ => MockBackend::new().boxed()
       }
