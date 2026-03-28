@@ -4,6 +4,8 @@ pub struct MockBackend {
   responses : Map[String, String] // task pattern -> response
   default_response : String
   call_history : Array[(String, String)] // (task, system_prompt)
+  mut session_id : String
+  session_id_history : Array[String] // tracks set_session_id calls
 }
 
 ///|
@@ -11,7 +13,13 @@ pub struct MockBackend {
 pub fn MockBackend::new(
   default_response? : String = "mock response",
 ) -> MockBackend {
-  { responses: {}, default_response, call_history: [] }
+  {
+    responses: {},
+    default_response,
+    call_history: [],
+    session_id: "",
+    session_id_history: [],
+  }
 }
 
 ///|
@@ -51,6 +59,10 @@ impl AgentBackend for MockBackend with run(self, task, system_prompt, on_output)
   let response = self.find_response(task)
   on_output(@types.AgentEvent::OutputLine(response))
   on_output(@types.AgentEvent::StatusChange(@types.AgentStatus::Completed))
+  // Simulate SubprocessBackend behavior: session_id is set after first run
+  if self.session_id.is_empty() {
+    self.session_id = "mock-session-id"
+  }
   { content: response, status: Completed, error: None, session_id: "" }
 }
 
@@ -61,13 +73,20 @@ impl AgentBackend for MockBackend with name(_self) {
 }
 
 ///|
-impl AgentBackend for MockBackend with set_session_id(_self, _sid) {
-
+impl AgentBackend for MockBackend with set_session_id(self, sid) {
+  self.session_id = sid
+  self.session_id_history.push(sid)
 }
 
 ///|
-impl AgentBackend for MockBackend with get_session_id(_self) {
-  ""
+impl AgentBackend for MockBackend with get_session_id(self) {
+  self.session_id
+}
+
+///|
+/// Get the session_id history for testing
+pub fn MockBackend::get_session_id_history(self : MockBackend) -> Array[String] {
+  self.session_id_history
 }
 
 ///|

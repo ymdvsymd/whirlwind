@@ -979,6 +979,9 @@ fn RalphLoop::rework_task_list(
     None => ()
     Some(backend) => {
       let bid = builder_id.unwrap()
+      // Clear session_id so rework starts a new session instead of resuming
+      // the previous one with accumulated context (whirlwind-z9r)
+      backend.set_session_id("")
       let rework_system_prompt = build_rework_system_prompt(
         self.milestone_manager.brief,
       )
