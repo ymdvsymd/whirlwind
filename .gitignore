@@ -18,6 +18,7 @@ settings.local.json
 .claude/.cost-log.jsonl
 .claude/.build-log.jsonl
 .claude/.pre-compact-state.json
+.claude/eval/history.jsonl
 .claude/worktrees/
 
 # Beads / Dolt files (added by bd init)
