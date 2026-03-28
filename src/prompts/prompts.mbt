@@ -22,7 +22,7 @@ pub fn code_quality_checklist(lang : String) -> String {
       "- API 設計と公開インターフェースの明確さ\n",
     )
     buf.write_string(
-      "この観点は静的コードレビュー専用です。ビルド、テスト、結合テスト、ベンチマークなどの実行は行わず、提示されたコードを読んで判断してください。\n",
+      "この観点は静的分析のみです。ビルド、テスト、結合テスト、ベンチマークなどの実行は行わず、提示されたコードを読んで判断してください。\n",
     )
   } else {
     buf.write_string("## Review Focus: Code Quality\n")
@@ -34,7 +34,7 @@ pub fn code_quality_checklist(lang : String) -> String {
     buf.write_string("- Code duplication and unnecessary complexity\n")
     buf.write_string("- API design and public interface clarity\n")
     buf.write_string(
-      "This perspective is for static code review only. Do not run builds, tests, integration tests, or benchmarks; evaluate only by reading the provided code.\n",
+      "This perspective is for static code analysis only. Do not run builds, tests, integration tests, or benchmarks; evaluate only by reading the provided code.\n",
     )
   }
   buf.to_string()
@@ -51,6 +51,9 @@ pub fn performance_checklist(lang : String) -> String {
     buf.write_string("- N+1 クエリや冗長な I/O\n")
     buf.write_string("- キャッシュの活用機会\n")
     buf.write_string("- ホットパスの最適化\n")
+    buf.write_string(
+      "この観点は静的分析のみです。ビルド、テスト、結合テスト、ベンチマークなどの実行は行わず、提示されたコードを読んで判断してください。\n",
+    )
   } else {
     buf.write_string("## Review Focus: Performance\n")
     buf.write_string("Evaluate the following aspects:\n")
@@ -59,6 +62,9 @@ pub fn performance_checklist(lang : String) -> String {
     buf.write_string("- N+1 queries or redundant I/O\n")
     buf.write_string("- Caching opportunities\n")
     buf.write_string("- Hot path optimization\n")
+    buf.write_string(
+      "This perspective is for static code analysis only. Do not run builds, tests, integration tests, or benchmarks; evaluate only by reading the provided code.\n",
+    )
   }
   buf.to_string()
 }
@@ -78,6 +84,9 @@ pub fn security_checklist(lang : String) -> String {
       "- 機密データの露出（シークレット、トークン、個人情報）\n",
     )
     buf.write_string("- 依存関係の安全性\n")
+    buf.write_string(
+      "この観点は静的分析のみです。ビルド、テスト、結合テスト、ベンチマークなどの実行は行わず、提示されたコードを読んで判断してください。\n",
+    )
   } else {
     buf.write_string("## Review Focus: Security\n")
     buf.write_string("Evaluate the following aspects:\n")
@@ -86,6 +95,9 @@ pub fn security_checklist(lang : String) -> String {
     buf.write_string("- Authentication and authorization gaps\n")
     buf.write_string("- Sensitive data exposure (secrets, tokens, PII)\n")
     buf.write_string("- Dependency safety\n")
+    buf.write_string(
+      "This perspective is for static code analysis only. Do not run builds, tests, integration tests, or benchmarks; evaluate only by reading the provided code.\n",
+    )
   }
   buf.to_string()
 }
