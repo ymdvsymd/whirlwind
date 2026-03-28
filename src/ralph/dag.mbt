@@ -149,6 +149,3 @@ pub fn add_scope_edges(
   }
   edges
 }
-
-///|
-/// Build wave barriers for backward-compat dependency enforcement (design D2).

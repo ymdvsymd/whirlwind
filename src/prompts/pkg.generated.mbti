@@ -6,6 +6,8 @@ pub fn code_quality_checklist(String) -> String
 
 pub fn goal_alignment_checklist(String) -> String
 
+pub fn parse_perspective(String) -> Perspective?
+
 pub fn performance_checklist(String) -> String
 
 pub fn security_checklist(String) -> String

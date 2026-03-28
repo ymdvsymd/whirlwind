@@ -81,10 +81,8 @@ pub(all) struct Milestone {
   mut status : MilestoneStatus
   mut tasks : Array[RalphTask]
   mut summary : String
+  mut perspectives : Array[String]
 }
-pub fn Milestone::get_wave_tasks(Self, Int) -> Array[RalphTask]
-pub fn Milestone::has_undone_tasks(Self) -> Bool
-pub fn Milestone::next_wave_number(Self) -> Int?
 
 pub(all) enum MilestoneStatus {
   Pending
@@ -146,7 +144,6 @@ pub impl Show for RalphPhase
 pub(all) struct RalphTask {
   id : String
   description : String
-  mut wave : Int
   mut status : TaskStatus
   mut result : String?
   scope : Array[String]

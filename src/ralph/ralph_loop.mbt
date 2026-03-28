@@ -212,7 +212,8 @@ fn RalphLoop::ensure_milestone_tasks(
           match plan_result.status {
             Planned => {
               milestone.tasks = plan_result.tasks
-              let should_apply_planner_perspectives = match self.config.milestones_path {
+              let should_apply_planner_perspectives = match
+                self.config.milestones_path {
                 Some(_) => false
                 None => true
               }
@@ -272,7 +273,7 @@ fn RalphLoop::ensure_milestone_tasks(
 ///|
 /// Run all milestone tasks as a DAG using Kahn's layer computation.
 ///
-/// Adds implicit edges (wave compat + scope overlaps), computes layers,
+/// Adds implicit edges (scope overlaps), computes layers,
 /// then dispatches tasks via a ready-queue respecting max_in_flight.
 fn RalphLoop::run_dag(self : RalphLoop, milestone : @types.Milestone) -> Bool {
   self.current_phase = ExecutingDag(milestone.id)
@@ -816,8 +817,7 @@ fn RalphLoop::verify_milestone(
   match self.verifier {
     None => true
     Some(verifier) => {
-      let verification_wave = 0
-      self.current_phase = Verifying(milestone.id, verification_wave)
+      self.current_phase = Verifying(milestone.id, 0)
       emit_info(
         self,
         "Verifying milestone \{milestone.id} (attempt \{attempt + 1})",
@@ -839,7 +839,6 @@ fn RalphLoop::verify_milestone(
           let perspectives = resolve_perspectives(milestone.perspectives)
           let verdict = verifier.verify(
             milestone,
-            verification_wave,
             all_results,
             backend,
             "",
@@ -875,7 +874,7 @@ fn RalphLoop::verify_milestone(
                 self.save_milestones()
                 return false
               }
-              self.current_phase = Reworking(milestone.id, verification_wave)
+              self.current_phase = Reworking(milestone.id, 0)
               emit_info(
                 self,
                 "Milestone rework needed for \{milestone.id}: \{items.length()} issues",
@@ -1305,7 +1304,7 @@ pub fn extract_changed_files(output : String) -> Array[String] {
   files
 }
 
-///| Detect file conflicts between parallel tasks in a wave.
+///| Detect file conflicts between parallel tasks in a layer.
 
 ///| Takes an array of (task, changed_files) pairs and returns an array of
 
@@ -1336,7 +1335,7 @@ pub fn detect_file_conflicts(
   conflicts
 }
 
-///| Detect scope overlaps between planned tasks in a wave.
+///| Detect scope overlaps between planned tasks in a layer.
 
 ///|
 

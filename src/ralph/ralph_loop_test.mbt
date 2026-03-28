@@ -56,7 +56,7 @@ test "RalphLoop skips verification when milestone perspectives are empty" {
     #|      "id": "m1", "goal": "Run checks", "status": "pending",
     #|      "perspectives": [],
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Run command", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Run command", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -171,7 +171,10 @@ test "RalphLoop stores planner perspectives from raw output" {
 
 ///|
 test "RalphLoop preserves milestone perspectives loaded from file" {
-  let config = { ..make_ralph_config(), milestones_path: Some("milestones.json") }
+  let config = {
+    ..make_ralph_config(),
+    milestones_path: Some("milestones.json"),
+  }
   let json =
     #|{
     #|  "milestones": [
@@ -375,7 +378,7 @@ test "builder receives system prompt with brief" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -410,8 +413,8 @@ test "completed milestone summary concatenates completed task descriptions" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Build handlers", "wave": 1, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Build handlers", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -439,7 +442,7 @@ test "RalphLoop with pre-planned tasks" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -469,9 +472,9 @@ test "RalphLoop logs resume progress for partially completed milestone" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "in_progress",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done" },
-    #|        { "id": "m1-t2", "description": "Write tests", "wave": 0, "status": "done" },
-    #|        { "id": "m1-t3", "description": "Add handlers", "wave": 1, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "done" },
+    #|        { "id": "m1-t2", "description": "Write tests", "status": "done" },
+    #|        { "id": "m1-t3", "description": "Add handlers", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -506,7 +509,7 @@ test "RalphLoop logs resume progress for partially completed milestone" {
 }
 
 ///|
-test "run_wave skips already-done tasks before submitting to builder" {
+test "run_dag skips already-done tasks before submitting to builder" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -514,9 +517,9 @@ test "run_wave skips already-done tasks before submitting to builder" {
     #|    {
     #|      "id": "m1", "goal": "Resume auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done", "result": "already finished" },
-    #|        { "id": "m1-t2", "description": "Write tests", "wave": 0, "status": "done", "result": "already finished" },
-    #|        { "id": "m1-t3", "description": "Write handlers", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "done", "result": "already finished" },
+    #|        { "id": "m1-t2", "description": "Write tests", "status": "done", "result": "already finished" },
+    #|        { "id": "m1-t3", "description": "Write handlers", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -561,7 +564,7 @@ test "run_wave skips already-done tasks before submitting to builder" {
 }
 
 ///|
-test "run_wave does not emit running logs for already-done tasks" {
+test "run_dag does not emit running logs for already-done tasks" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -569,8 +572,8 @@ test "run_wave does not emit running logs for already-done tasks" {
     #|    {
     #|      "id": "m1", "goal": "Resume auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done", "result": "already finished" },
-    #|        { "id": "m1-t2", "description": "Write handlers", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "done", "result": "already finished" },
+    #|        { "id": "m1-t2", "description": "Write handlers", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -617,14 +620,12 @@ test "run_dag adds scope edges and serializes overlapping tasks" {
     #|        {
     #|          "id": "m1-t1",
     #|          "description": "Update shared types",
-    #|          "wave": 0,
     #|          "scope": ["src/shared.ts", "src/types.ts"],
     #|          "status": "pending"
     #|        },
     #|        {
     #|          "id": "m1-t2",
     #|          "description": "Update shared helpers",
-    #|          "wave": 0,
     #|          "scope": ["src/shared.ts", "src/helpers.ts"],
     #|          "status": "pending"
     #|        }
@@ -685,7 +686,6 @@ test "run_dag reverts scope edges that create cycle with explicit deps" {
     #|        {
     #|          "id": "m1-t1",
     #|          "description": "Task A depends on B",
-    #|          "wave": 0,
     #|          "scope": ["shared.ts"],
     #|          "depends_on": ["m1-t2"],
     #|          "status": "pending"
@@ -693,7 +693,6 @@ test "run_dag reverts scope edges that create cycle with explicit deps" {
     #|        {
     #|          "id": "m1-t2",
     #|          "description": "Task B independent",
-    #|          "wave": 0,
     #|          "scope": ["shared.ts"],
     #|          "depends_on": [],
     #|          "status": "pending"
@@ -1021,7 +1020,6 @@ test "run_dag cycle revert uses inserted_scope_edges not scope_edges to preserve
     #|        {
     #|          "id": "m1-t1",
     #|          "description": "Task A",
-    #|          "wave": 0,
     #|          "scope": ["f1.ts"],
     #|          "depends_on": ["m1-t3"],
     #|          "status": "pending"
@@ -1029,7 +1027,6 @@ test "run_dag cycle revert uses inserted_scope_edges not scope_edges to preserve
     #|        {
     #|          "id": "m1-t2",
     #|          "description": "Task B",
-    #|          "wave": 0,
     #|          "scope": ["f1.ts", "f2.ts"],
     #|          "depends_on": ["m1-t1"],
     #|          "status": "pending"
@@ -1037,7 +1034,6 @@ test "run_dag cycle revert uses inserted_scope_edges not scope_edges to preserve
     #|        {
     #|          "id": "m1-t3",
     #|          "description": "Task C",
-    #|          "wave": 0,
     #|          "scope": ["f2.ts"],
     #|          "depends_on": [],
     #|          "status": "pending"
@@ -1093,7 +1089,7 @@ test "run_dag cycle revert uses inserted_scope_edges not scope_edges to preserve
 }
 
 ///|
-test "run_wave with no scope overlaps executes all tasks normally" {
+test "run_dag with no scope overlaps executes all tasks normally" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -1104,14 +1100,12 @@ test "run_wave with no scope overlaps executes all tasks normally" {
     #|        {
     #|          "id": "m1-t1",
     #|          "description": "Update file A",
-    #|          "wave": 0,
     #|          "scope": ["src/a.ts"],
     #|          "status": "pending"
     #|        },
     #|        {
     #|          "id": "m1-t2",
     #|          "description": "Update file B",
-    #|          "wave": 0,
     #|          "scope": ["src/b.ts"],
     #|          "status": "pending"
     #|        }
@@ -1147,12 +1141,12 @@ test "run_wave with no scope overlaps executes all tasks normally" {
   inspect(history[0].0, content="Update file A")
   inspect(history[1].0, content="Update file B")
   assert_true(
-    not(infos.iter().any(fn(msg) { msg.contains("Pre-wave scope check") })),
+    not(infos.iter().any(fn(msg) { msg.contains("Pre-layer scope check") })),
   )
 }
 
 ///|
-test "run_wave with empty scope arrays skips conflict check" {
+test "run_dag with empty scope arrays skips conflict check" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -1163,14 +1157,12 @@ test "run_wave with empty scope arrays skips conflict check" {
     #|        {
     #|          "id": "m1-t1",
     #|          "description": "Run legacy task A",
-    #|          "wave": 0,
     #|          "scope": [],
     #|          "status": "pending"
     #|        },
     #|        {
     #|          "id": "m1-t2",
     #|          "description": "Run legacy task B",
-    #|          "wave": 0,
     #|          "scope": [],
     #|          "status": "pending"
     #|        }
@@ -1208,7 +1200,7 @@ test "run_wave with empty scope arrays skips conflict check" {
   inspect(mgr.milestones[0].tasks[0].status, content="Done")
   inspect(mgr.milestones[0].tasks[1].status, content="Done")
   assert_true(
-    not(infos.iter().any(fn(msg) { msg.contains("Pre-wave scope check") })),
+    not(infos.iter().any(fn(msg) { msg.contains("Pre-layer scope check") })),
   )
   assert_true(
     not(
@@ -1230,13 +1222,13 @@ test "resume skips already-done milestones" {
     #|    {
     #|      "id": "m1", "goal": "Completed milestone", "status": "done",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done", "result": "already finished" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "done", "result": "already finished" }
     #|      ]
     #|    },
     #|    {
     #|      "id": "m2", "goal": "Pending milestone", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m2-t1", "description": "Write handlers", "wave": 0, "status": "pending" }
+    #|        { "id": "m2-t1", "description": "Write handlers", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1400,7 +1392,7 @@ test "RalphLoop without verifier auto-approves" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1426,13 +1418,13 @@ test "RalphLoop multiple milestones" {
     #|    {
     #|      "id": "m1", "goal": "Setup", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Init project", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Init project", "status": "pending" }
     #|      ]
     #|    },
     #|    {
     #|      "id": "m2", "goal": "Build API", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m2-t1", "description": "Create routes", "wave": 0, "status": "pending" }
+    #|        { "id": "m2-t1", "description": "Create routes", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1498,7 +1490,7 @@ test "RalphLoop verifies all 4 perspectives after waves complete" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1536,7 +1528,7 @@ test "RalphLoop verifies all 4 perspectives after waves complete" {
 }
 
 ///|
-test "RalphLoop multi-wave full cycle verifies all 4 perspectives once at milestone completion" {
+test "RalphLoop multi-layer full cycle verifies all 4 perspectives once at milestone completion" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -1544,9 +1536,9 @@ test "RalphLoop multi-wave full cycle verifies all 4 perspectives once at milest
     #|    {
     #|      "id": "m1", "goal": "Ship auth flow", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Build handlers", "wave": 1, "status": "pending" },
-    #|        { "id": "m1-t3", "description": "Add integration tests", "wave": 2, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Build handlers", "status": "pending" },
+    #|        { "id": "m1-t3", "description": "Add integration tests", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1589,7 +1581,7 @@ test "RalphLoop verifies only configured milestone perspectives" {
     #|      "id": "m1", "goal": "Add tests", "status": "pending",
     #|      "perspectives": ["CodeQuality", "GoalAlignment"],
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Write tests", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Write tests", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1631,7 +1623,7 @@ test "RalphLoop reworks milestone tasks during milestone verification" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login flow", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1689,7 +1681,7 @@ test "RalphLoop milestone verification rework cycle retries and then completes" 
     #|    {
     #|      "id": "m1", "goal": "Ship auth flow", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login flow", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1760,7 +1752,7 @@ test "RalphLoop fails milestone when goal alignment verification fails" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1797,7 +1789,7 @@ test "RalphLoop marks milestone failed when milestone verification returns miles
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1836,8 +1828,8 @@ test "rework_tasks passes targeted feedback to specific task only" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Add audit logging", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login flow", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Add audit logging", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1888,8 +1880,8 @@ test "rework_tasks resets all done tasks when feedback has no task ID (fallback)
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Add audit logging", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login flow", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Add audit logging", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -1946,8 +1938,8 @@ test "rework_tasks distributes per-task feedback without cross-contamination" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Add audit logging", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login flow", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Add audit logging", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2013,7 +2005,7 @@ test "rework prompt has correct format with description and feedback" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "implement feature X", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "implement feature X", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2056,8 +2048,8 @@ test "rework_tasks matches space-delimited feedback (no colon)" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Add audit logging", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login flow", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Add audit logging", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2100,7 +2092,7 @@ test "rework_tasks matches space-delimited feedback (no colon)" {
 }
 
 ///|
-test "tornado-1fy: detect file conflicts between parallel builders in same wave" {
+test "tornado-1fy: detect file conflicts between parallel builders in same layer" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -2108,8 +2100,8 @@ test "tornado-1fy: detect file conflicts between parallel builders in same wave"
     #|    {
     #|      "id": "m2", "goal": "Fix prettier config", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m2-t8", "description": "Fix prettier via package.json", "wave": 0, "status": "pending" },
-    #|        { "id": "m2-t9", "description": "Fix prettier via env variable", "wave": 0, "status": "pending" }
+    #|        { "id": "m2-t8", "description": "Fix prettier via package.json", "status": "pending" },
+    #|        { "id": "m2-t9", "description": "Fix prettier via env variable", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2164,8 +2156,8 @@ test "tornado-1fy: no false positive when parallel builders edit different files
     #|    {
     #|      "id": "m1", "goal": "Build features", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Build auth module", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Build logging module", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Build auth module", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Build logging module", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2366,7 +2358,7 @@ test "detect_scope_overlaps skips tasks with empty scope" {
 }
 
 ///|
-test "run_wave with 3 parallel builders causing multi-file conflicts" {
+test "run_dag with 3 parallel builders causing multi-file conflicts" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -2374,9 +2366,9 @@ test "run_wave with 3 parallel builders causing multi-file conflicts" {
     #|    {
     #|      "id": "m1", "goal": "Refactor config", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Update config parser", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Add config validator", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t3", "description": "Migrate config format", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Update config parser", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Add config validator", "status": "pending" },
+    #|        { "id": "m1-t3", "description": "Migrate config format", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2477,7 +2469,7 @@ test "verify_milestone fails when max rework attempts are exhausted" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement feature", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement feature", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2532,7 +2524,7 @@ test "verify_milestone fails when max rework attempts are exhausted" {
 }
 
 ///|
-test "run_wave fails builder result when reported files are missing from worktree" {
+test "run_dag fails builder result when reported files are missing from worktree" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -2540,7 +2532,7 @@ test "run_wave fails builder result when reported files are missing from worktre
     #|    {
     #|      "id": "m1", "goal": "Create config", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create config file", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create config file", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2588,7 +2580,7 @@ test "validate_builder_result fails on partial file missing (whirlwind-aps)" {
     #|    {
     #|      "id": "m1", "goal": "Create config", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create config and scripts", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create config and scripts", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2653,9 +2645,9 @@ test "run_dag skips already-done layers and dispatches only pending tasks" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "done", "result": "already done" },
-    #|        { "id": "m1-t2", "description": "Write tests", "wave": 0, "status": "done", "result": "already done" },
-    #|        { "id": "m1-t3", "description": "Add handlers", "wave": 1, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "done", "result": "already done" },
+    #|        { "id": "m1-t2", "description": "Write tests", "status": "done", "result": "already done" },
+    #|        { "id": "m1-t3", "description": "Add handlers", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2708,10 +2700,10 @@ test "run_dag resumes with depends_on: done task propagates and unblocks pending
     #|    {
     #|      "id": "m1", "goal": "Resume DAG", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Schema (done)", "wave": 0, "status": "done", "result": "schema ok", "depends_on": [] },
-    #|        { "id": "m1-t2", "description": "Handlers (pending)", "wave": 0, "status": "pending", "depends_on": ["m1-t1"] },
-    #|        { "id": "m1-t3", "description": "Auth (pending)", "wave": 0, "status": "pending", "depends_on": ["m1-t1"] },
-    #|        { "id": "m1-t4", "description": "Docs (done)", "wave": 0, "status": "done", "result": "docs ok", "depends_on": [] }
+    #|        { "id": "m1-t1", "description": "Schema (done)", "status": "done", "result": "schema ok", "depends_on": [] },
+    #|        { "id": "m1-t2", "description": "Handlers (pending)", "status": "pending", "depends_on": ["m1-t1"] },
+    #|        { "id": "m1-t3", "description": "Auth (pending)", "status": "pending", "depends_on": ["m1-t1"] },
+    #|        { "id": "m1-t4", "description": "Docs (done)", "status": "done", "result": "docs ok", "depends_on": [] }
     #|      ]
     #|    }
     #|  ]
@@ -2805,7 +2797,7 @@ test "run_dag returns false when no builder backend is available" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2844,7 +2836,7 @@ test "verify_milestone fails after rework when re-verify returns milestone_faile
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -2957,7 +2949,7 @@ test "extract_changed_files handles whitespace around file names" {
 }
 
 ///|
-test "single task wave does not trigger conflict detection" {
+test "single task layer does not trigger conflict detection" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -2965,7 +2957,7 @@ test "single task wave does not trigger conflict detection" {
     #|    {
     #|      "id": "m1", "goal": "Build feature", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Build auth module", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Build auth module", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -3019,7 +3011,7 @@ test "whirlwind-4hy: builder system prompt instructs to fix all compile errors" 
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -3166,7 +3158,7 @@ test "whirlwind-4hy: builder system prompt with empty brief still has compile er
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Create schema", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Create schema", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -3196,7 +3188,7 @@ test "whirlwind-4hy: rework prompt includes compile error priority when feedback
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login flow", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login flow", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -3232,7 +3224,7 @@ test "whirlwind-d35: rework prompt includes scope limitation" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "implement feature X", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "implement feature X", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -3698,7 +3690,7 @@ test "E2E: planner output uses TASKS format with DAG execution" {
     #|  ]
     #|}
   let mgr = @ralph.MilestoneManager::load_from_json(json)
-  // Planner uses legacy WAVE format
+  // Planner uses TASKS format (DAG-based)
   let planner_mock = @agent.MockBackend::new(
     default_response="TASKS:\n1. Setup database\n2. Build handlers\n3. Write tests",
   )
@@ -3763,9 +3755,9 @@ test "E2E: pre-existing tasks in JSON dispatched via DAG" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Setup schema", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t2", "description": "Create handlers", "wave": 0, "status": "pending" },
-    #|        { "id": "m1-t3", "description": "Add auth layer", "wave": 1, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Setup schema", "status": "pending" },
+    #|        { "id": "m1-t2", "description": "Create handlers", "status": "pending" },
+    #|        { "id": "m1-t3", "description": "Add auth layer", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -3992,7 +3984,7 @@ test "circuit breaker activates on infra failure during verification" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -4068,7 +4060,7 @@ test "circuit breaker activates when builder produces no changes for 2 consecuti
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -4120,7 +4112,7 @@ test "normal rework cycle still works when changes are made" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -4194,7 +4186,7 @@ test "builder task retries on server error and succeeds" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -4244,7 +4236,7 @@ test "builder task fails after max retries on persistent server error" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
@@ -4293,7 +4285,7 @@ test "builder task does not retry on client error (4xx)" {
     #|    {
     #|      "id": "m1", "goal": "Build auth", "status": "pending",
     #|      "tasks": [
-    #|        { "id": "m1-t1", "description": "Implement login", "wave": 0, "status": "pending" }
+    #|        { "id": "m1-t1", "description": "Implement login", "status": "pending" }
     #|      ]
     #|    }
     #|  ]
