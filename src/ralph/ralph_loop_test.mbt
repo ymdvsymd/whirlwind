@@ -72,7 +72,7 @@ test "RalphLoop full cycle with single milestone" {
 }
 
 ///|
-test "RalphLoop dry-run skips planner execution and leaves milestones pending" {
+test "RalphLoop dry-run runs planner but skips execution and verification" {
   let config = make_ralph_config()
   let json =
     #|{
@@ -104,13 +104,70 @@ test "RalphLoop dry-run skips planner execution and leaves milestones pending" {
   let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, dry_run=true)
   rl.run()
 
+  // planner は呼ばれるべき
+  inspect(planner_mock.get_history().length(), content="1")
+  // タスクが生成されているべき
+  inspect(mgr.milestones[0].tasks.length(), content="2")
+  // ステータスは pending のまま（実行・検証はスキップ）
   inspect(mgr.milestones[0].status, content="Pending")
-  inspect(mgr.milestones[0].tasks.length(), content="0")
-  inspect(planner_mock.get_history().length(), content="0")
+  // builder・verifier は呼ばれないべき
   inspect(builder_mock.get_history().length(), content="0")
   inspect(verifier_mock.get_history().length(), content="0")
   assert_true(
-    infos.iter().any(fn(m) { m.contains("Dry-run: validated milestone m1") }),
+    infos.iter().any(fn(m) {
+      m.contains("Dry-run: milestone m1 planned") &&
+      m.contains("skipping execution and verification")
+    }),
+  )
+  inspect(rl.current_phase, content="AllComplete")
+}
+
+///|
+test "RalphLoop dry-run logs planning failed when planner returns no tasks" {
+  let config = make_ralph_config()
+  let json =
+    #|{
+    #|  "brief": "Generate tasks only.",
+    #|  "milestones": [
+    #|    { "id": "m1", "goal": "Build auth", "status": "pending", "tasks": [] }
+    #|  ]
+    #|}
+  let mgr = @ralph.MilestoneManager::load_from_json(json)
+  // FailingMockBackend causes planner to return a failed AgentResult → PlanFailed
+  let failing_planner = @agent.FailingMockBackend::new(error_msg="planner error")
+  let builder_mock = @agent.MockBackend::new(default_response="should not run")
+  let verifier_mock = @agent.MockBackend::new(default_response="should not run")
+  let backends : Map[String, @agent.BoxedBackend] = {}
+  backends["planner"] = failing_planner.boxed()
+  backends["builder"] = builder_mock.boxed()
+  backends["verifier"] = verifier_mock.boxed()
+  let infos : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => infos.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = @ralph.RalphLoop::new(config, mgr, backends, callbacks, dry_run=true)
+  rl.run()
+
+  // planner は呼ばれるべき (初回 + リトライで計2回)
+  inspect(failing_planner.call_count, content="2")
+  // タスクは生成されない
+  inspect(mgr.milestones[0].tasks.length(), content="0")
+  // マイルストーンは Failed になる
+  inspect(
+    mgr.milestones[0].status,
+    content="Failed(\"No tasks planned\")",
+  )
+  // builder・verifier は呼ばれないべき
+  inspect(builder_mock.get_history().length(), content="0")
+  inspect(verifier_mock.get_history().length(), content="0")
+  assert_true(
+    infos.iter().any(fn(m) { m.contains("Dry-run: milestone m1 planning failed") }),
   )
   inspect(rl.current_phase, content="AllComplete")
 }

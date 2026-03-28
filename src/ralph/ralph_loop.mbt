@@ -97,16 +97,26 @@ pub fn RalphLoop::run(self : RalphLoop) -> Unit {
 }
 
 ///|
-/// Dry-run validates milestone loading/output without spawning planner, builder, or verifier.
+/// Dry-run runs the planner to populate tasks, but skips builder execution and verifier.
 fn RalphLoop::run_dry_run(self : RalphLoop) -> Unit {
   for milestone in self.milestone_manager.milestones {
     match milestone.status {
       @types.MilestoneStatus::Done | @types.MilestoneStatus::Failed(_) => ()
-      _ =>
-        emit_info(
-          self,
-          "Dry-run: validated milestone \{milestone.id}; skipping planner, execution, and verification",
-        )
+      _ => {
+        // dry-run でも planner によるタスク分割は実行。中間保存はスキップし末尾の1回に集約
+        let planned = self.ensure_milestone_tasks(milestone, persist=false)
+        if planned && milestone.status != @types.MilestoneStatus::Done {
+          emit_info(
+            self,
+            "Dry-run: milestone \{milestone.id} planned \{milestone.tasks.length()} tasks; skipping execution and verification",
+          )
+        } else if not(planned) {
+          emit_info(
+            self,
+            "Dry-run: milestone \{milestone.id} planning failed",
+          )
+        }
+      }
     }
   }
   self.save_milestones()
@@ -182,6 +192,7 @@ fn RalphLoop::run_milestone(
 fn RalphLoop::ensure_milestone_tasks(
   self : RalphLoop,
   milestone : @types.Milestone,
+  persist~ : Bool = true,
 ) -> Bool {
   if not(milestone.tasks.is_empty()) {
     return true
@@ -204,7 +215,9 @@ fn RalphLoop::ensure_milestone_tasks(
           match plan_result.status {
             Planned => {
               milestone.tasks = plan_result.tasks
-              self.save_milestones()
+              if persist {
+                self.save_milestones()
+              }
               true
             }
             AlreadyComplete => {
@@ -214,7 +227,9 @@ fn RalphLoop::ensure_milestone_tasks(
               )
               milestone.status = Done
               milestone.summary = "Marked complete by planner (already done)"
-              self.save_milestones()
+              if persist {
+                self.save_milestones()
+              }
               true
             }
             PlanFailed => {
@@ -223,7 +238,9 @@ fn RalphLoop::ensure_milestone_tasks(
                 "Planner failed to produce tasks for \{milestone.id}",
               )
               milestone.status = Failed("No tasks planned")
-              self.save_milestones()
+              if persist {
+                self.save_milestones()
+              }
               false
             }
           }
@@ -231,7 +248,9 @@ fn RalphLoop::ensure_milestone_tasks(
         None => {
           emit_info(self, "No backend found for planner")
           milestone.status = Failed("No planner backend")
-          self.save_milestones()
+          if persist {
+            self.save_milestones()
+          }
           false
         }
       }
