@@ -26,12 +26,12 @@ origin: whirlwind
 
 ## オーケストレーション概要
 
-0. **状態初期化** — PROCESSED_IDS, ALL_RESULTS を初期化
-1. **チケット収集・バッチ計画** — readyチケット取得、並列安全性分析、バッチ分割
-2. **チケット実行** — TDD（テスト先行）で各チケットを修正・実装
-3. **バッチオーケストレーション** — サブエージェント並列起動、worktreeマージ、コード品質改善、バッチ毎テスト
-4. **障害分離・バグ起票** — live失敗時のper-ticket isolation、P1でバグ起票
-5. **クローズ・最終レポート** — 全イテレーションの結果を集約、チケットクローズ
+0. **状態初期化**
+1. **チケット収集・バッチ計画**
+2. **チケット実行**
+3. **バッチオーケストレーション**
+4. **障害分離・バグ起票**
+5. **クローズ・最終レポート**
 
 **Phase 1〜4 は外部ループ（最大5回）で繰り返し、毎回 `bd ready` を再スキャンして新規チケットを拾う。**
 
@@ -50,6 +50,25 @@ origin: whirlwind
 - `DEFERRED_TICKETS = []` — needs-review 依存で延期されたチケットのリスト（各要素: チケットID、タイトル、重複ファイル、依存先 needs-review チケットID）
 
 引数を解析し、`PRIORITY_THRESHOLD`、`SEQUENTIAL`、`DRY_RUN`、`TYPE_FILTER` を設定する。
+
+**CLOSE_GUARD_PROCEDURE(tickets, reason)**:
+```
+┌─────────────────────────────────────────────────────────┐
+│ CLOSE GUARD — needs-review チケットは絶対にクローズしない │
+└─────────────────────────────────────────────────────────┘
+CLOSEABLE_IDS = []
+FOR ticket IN tickets:
+  IF "needs-review" IN ticket.LABELS:
+    // ██ DO NOT CLOSE ██
+    // ██ DO NOT CLOSE ██
+    // ██ DO NOT CLOSE ██
+    // needs-review チケットは PR マージ後に人間がクローズする
+    SKIP
+  ELSE:
+    CLOSEABLE_IDS.append(ticket.id)
+IF CLOSEABLE_IDS IS NOT EMPTY:
+  bd close <CLOSEABLE_IDS> --reason="<reason>"
+```
 
 ---
 
@@ -165,17 +184,11 @@ origin: whirlwind
    **対象チケット数**: N
    **モード**: 並列 / 直列
 
-   ### Batch 1 (並列)
-
-   | ID            | 優先度 | 種別 | ラベル        | タイトル |
-   | ------------- | ------ | ---- | ------------- | -------- |
-   | whirlwind-xxx | P1     | bug  | needs-review  | ...      |
+   ### Batch N (並列/直列)
+   | ID | 優先度 | 種別 | ラベル | タイトル |
 
    ### 延期 (needs-review 依存)
-
-   | ID            | タイトル | 重複ファイル       | 依存先 (needs-review) |
-   | ------------- | -------- | ------------------ | --------------------- |
-   | whirlwind-yyy | ...      | src/foo.mbt        | whirlwind-xxx         |
+   | ID | タイトル | 重複ファイル | 依存先 (needs-review) |
    ```
 
 10. `DRY_RUN=true` の場合:
@@ -188,24 +201,9 @@ origin: whirlwind
 
 各チケットは `references/ticket-execution-protocol.md` の手順に従って実行する。
 
-サブエージェントへのプロンプトには以下を含める:
+サブエージェントへのプロンプト: `references/ticket-execution-protocol.md` の全内容 + Phase 1 Step 6 で取得した全チケット情報（ID・タイトル・説明・AC・notes・design・comments）+ テストコマンド (`just test`, `just live`)
 
-- `references/ticket-execution-protocol.md` の全内容
-- 対象チケットID
-- チケットのタイトルと説明（`bd show` の出力）
-- acceptance_criteria（存在する場合）
-- notes（存在する場合）
-- design（存在する場合）
-- comments（存在する場合）
-- プロジェクトのテストコマンド: `just test`, `just live`
-
-サブエージェントは以下を返す:
-
-- 成功/失敗のステータス
-- commit hash（成功時）
-- 変更ファイル一覧
-- テスト結果の要約
-- エラー詳細（失敗時）
+サブエージェントの返却値: 成功/失敗ステータス、commit hash、変更ファイル一覧、テスト結果要約、エラー詳細（失敗時）
 
 ---
 
@@ -356,38 +354,13 @@ origin: whirlwind
 
 8. 全バッチ完了後:
    - 結果を `ALL_RESULTS` に追加
-   - **このイテレーションの成功チケットを即座にクローズ**:
-
-     ```
-     ┌─────────────────────────────────────────────────────────┐
-     │ CLOSE GUARD — needs-review チケットは絶対にクローズしない │
-     └─────────────────────────────────────────────────────────┘
-
-     CLOSEABLE_IDS = []
-
-     FOR ticket IN successful_tickets:
-       IF "needs-review" IN ticket.LABELS:
-         // ██ DO NOT CLOSE ██
-         // ██ DO NOT CLOSE ██
-         // ██ DO NOT CLOSE ██
-         // needs-review チケットは PR マージ後に人間がクローズする
-         SKIP
-       ELSE:
-         CLOSEABLE_IDS.append(ticket.id)
-
-     IF CLOSEABLE_IDS IS NOT EMPTY:
-       bd close <CLOSEABLE_IDS> --reason="Fixed in commit <hash>."
-     ```
-
-     依存先のチケットがunblockされ、次の再スキャンで拾えるようになる。
+   - **このイテレーションの成功チケットを即座にクローズ**: `CLOSE_GUARD_PROCEDURE(successful_tickets, "Fixed in commit <hash>.")` を実行。依存先のチケットがunblockされ、次の再スキャンで拾えるようになる。
    - 外部ループの次のイテレーションへ（Phase 1 に戻り `bd ready` を再スキャン）
    - サーキットブレーカー（`ITERATION >= 5`）到達時は Phase 5 へ
 
 ---
 
 ### Phase 4: 障害分離・バグ起票（バッチ `just live` 失敗時のみ）
-
-バッチの `just live` が失敗した場合にのみ実行する。
 
 1. **Per-ticket isolation**: バッチ内の各 commit を 1 つずつテスト:
    - バッチ内の全 commit を `git revert` で一旦戻す
@@ -420,28 +393,7 @@ origin: whirlwind
 
 1. **未クローズの成功チケットをクローズ**:
 
-   Phase 3 で既にクローズ済みのチケットをスキップし、残りの成功チケットに CLOSE GUARD を適用する:
-
-   ```
-   ┌─────────────────────────────────────────────────────────┐
-   │ CLOSE GUARD — needs-review チケットは絶対にクローズしない │
-   └─────────────────────────────────────────────────────────┘
-
-   CLOSEABLE_IDS = []
-
-   FOR ticket IN unclosed_successful_tickets:
-     IF "needs-review" IN ticket.LABELS:
-       // ██ DO NOT CLOSE ██
-       // ██ DO NOT CLOSE ██
-       // ██ DO NOT CLOSE ██
-       // needs-review チケットは PR マージ後に人間がクローズする
-       SKIP
-     ELSE:
-       CLOSEABLE_IDS.append(ticket.id)
-
-   IF CLOSEABLE_IDS IS NOT EMPTY:
-     bd close <CLOSEABLE_IDS> --reason="Fixed in commit <hash>. Regression test added."
-   ```
+   Phase 3 で既にクローズ済みのチケットをスキップし、`CLOSE_GUARD_PROCEDURE(unclosed_successful_tickets, "Fixed in commit <hash>. Regression test added.")` を実行する。
 
 2. **失敗チケットのノート追加**:
 
@@ -454,49 +406,16 @@ origin: whirlwind
    ```markdown
    ## bd-runner 実行レポート
 
-   **優先度閾値**: P<N>
-   **イテレーション**: <N> / 5
-   **処理チケット数**: <N>（全イテレーション合計）
+   **優先度閾値**: P<N> | **イテレーション**: <N>/5 | **処理チケット数**: <N>
 
-   ### 完了
-
-   | チケット | タイトル | Commit | テスト | イテレーション |
-   | -------- | -------- | ------ | ------ | -------------- |
-
-   ### 失敗
-
-   | チケット | タイトル | エラー | イテレーション |
-   | -------- | -------- | ------ | -------------- |
-
-   ### P4 降格（実行可能性不足）
-
-   | チケット | タイトル | 不足項目 | イテレーション |
-   | -------- | -------- | -------- | -------------- |
-
-   ### スキップ
-
-   | チケット | タイトル | 理由 | イテレーション |
-   | -------- | -------- | ---- | -------------- |
-
-   ### レビュー待ち (PR 作成済み)
-
-   | チケット | タイトル | PR URL | イテレーション |
-   | -------- | -------- | ------ | -------------- |
-
-   ### 延期 (needs-review 依存)
-
-   | チケット | タイトル | 重複ファイル | 依存先 (needs-review) |
-   | -------- | -------- | ------------ | --------------------- |
-
-   ### 新規起票バグ
-
-   | チケット | タイトル | 優先度 |
-   | -------- | -------- | ------ |
-
-   ### テスト結果
-
-   - `just test`: PASS / FAIL
-   - `just live`: PASS / FAIL
+   ### 完了 — チケット / タイトル / Commit / テスト / イテレーション
+   ### 失敗 — チケット / タイトル / エラー / イテレーション
+   ### P4 降格 — チケット / タイトル / 不足項目 / イテレーション
+   ### スキップ — チケット / タイトル / 理由 / イテレーション
+   ### レビュー待ち — チケット / タイトル / PR URL / イテレーション
+   ### 延期 (needs-review 依存) — チケット / タイトル / 重複ファイル / 依存先
+   ### 新規起票バグ — チケット / タイトル / 優先度
+   ### テスト結果 — `just test`: PASS/FAIL, `just live`: PASS/FAIL
    ```
 
 ---
