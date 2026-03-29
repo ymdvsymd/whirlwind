@@ -132,8 +132,15 @@ fn handle_event(
       rl.callbacks.emit(Info({ agent_id, message: msg }))
     }
     SessionId(sid) => {
-      let msg = "[Session] agent=\{agent_id} session_id=\{sid}"
-      rl.callbacks.emit(Info({ agent_id, message: msg }))
+      let already_seen = match rl.seen_sessions.get(agent_id) {
+        Some(prev) => prev == sid
+        None => false
+      }
+      if not(already_seen) {
+        rl.seen_sessions[agent_id] = sid
+        let msg = "[Session] agent=\{agent_id} session_id=\{sid}"
+        rl.callbacks.emit(Info({ agent_id, message: msg }))
+      }
     }
     ToolCall(..) => ()
     ToolResult(..) => ()

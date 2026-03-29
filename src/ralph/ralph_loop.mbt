@@ -12,6 +12,7 @@ pub struct RalphLoop {
   max_rework_attempts : Int
   max_in_flight : Int
   file_checker : (String) -> Bool
+  seen_sessions : Map[String, String]
 }
 
 ///|
@@ -50,6 +51,7 @@ pub fn RalphLoop::new(
     max_rework_attempts: config.max_rework_attempts,
     max_in_flight: safe_max_in_flight,
     file_checker,
+    seen_sessions: {},
   }
 }
 

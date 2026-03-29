@@ -76,6 +76,35 @@ test "handle_event emits Info for SessionId event" {
 }
 
 ///|
+test "handle_event deduplicates repeated SessionId events for same agent" {
+  let info_messages : Array[String] = []
+  let callbacks : @types.OrchestratorCallbacks = {
+    on_event: fn(e) {
+      match e {
+        Info(ev) => info_messages.push(ev.message)
+        _ => ()
+      }
+    },
+    on_save: fn() {  },
+  }
+  let rl = make_test_ralph_loop(callbacks)
+  // Same session ID sent 3 times for same agent
+  handle_event(rl, "agent-1", @types.AgentEvent::SessionId("sess-dup"))
+  handle_event(rl, "agent-1", @types.AgentEvent::SessionId("sess-dup"))
+  handle_event(rl, "agent-1", @types.AgentEvent::SessionId("sess-dup"))
+  let session_msgs = info_messages
+    .iter()
+    .filter(fn(m) { m.contains("[Session]") })
+    .collect()
+  assert_eq(
+    session_msgs.length(),
+    1,
+    msg="duplicate SessionId should be suppressed, got " +
+      session_msgs.length().to_string(),
+  )
+}
+
+///|
 test "handle_event still emits AgentOutput for OutputLine" {
   let output_lines : Array[String] = []
   let callbacks : @types.OrchestratorCallbacks = {
