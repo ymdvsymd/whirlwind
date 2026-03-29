@@ -145,7 +145,7 @@ pub fn VerifierAgent::verify(
           "[" + perspective.to_string() + "] Verification failed: " + err,
         ])
       Completed => self.parse_verdict(result.content)
-      _ =>
+      Idle | Running =>
         @types.VerifierVerdict::NeedsRework([
           "[" +
           perspective.to_string() +
