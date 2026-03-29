@@ -5,6 +5,7 @@ description: >
   readyチケットをTDDで実装し、並列実行・結合テスト・バグ起票・コミット・クローズまで一貫処理。
   "bd-runner", "チケット自動実行", "バグ一括修正", "ticket runner", "auto-fix", "チケット消化".
 argument-hint: priority:優先度閾値(P0-P3、デフォルトP3)
+origin: whirlwind
 ---
 
 # bd-runner: bd チケット自動実行オーケストレーター

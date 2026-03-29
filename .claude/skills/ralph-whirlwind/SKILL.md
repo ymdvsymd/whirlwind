@@ -5,6 +5,7 @@ description: >
   責務は起動コマンドの組み立てと監視のみ。
   "ralph", "plan file", "launch whirlwind", "whirlwind monitoring", "background launch", "計画ファイルから起動".
 argument-hint: plan_file:計画ファイルのパス
+origin: whirlwind
 ---
 
 # ralph-whirlwind: plan file から whirlwind 起動

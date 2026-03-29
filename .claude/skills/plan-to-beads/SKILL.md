@@ -5,6 +5,7 @@ description: >
   優先度・needs-reviewの自動検出とACバリデーション、依存関係の設定、サマリー表示を行う。
   "plan-to-beads", "計画チケット化", "plan tickets", "bd create from plan", "計画をチケットに".
 argument-hint: plan_name:計画ファイル名またはフルパス
+origin: whirlwind
 ---
 
 # plan-to-beads: 計画ファイルから bd チケット一括起票

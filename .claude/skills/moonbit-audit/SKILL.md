@@ -5,6 +5,7 @@ description: >
   規約違反を検出してリファクタリングチケットを起票する。バグ発見時はユーザー確認後に起票。
   "moonbit-audit", "MoonBitチェック", "コード規約チェック", "moonbit lint", "MoonBit audit".
 argument-hint: options:--priority=N --dry-run --module=name
+origin: whirlwind
 ---
 
 # moonbit-audit: MoonBit 規約チェック & チケット起票

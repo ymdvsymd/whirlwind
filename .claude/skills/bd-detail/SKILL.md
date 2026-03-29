@@ -5,6 +5,7 @@ description: >
   コードベースと技術ドキュメントを調査して修正対象ファイル・原因・修正方針を特定し、差分表示でユーザー確認後に更新。
   "bd-detail", "チケット精緻化", "チケット詳細化", "ticket detail", "ticket elaborate", "detail ticket".
 argument-hint: ticket_id:bdチケットID。複数指定可
+origin: whirlwind
 ---
 
 # bd-detail: bd チケット精緻化

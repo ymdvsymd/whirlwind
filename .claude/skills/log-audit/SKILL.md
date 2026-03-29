@@ -5,6 +5,7 @@ description: >
   最新の.runsログを自動検出、またはパス指定可。タイムライン構築→異常検出→レポート→チケット起票。
   "log-audit", "ログ分析", "バグ検出", "ログレビュー", "run分析", "audit log", "analyze log".
 argument-hint: log_path:whirlwind.logのパス（省略時は.runs/内の最新ログを自動検出）
+origin: whirlwind
 ---
 
 # log-audit
