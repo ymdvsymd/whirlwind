@@ -138,9 +138,37 @@ origin: whirlwind
 
 ---
 
-## Phase 5: チケット起票
+## Phase 5: 依存関係分析
 
-### 5-0. チケット品質ゲート
+`rules/bd-dependency-protocol.md` のプロトコルに従う。
+
+### 5-1. 既存チケットスキャン
+
+```bash
+bd list --status=open
+bd list --status=in_progress
+```
+
+既存チケットとの重複・依存を確認する。特に:
+- 同一ログ行番号を参照する既存 bug チケット → 重複候補
+- 同一コンポーネント（planner / builder / verifier）の既存チケット → 依存候補
+
+### 5-2. Intra-batch 依存の分析
+
+Phase 6 で起票する [BUG] と [PERF] チケット間の依存:
+- 同一 root cause から派生する [BUG] 同士 → root cause 修正チケットが先
+- [BUG] が修正されないと [PERF] 改善の効果が不明 → [BUG] が [PERF] をブロック
+- 同一コンポーネントの複数 [BUG] → 基盤寄りの修正が先
+
+分析結果を `DEPENDENCY_PLAN` に格納。
+
+`DRY_RUN=true` の場合、依存分析結果をレポートに含める。
+
+---
+
+## Phase 6: チケット起票
+
+### 6-0. チケット品質ゲート
 
 チケット起票前に、各検出事項を以下の 2 つのゲートで評価する。
 
@@ -179,10 +207,22 @@ how（description 内の修正方針）には、**分析対象ログを出力し
 
    ```markdown
    ### 起票済みチケット
-   | ID | タイトル | 優先度 | タイプ | AC |
-   |----|---------|--------|--------|-----|
-   | whirlwind-xxx | ... | P1 | bug | リグレッションテスト追加・パス |
+   | ID | タイトル | 優先度 | タイプ | AC | 依存 |
+   |----|---------|--------|--------|-----|------|
+   | whirlwind-xxx | ... | P1 | bug | リグレッションテスト追加・パス | |
    ```
+
+4. **依存関係の設定**:
+
+   `DEPENDENCY_PLAN` に基づいてユーザーに確認テーブルを表示する（`rules/bd-dependency-protocol.md` Step 4 形式）。
+
+   承認後:
+
+   ```bash
+   bd dep add <blocked-id> <blocking-id>
+   ```
+
+   依存関係がある場合、notes に依存先チケット ID と理由を記載する。
 
 ---
 
@@ -195,6 +235,7 @@ how（description 内の修正方針）には、**分析対象ログを出力し
 
 ## 関連スキル
 
+- **bd-detail** — チケット精緻化時の依存関係分析。log-audit で起票後に依存を見直す場合に使用する
 - **bd-runner** — log-audit の前段。bd-runner の実行ログを log-audit で分析する
 - **ralph-whirlwind** — whirlwind 実行後のログを log-audit で分析する
 - **plan-to-beads** — log-audit で検出したバグをチケット起票する際の実行チェーンの起点

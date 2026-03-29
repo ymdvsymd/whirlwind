@@ -41,4 +41,5 @@ just fmt       # MoonBit フォーマット
 | `rules/planning.md`           | 計画作成規約 — Plan mode 出力規約、ランタイムコード変更時は live 結合テスト必須             |
 | `rules/bd-workflow.md`        | bd チケット運用規約 — 計画のチケット登録、結合テストバグのチケット起票                      |
 | `rules/bd-ticket-quality.md`  | bd チケット品質基準 — description テンプレート、AC 要件、品質ゲート（P4 強制ルール）        |
+| `rules/bd-dependency-protocol.md` | bd 依存関係プロトコル — 既存チケットスキャン、重複検出、依存方向ヒューリスティクス      |
 | `rules/research.md`           | 技術調査規約 — ref MCP ツールの併用                                                        |
