@@ -85,3 +85,7 @@ just publish
 以下を表示:
 - 旧バージョン → 新バージョン
 - npm パッケージ URL: `https://www.npmjs.com/package/@ymdvsymd/whirlwind`
+
+## 関連スキル
+
+- **bd-runner** — リリース前にチケットを消化する際に使用。bd-runner 完了後に release を実行することがある

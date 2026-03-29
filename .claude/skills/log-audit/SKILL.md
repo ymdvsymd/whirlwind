@@ -191,3 +191,9 @@ how（description 内の修正方針）には、**分析対象ログを出力し
 - ログが空 or 不正な形式 → 「解析不可」としてエラー出力
 - `bd` コマンドが利用不可 → チケット起票をスキップし、レポートのみ出力
 - 異常が 0 件 → 「異常は検出されませんでした」と報告して正常終了
+
+## 関連スキル
+
+- **bd-runner** — log-audit の前段。bd-runner の実行ログを log-audit で分析する
+- **ralph-whirlwind** — whirlwind 実行後のログを log-audit で分析する
+- **plan-to-beads** — log-audit で検出したバグをチケット起票する際の実行チェーンの起点

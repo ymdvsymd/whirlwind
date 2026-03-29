@@ -427,3 +427,8 @@ let updated = { ...record, field: value }  // コンパイルエラー
 ```
 
 **覚えておくこと**: MoonBit は GC 管理なので所有権・ライフタイムの心配は不要。その代わり、型システム（Newtype、enum、トレイト）を最大限活用して安全性を確保する。
+
+## 関連スキル
+
+- **moonbit-testing** — テストパターンの参照。moonbit-patterns と併用して実装とテストの両面をカバーする
+- **moonbit-audit** — moonbit-patterns の規約に照合してコードベース全体をチェックし、違反をチケット起票する

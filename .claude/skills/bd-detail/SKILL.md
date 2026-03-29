@@ -420,3 +420,8 @@ bd show <ticket-id>
 | `--skip-codebase` で description も空 | title のみから生成、精度が低い旨を警告 |
 | 全フィールドが既に十分 | 「精緻化不要」と報告しスキップ |
 | コードベース検索で結果なし | title / 既存内容のみから生成、制限事項を notes に記載 |
+
+## 関連スキル
+
+- **bd-runner** — 精緻化したチケットを自動実行するオーケストレーター。bd-detail で品質を上げた後に bd-runner で消化する
+- **plan-to-beads** — 計画からチケットを一括起票。起票後に bd-detail で個別チケットを精緻化する

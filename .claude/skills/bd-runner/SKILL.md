@@ -442,3 +442,9 @@ argument-hint: priority:優先度閾値(P0-P3、デフォルトP3)
 | `needs-review` ラベル付きチケット成功      | main にマージせず PR 作成、チケットはクローズしない（レビュー待ち）                   |
 | `gh pr create` 失敗                        | エラーをノートに追加、チケットは失敗扱い（ブランチは残す）                             |
 | `git push` 失敗（PR 用ブランチ push）      | エラーをノートに追加、チケットは失敗扱い                                               |
+
+## 関連スキル
+
+- **bd-detail** — チケットの精緻化。bd-runner 実行前にチケット品質を上げるために使う
+- **plan-to-beads** — 計画からチケットを一括起票。plan-to-beads で起票したチケットを bd-runner で自動実行する
+- **log-audit** — bd-runner 実行後のログを分析し、バグやパフォーマンス問題を検出・チケット起票する
