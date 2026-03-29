@@ -21,5 +21,8 @@ settings.local.json
 .claude/eval/history.jsonl
 .claude/worktrees/
 
+# Skill eval workspaces
+sync-docs-workspace/
+
 # Beads / Dolt files (added by bd init)
 .beads-credential-key

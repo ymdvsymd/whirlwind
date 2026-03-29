@@ -123,29 +123,38 @@ XMLタグベース:
 
 依存: types, agent, config, prompts, util, json
 
-### 4.1 RalphLoop (ralph_loop.mbt)
+### 4.1 RalphLoop（4ファイル構成）
 
-状態マシン:
+`ralph_loop.mbt` は機能単位で4つのサブモジュールに分割されている:
+
+| ファイル | 行数 | 責務 |
+|---------|------|------|
+| ralph_loop.mbt | 279 | 状態マシン本体: `RalphLoop` struct, `new`, `run`, `run_milestone`, `ensure_milestone_tasks` |
+| ralph_loop_dag.mbt | 483 | DAG実行: `run_dag`, `run_with_retry`, `cascade_fail`, `is_server_error` |
+| ralph_loop_helpers.mbt | 334 | ヘルパー: プロンプト構築, `handle_event`, `emit_info`, ファイル競合検出 |
+| ralph_loop_verify.mbt | 298 | 検証: `verify_milestone`, `rework_milestone_tasks`, `is_infra_failure`, `resolve_perspectives` |
+
+**状態マシン** (ralph_loop.mbt):
 ```
 LoadingMilestones -> Planning(m_id) -> ExecutingDag(m_id)
   -> Verifying(m_id, attempt) -> (Reworking -> Verifying)*
   -> MilestoneComplete(m_id) -> AllComplete
 ```
 
-**DAGスケジューリング (v0.3.0):**
+**DAGスケジューリング** (ralph_loop_dag.mbt):
 
 `run_dag()` は Kahn's アルゴリズムでタスクの依存グラフをトポロジカルソートし、
 レイヤーごとにバッチ並列実行する（`--max-in-flight` で同時実行数を制御、デフォルト 3）。
 
-**サーキットブレーカー (v0.3.0):**
+**サーキットブレーカー** (ralph_loop_dag.mbt):
 
 - Builder の 5xx サーバーエラーに対するリトライ（`run_with_retry()`）
-- Verifier インフラ障害時の即時マイルストーン失敗判定
+- Verifier インフラ障害時の即時マイルストーン失敗判定（`is_infra_failure()`）
 - リワーク後に変更がない場合の連続検出（2回連続で強制承認）
 
-**フィードバックルーティング:**
+**フィードバックルーティング** (ralph_loop_verify.mbt):
 
-`rework_tasks()` はターゲット指定のフィードバック配信を実装:
+`rework_milestone_tasks()` はターゲット指定のフィードバック配信を実装:
 - `strip_task_feedback_prefix()`: タスクIDプレフィクス除去
 - フィードバック項目がタスクIDにマッチ → ターゲット指定モード
 - マッチなし → ブロードキャストモード（全Done タスクにフォールバック）

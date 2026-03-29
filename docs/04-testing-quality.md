@@ -2,43 +2,58 @@
 
 ## エグゼクティブサマリー
 
-- **テストファイル数**: 19 (MoonBit 13 + TypeScript 6)
-- **テストケース総数**: 362 (MoonBit 328 + Node.js 34)
+- **テストファイル数**: 34 (MoonBit 28 + TypeScript 6)
+- **テストケース総数**: 554 (MoonBit 516 + Node.js 38)
 - **品質スコア**: 8.5/10
-- **最終更新**: 2026-03-26 (v0.3.0)
+- **最終更新**: 2026-03-29 (v0.3.1)
 
 ---
 
 ## 1. テストファイル一覧
 
-### MoonBit テスト (13ファイル, ~5,438行)
+### MoonBit テスト (28ファイル, ~10,063行)
 
 | ファイル | 行数 | ケース数 | テスト対象 |
 |---------|------|---------|----------|
-| src/ralph/ralph_loop_test.mbt | 1,878 | 40 | 自律ループ, フィードバックルーティング, reworkプロンプト検証 |
-| src/agent/agent_test.mbt | 742 | 53 | MockBackend, イベント解析, OutputLineBuffer |
-| src/ralph/milestone_test.mbt | 502 | 23 | マイルストーン管理, JSON永続化 |
+| src/ralph/ralph_loop_dag_e2e_test.mbt | 795 | 12 | DAG E2Eテスト |
+| src/ralph/milestone_test.mbt | 798 | 34 | マイルストーン管理, JSON永続化 |
+| src/agent/agent_test.mbt | 788 | 55 | MockBackend, イベント解析, OutputLineBuffer |
+| src/ralph/ralph_loop_helpers_test.mbt | 773 | 28 | ヘルパー関数, イベント処理, ファイル競合検出 |
+| src/ralph/ralph_loop_regression_test.mbt | 768 | 13 | リグレッションテスト |
+| src/ralph/ralph_loop_verify_test.mbt | 737 | 15 | 検証, フィードバックルーティング, perspectives |
+| src/ralph/ralph_loop_dag_test.mbt | 704 | 7 | DAGスケジューリング, スコープエッジ |
+| src/cli/cli_test.mbt | 593 | 44 | CLI引数パース, フラグ解析 |
+| src/ralph/ralph_loop_test.mbt | 583 | 15 | 自律ループ状態マシン |
+| src/config/config_test.mbt | 407 | 28 | 設定パース, バリデーション |
 | src/cmd/helpers/helpers_test.mbt | 338 | 36 | ヘルパー関数 |
-| src/types/types_test.mbt | 327 | 23 | 型定義, enum to_string |
 | src/review/review_test.mbt | 318 | 25 | 3観点レビュー, 評決パース, 多言語, バックエンド障害伝播 |
-| src/ralph/verifier_test.mbt | 292 | 20 | 検証結果パース |
-| src/config/config_test.mbt | 289 | 21 | 設定パース, バリデーション |
-| src/cli/cli_test.mbt | 238 | 18 | CLI引数パース, フラグ解析 |
+| src/ralph/verifier_test.mbt | 299 | 20 | 検証結果パース |
+| src/ralph/dag_test.mbt | 253 | 16 | DAGグラフ, トポロジカルソート |
+| src/agent/parallel_test.mbt | 211 | 13 | 並列実行バックエンド |
+| src/types/types_test.mbt | 206 | 19 | 型定義, enum to_string |
 | src/util/util_test.mbt | 198 | 27 | 汎用ユーティリティ |
 | src/display/display_test.mbt | 196 | 30 | ツール表示, テキスト整形 |
-| src/ralph/planner_test.mbt | 66 | 4 | 計画生成, WAVEパース |
-| src/prompts/prompts_test.mbt | 54 | 8 | プロンプトテンプレート |
+| src/ralph/ralph_loop_wbtest.mbt | 165 | 5 | ホワイトボックステスト |
+| src/plan/converter_test.mbt | 160 | 7 | Plan→Milestone変換 |
+| src/cmd/app/main_test.mbt | 141 | 3 | エントリーポイント |
+| src/ralph/planner_test.mbt | 136 | 6 | 計画生成, WAVEパース |
+| src/prompts/prompts_test.mbt | 108 | 15 | プロンプトテンプレート |
+| src/plan/parser_test.mbt | 101 | 8 | Markdownパース |
+| src/plan/llm_classifier_test.mbt | 87 | 9 | LLM分類 |
+| src/agent/subprocess_test.mbt | 74 | 9 | サブプロセスバックエンド |
+| src/plan/naming_test.mbt | 73 | 9 | タスクID・マイルストーンID生成 |
+| src/plan/classifier_test.mbt | 53 | 8 | ヒューリスティック分類 |
 
-### TypeScript テスト (6ファイル, ~916行)
+### TypeScript テスト (6ファイル, ~1,019行)
 
 | ファイル | 行数 | ケース数 | テスト対象 |
 |---------|------|---------|----------|
-| sdk/claude-adapter.test.mjs | 369 | 5 | Claude Agent SDK アダプター |
-| sdk/agent-runner.test.mjs | 171 | 6 | アダプター実行フロー |
+| sdk/claude-adapter.test.mjs | 369 | 28 | Claude Agent SDK アダプター |
+| sdk/agent-runner.test.mjs | 171 | 9 | アダプター実行フロー |
+| sdk/runner-io.test.mjs | 167 | 10 | 共通I/Oユーティリティ |
 | sdk/codex-adapter.test.mjs | 160 | 5 | Codex SDK アダプター |
 | sdk/codex-normalizer.test.mjs | 135 | 11 | Codex->Claude正規化（全 normalizer 関数） |
-| sdk/runner-io.test.mjs | 64 | 6 | 共通I/Oユーティリティ |
-| sdk/shebang.test.mjs | 17 | 1 | shebang 行検証 |
+| sdk/shebang.test.mjs | 17 | 2 | shebang 行検証 |
 
 ---
 
@@ -166,8 +181,8 @@ struct EventCollector {
 
 ### バージョン情報
 
-- `moon.mod.json`: 0.3.0 (MoonBit パッケージ)
-- `package.json`: 0.3.0 (npm パッケージ: @ymdvsymd/whirlwind)
+- `moon.mod.json`: 0.3.1 (MoonBit パッケージ)
+- `package.json`: 0.3.1 (npm パッケージ: @ymdvsymd/whirlwind)
 
 ---
 

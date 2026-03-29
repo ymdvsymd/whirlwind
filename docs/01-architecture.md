@@ -5,7 +5,7 @@
 ### 1.1 全モジュール構成（11パッケージ）
 
 ```
-ymdvsymd/whirlwind (root)  ※ npm は @ymdvsymd/whirlwind v0.3.0
+ymdvsymd/whirlwind (root)  ※ npm は @ymdvsymd/whirlwind v0.3.1
   types          (基本型定義、no import)
   util           (-> json)
   config         (-> types, util, json)
@@ -245,7 +245,7 @@ ReviewAgent::review(task, backend)
 |---------|---------|
 | 新AgentKind | types.mbt + config.mbt + factory.mbt + 新Backend実装 |
 | 新レビュー観点 | ReviewPerspective enum + review.mbt |
-| 新Ralphフェーズ | RalphPhase enum + ralph_loop.mbt |
+| 新Ralphフェーズ | RalphPhase enum + ralph_loop*.mbt (4ファイル構成) |
 
 ---
 
