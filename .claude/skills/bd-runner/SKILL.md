@@ -231,18 +231,21 @@ origin: whirlwind
    git push -u origin <worktree-branch>
    ```
 
-   b. `gh pr create` で PR 作成:
+   b. `gh pr create` で PR 作成。**Phase 1 ステップ 6 で取得したチケット情報を使って body を構成する**:
+      - `<SUMMARY>`: チケットの description を 2-3 文で要約する（原因・修正内容・影響範囲）
+      - `<AC_SECTION>`: acceptance_criteria の各項目を `- [ ]` 箇条書きで記載する。存在しない場合は `## Acceptance Criteria` セクション自体を省略する
+
    ```bash
    gh pr create --head <worktree-branch> --title "<type>(<scope>): <title>" --body "$(cat <<'EOF'
    ## Summary
 
    Resolves <TICKET_ID>
 
-   <チケットの説明から要約>
+   <SUMMARY>
 
    ## Acceptance Criteria
 
-   <AC があれば記載>
+   <AC_SECTION>
 
    ## Test plan
 
