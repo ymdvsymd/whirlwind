@@ -24,6 +24,7 @@ jobs:
       - run: moon fmt --check
       - run: moon check --target js
       - run: npx prettier --check 'sdk/**/*.{mts,mjs}'
+      - run: just pack
       - run: just test
       - run: just mock
       - name: Check test coverage
