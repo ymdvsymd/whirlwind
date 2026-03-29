@@ -115,7 +115,11 @@ pub fn PlannerAgent::plan(
   let result = backend.run(prompt, system_prompt, on_event)
   let tasks = match result.status {
     Completed => self.parse_plan(result.content, milestone.id, mgr)
-    _ => []
+    Failed(err) => {
+      on_event(@types.AgentEvent::Info("Planner backend failed: " + err))
+      []
+    }
+    Idle | Running => []
   }
   if not(tasks.is_empty()) {
     return { tasks, raw_output: result.content, status: Planned }
@@ -134,7 +138,13 @@ pub fn PlannerAgent::plan(
   let retry_result = backend.run(prompt, system_prompt, on_event)
   let retry_tasks = match retry_result.status {
     Completed => self.parse_plan(retry_result.content, milestone.id, mgr)
-    _ => []
+    Failed(err) => {
+      on_event(
+        @types.AgentEvent::Info("Planner backend failed on retry: " + err),
+      )
+      []
+    }
+    Idle | Running => []
   }
   if not(retry_tasks.is_empty()) {
     return {

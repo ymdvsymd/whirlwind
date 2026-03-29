@@ -93,3 +93,44 @@ test "PlannerAgent::plan with mock backend" {
   assert_true(result.tasks.length() == 3)
   inspect(result.tasks[0].description, content="Create schema")
 }
+
+///|
+test "whirlwind-eae: PlannerAgent::plan emits Info event on Failed status" {
+  let planner = @ralph.PlannerAgent::new()
+  let mgr = @ralph.MilestoneManager::new()
+  let failing_backend = @agent.FailingMockBackend::new(
+    error_msg="backend crashed",
+  )
+  let backend = failing_backend.boxed()
+  let milestone : @types.Milestone = {
+    id: "m1",
+    goal: "Build auth",
+    status: @types.MilestoneStatus::Pending,
+    tasks: [],
+    summary: "",
+    perspectives: [],
+  }
+  let events : Array[@types.AgentEvent] = []
+  let result = planner.plan(milestone, backend, "", [], mgr, on_event=fn(e) {
+    events.push(e)
+  })
+  // Plan should fail (no tasks, not already-complete)
+  inspect(result.status, content="PlanFailed")
+  // Failed status must produce Info events containing the error message
+  let info_messages : Array[String] = []
+  for event in events {
+    match event {
+      Info(msg) => info_messages.push(msg)
+      _ => ()
+    }
+  }
+  // At least one Info event must mention the error from the Failed status
+  let has_error_info = info_messages
+    .iter()
+    .any(fn(msg) { msg.contains("backend crashed") })
+  assert_true(
+    has_error_info,
+    msg="Expected Info event with error message from Failed status, got: " +
+      info_messages.to_string(),
+  )
+}
