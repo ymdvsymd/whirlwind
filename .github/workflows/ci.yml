@@ -7,7 +7,7 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -17,24 +17,17 @@ jobs:
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
+      - name: Install just
+        run: brew install just
       - run: moon update
       - run: npm ci
       - run: moon fmt --check
       - run: moon check --target js
-      - name: Build CLI
-        run: |
-          moon build --target js src/cmd/app
-          mkdir -p bin
-          printf '\x23\x21/usr/bin/env node\n' > bin/whirlwind.js
-          cat _build/js/debug/build/cmd/app/app.js >> bin/whirlwind.js
-          sed -i "s/__VERSION__/$(node -p "require('./package.json').version")/" bin/whirlwind.js
-          chmod +x bin/whirlwind.js
-      - run: npm run build:sdk
       - run: npx prettier --check 'sdk/**/*.{mts,mjs}'
-      - run: node --test sdk/*.test.mjs
-      - run: moon test --target js
+      - run: just test
+      - run: just mock
       - name: Check test coverage
         run: |
+          npm run -s build:sdk
           node --test --experimental-test-coverage sdk/*.test.mjs 2>&1 | tee coverage-output.txt
-          # Extract and display coverage summary
           grep -E '(all files|line|branch|function)' coverage-output.txt || true
