@@ -1,4 +1,20 @@
 ///|
+/// Check if an error message indicates a server-side error (5xx) that should be retried
+pub fn is_server_error(err : String) -> Bool {
+  if err.is_empty() {
+    return false
+  }
+  err.contains("Internal server error") ||
+  err.contains("Bad gateway") ||
+  err.contains("Service unavailable") ||
+  err.contains("overloaded") ||
+  err.contains("529") ||
+  err.contains("500") ||
+  err.contains("502") ||
+  err.contains("503")
+}
+
+///|
 /// Run all milestone tasks as a DAG using Kahn's layer computation.
 ///
 /// Adds implicit edges (scope overlaps), computes layers,

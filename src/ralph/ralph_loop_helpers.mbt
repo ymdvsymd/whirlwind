@@ -242,11 +242,10 @@ extern "js" fn js_path_exists(path : String) -> String =
   #|  }
   #|}
 
-///| Extract changed file paths from builder output.
-
-///| Looks for a line matching "FILES_CHANGED: file1, file2, ..." and returns
-
 ///|
+/// Extract changed file paths from builder output.
+///
+/// Looks for a line matching "FILES_CHANGED: file1, file2, ..." and returns
 /// the list of trimmed file names.
 pub fn extract_changed_files(output : String) -> Array[String] {
   let files : Array[String] = []
@@ -271,11 +270,10 @@ pub fn extract_changed_files(output : String) -> Array[String] {
   files
 }
 
-///| Detect file conflicts between parallel tasks in a layer.
-
-///| Takes an array of (task, changed_files) pairs and returns an array of
-
 ///|
+/// Detect file conflicts between parallel tasks in a layer.
+///
+/// Takes an array of (task, changed_files) pairs and returns an array of
 /// (file_path, conflicting_task_ids) for files edited by multiple tasks.
 pub fn detect_file_conflicts(
   task_files : Array[(@types.RalphTask, Array[String])],
@@ -302,13 +300,10 @@ pub fn detect_file_conflicts(
   conflicts
 }
 
-///| Detect scope overlaps between planned tasks in a layer.
-
 ///|
-
-///| Takes an array of tasks and returns an array of
-
-///|
+/// Detect scope overlaps between planned tasks in a layer.
+///
+/// Takes an array of tasks and returns an array of
 /// (file_path, conflicting_task_ids) for scoped files claimed by multiple tasks.
 pub fn detect_scope_overlaps(
   tasks : Array[@types.RalphTask],

@@ -1,20 +1,4 @@
 ///|
-/// Check if an error message indicates a server-side error (5xx) that should be retried
-pub fn is_server_error(err : String) -> Bool {
-  if err.is_empty() {
-    return false
-  }
-  err.contains("Internal server error") ||
-  err.contains("Bad gateway") ||
-  err.contains("Service unavailable") ||
-  err.contains("overloaded") ||
-  err.contains("529") ||
-  err.contains("500") ||
-  err.contains("502") ||
-  err.contains("503")
-}
-
-///|
 /// Check if all NeedsRework items are from infrastructure failures
 /// (backend errors, not actual code review verdicts)
 pub fn is_infra_failure(items : Array[String]) -> Bool {
@@ -44,16 +28,19 @@ fn results_equal(
 ///|
 pub fn resolve_perspectives(
   names : Array[String],
-) -> Array[@prompts.Perspective] {
+) -> (Array[@prompts.Perspective], Array[String]) {
   let resolved : Array[@prompts.Perspective] = []
+  let warnings : Array[String] = []
   for name in names {
     match @prompts.parse_perspective(name) {
       Some(perspective) => resolved.push(perspective)
       None =>
-        println("[WARN] Ignoring invalid verification perspective: \{name}")
+        warnings.push(
+          "[WARN] Ignoring invalid verification perspective: \{name}",
+        )
     }
   }
-  if resolved.is_empty() {
+  let perspectives = if resolved.is_empty() {
     [
       @prompts.Perspective::CodeQuality,
       @prompts.Perspective::Performance,
@@ -63,6 +50,7 @@ pub fn resolve_perspectives(
   } else {
     resolved
   }
+  (perspectives, warnings)
 }
 
 ///|
@@ -96,7 +84,12 @@ fn RalphLoop::verify_milestone(
             )
             return true
           }
-          let perspectives = resolve_perspectives(milestone.perspectives)
+          let (perspectives, warnings) = resolve_perspectives(
+            milestone.perspectives,
+          )
+          for w in warnings {
+            emit_info(self, w)
+          }
           let verdict = verifier.verify(
             milestone,
             all_results,

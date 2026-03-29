@@ -28,22 +28,25 @@ fn make_ralph_config() -> @config.ProjectConfig {
 
 ///|
 test "resolve_perspectives filters invalid names" {
-  let perspectives = @ralph.resolve_perspectives([
+  let (perspectives, warnings) = @ralph.resolve_perspectives([
     "CodeQuality", "Nope", "GoalAlignment",
   ])
   assert_true(perspectives.length() == 2)
   inspect(perspectives[0], content="CodeQuality")
   inspect(perspectives[1], content="GoalAlignment")
+  assert_true(warnings.length() == 1)
+  assert_true(warnings[0].contains("Nope"))
 }
 
 ///|
 test "resolve_perspectives falls back to all four when empty" {
-  let perspectives = @ralph.resolve_perspectives([])
+  let (perspectives, warnings) = @ralph.resolve_perspectives([])
   assert_true(perspectives.length() == 4)
   inspect(perspectives[0], content="CodeQuality")
   inspect(perspectives[1], content="Performance")
   inspect(perspectives[2], content="Security")
   inspect(perspectives[3], content="GoalAlignment")
+  assert_true(warnings.is_empty())
 }
 
 ///|
