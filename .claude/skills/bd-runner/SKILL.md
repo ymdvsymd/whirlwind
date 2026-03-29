@@ -52,10 +52,11 @@ origin: whirlwind
 引数を解析し、`PRIORITY_THRESHOLD`、`SEQUENTIAL`、`DRY_RUN`、`TYPE_FILTER` を設定する。
 
 **CLOSE_GUARD_PROCEDURE(tickets, reason)**:
+
 ```
-┌─────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────┐
 │ CLOSE GUARD — needs-review チケットは絶対にクローズしない │
-└─────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────┘
 CLOSEABLE_IDS = []
 FOR ticket IN tickets:
   IF "needs-review" IN ticket.LABELS:
@@ -124,10 +125,10 @@ IF CLOSEABLE_IDS IS NOT EMPTY:
 
    各チケットを以下2つの基準で評価し、AIエージェントが自律実行できるか判定する:
 
-   | 基準 | 合格条件 |
-   |------|---------|
+   | 基準                | 合格条件                                                                                                           |
+   | ------------------- | ------------------------------------------------------------------------------------------------------------------ |
    | **How（実装手順）** | description に以下のいずれかが含まれる: 修正対象ファイル/モジュール名、修正方針/アプローチ、原因分析（bug の場合） |
-   | **AC（受入基準）** | acceptance_criteria フィールドが非空で、テストやコマンドで機械的に検証可能な条件が 1 つ以上ある |
+   | **AC（受入基準）**  | acceptance_criteria フィールドが非空で、テストやコマンドで機械的に検証可能な条件が 1 つ以上ある                    |
 
    **両方を満たさないチケットは P4 に降格して差し戻す**:
 
@@ -148,31 +149,31 @@ IF CLOSEABLE_IDS IS NOT EMPTY:
 
 8b. **needs-review ファイル重複検出**:
 
-   needs-review ラベル付きチケットと同一ファイルを変更する非 needs-review チケットを検出し、バッチから除外する。
-   needs-review チケットは main にマージされず PR として分離されるため、同一ファイルを変更する非 needs-review チケットが先に main にマージされると不整合が起きる。
+needs-review ラベル付きチケットと同一ファイルを変更する非 needs-review チケットを検出し、バッチから除外する。
+needs-review チケットは main にマージされず PR として分離されるため、同一ファイルを変更する非 needs-review チケットが先に main にマージされると不整合が起きる。
 
-   ```
-   NR_FILES = {}  // needs-review チケットの対象ファイルパス → チケットID のマップ
+```
+NR_FILES = {}  // needs-review チケットの対象ファイルパス → チケットID のマップ
 
-   FOR ticket IN batch_tickets:
-     IF "needs-review" IN ticket.LABELS:
-       FOR file IN ticket.target_files:
-         NR_FILES[file] = ticket.id
+FOR ticket IN batch_tickets:
+  IF "needs-review" IN ticket.LABELS:
+    FOR file IN ticket.target_files:
+      NR_FILES[file] = ticket.id
 
-   FOR ticket IN batch_tickets:
-     IF "needs-review" NOT IN ticket.LABELS:
-       overlap = ticket.target_files ∩ NR_FILES.keys()
-       IF overlap IS NOT EMPTY:
-         DEFERRED_TICKETS.append({
-           id: ticket.id,
-           title: ticket.title,
-           overlapping_files: overlap,
-           blocked_by: [NR_FILES[f] FOR f IN overlap]
-         })
-         // バッチから除外するが PROCESSED_IDS には追加しない
-         // → 次イテレーションで再スキャン対象になる
-         REMOVE ticket FROM batch_tickets
-   ```
+FOR ticket IN batch_tickets:
+  IF "needs-review" NOT IN ticket.LABELS:
+    overlap = ticket.target_files ∩ NR_FILES.keys()
+    IF overlap IS NOT EMPTY:
+      DEFERRED_TICKETS.append({
+        id: ticket.id,
+        title: ticket.title,
+        overlapping_files: overlap,
+        blocked_by: [NR_FILES[f] FOR f IN overlap]
+      })
+      // バッチから除外するが PROCESSED_IDS には追加しない
+      // → 次イテレーションで再スキャン対象になる
+      REMOVE ticket FROM batch_tickets
+```
 
 9. 実行計画を表示:
 
@@ -185,15 +186,18 @@ IF CLOSEABLE_IDS IS NOT EMPTY:
    **モード**: 並列 / 直列
 
    ### Batch N (並列/直列)
+
    | ID | 優先度 | 種別 | ラベル | タイトル |
 
    ### 延期 (needs-review 依存)
+
    | ID | タイトル | 重複ファイル | 依存先 (needs-review) |
    ```
 
 10. `DRY_RUN=true` の場合:
-   - 初回: 実行計画を表示して終了
-   - 再スキャン（`ITERATION >= 2`）: 「再スキャンで N 件の新規チケット発見」と表示して終了
+
+- 初回: 実行計画を表示して終了
+- 再スキャン（`ITERATION >= 2`）: 「再スキャンで N 件の新規チケット発見」と表示して終了
 
 ---
 
@@ -257,49 +261,51 @@ IF CLOSEABLE_IDS IS NOT EMPTY:
 
 4b. **PR 作成**（`needs-review` ラベル付きチケットのみ）:
 
-   バッチ内の `needs-review` ラベル付きチケットについて、worktree ブランチから PR を作成する:
+バッチ内の `needs-review` ラベル付きチケットについて、worktree ブランチから PR を作成する:
 
-   a. worktree ブランチを remote に push:
-   ```bash
-   git push -u origin <worktree-branch>
-   ```
+a. worktree ブランチを remote に push:
 
-   b. `gh pr create` で PR 作成。**Phase 1 ステップ 6 で取得したチケット情報を使って body を構成する**:
-      - `<SUMMARY>`: チケットの description を 2-3 文で要約する（原因・修正内容・影響範囲）
-      - `<AC_SECTION>`: acceptance_criteria の各項目を `- [ ]` 箇条書きで記載する。存在しない場合は `## Acceptance Criteria` セクション自体を省略する
+```bash
+git push -u origin <worktree-branch>
+```
 
-   ```bash
-   gh pr create --head <worktree-branch> --title "<type>(<scope>): <title>" --body "$(cat <<'EOF'
-   ## Summary
+b. `gh pr create` で PR 作成。**Phase 1 ステップ 6 で取得したチケット情報を使って body を構成する**: - `<SUMMARY>`: チケットの description を 2-3 文で要約する（原因・修正内容・影響範囲）- `<AC_SECTION>`: acceptance_criteria の各項目を `- [ ]` 箇条書きで記載する。存在しない場合は `## Acceptance Criteria` セクション自体を省略する
 
-   Resolves <TICKET_ID>
+```bash
+gh pr create --head <worktree-branch> --title "<type>(<scope>): <title>" --body "$(cat <<'EOF'
+## Summary
 
-   <SUMMARY>
+Resolves <TICKET_ID>
 
-   ## Acceptance Criteria
+<SUMMARY>
 
-   <AC_SECTION>
+## Acceptance Criteria
 
-   ## Test plan
+<AC_SECTION>
 
-   - [x] `just test` passed
-   - [ ] `just live` (reviewer should verify)
-   EOF
-   )"
-   ```
+## Test plan
 
-   c. チケットにノートとして PR URL を追加:
-   ```bash
-   bd update <id> --notes="PR created: <PR-URL>. Awaiting review."
-   ```
+- [x] `just test` passed
+- [ ] `just live` (reviewer should verify)
+EOF
+)"
+```
 
-   d. worktree をクリーンアップ（**ブランチは残す** — PR に必要）:
-   ```bash
-   git worktree remove --force <worktree-path>
-   ```
-   ※ `git branch -D` は実行しない
+c. チケットにノートとして PR URL を追加:
 
-   e. 結果を `PR_CREATED_TICKETS` リストに記録する（チケットID、PR URL、ブランチ名）
+```bash
+bd update <id> --notes="PR created: <PR-URL>. Awaiting review."
+```
+
+d. worktree をクリーンアップ（**ブランチは残す** — PR に必要）:
+
+```bash
+git worktree remove --force <worktree-path>
+```
+
+※ `git branch -D` は実行しない
+
+e. 結果を `PR_CREATED_TICKETS` リストに記録する（チケットID、PR URL、ブランチ名）
 
 5. **コード品質改善 (`/simplify`)**:
 
@@ -409,12 +415,19 @@ IF CLOSEABLE_IDS IS NOT EMPTY:
    **優先度閾値**: P<N> | **イテレーション**: <N>/5 | **処理チケット数**: <N>
 
    ### 完了 — チケット / タイトル / Commit / テスト / イテレーション
+
    ### 失敗 — チケット / タイトル / エラー / イテレーション
+
    ### P4 降格 — チケット / タイトル / 不足項目 / イテレーション
+
    ### スキップ — チケット / タイトル / 理由 / イテレーション
+
    ### レビュー待ち — チケット / タイトル / PR URL / イテレーション
+
    ### 延期 (needs-review 依存) — チケット / タイトル / 重複ファイル / 依存先
+
    ### 新規起票バグ — チケット / タイトル / 優先度
+
    ### テスト結果 — `just test`: PASS/FAIL, `just live`: PASS/FAIL
    ```
 
@@ -422,26 +435,26 @@ IF CLOSEABLE_IDS IS NOT EMPTY:
 
 ## エラーハンドリング
 
-| シナリオ                                   | アクション                                                                           |
-| ------------------------------------------ | ------------------------------------------------------------------------------------ |
-| チケットに how/AC が不足                   | P4 に降格、ノート追加、スキップ（`demoted` として記録）                               |
-| `bd ready` + `in_progress` が 0 件（初回） | 「対象チケットなし」で終了                                                           |
-| `in_progress` チケット発見                 | `RESUMED=true` フラグ付与、claim スキップ、`git checkout -- .` でクリーンスタート    |
-| 再スキャンで新規チケット 0 件              | ループ終了、Phase 5 へ                                                               |
-| チケットが実行前に closed/deferred/blocked | スキップ、`PROCESSED_IDS` に追加、次のチケットへ                                     |
-| `bd update --claim` 失敗                   | スキップ、次のチケットへ                                                             |
-| TDD テスト作成失敗                         | チケットを失敗マーク、unclaim、次へ                                                  |
-| 実装後 `just test` 失敗                    | 変更を revert、失敗マーク、次へ                                                      |
-| worktree マージ競合                        | 競合解決 → `just test` → 失敗なら revert + P1 バグ起票                               |
-| `/simplify` 後の `just test` 失敗          | `/simplify` コミットを revert し再テスト。それでも失敗なら既存のステップ6 失敗パスへ |
-| マージ後 `just test` 失敗（3回）           | バッチ変更を revert、P1 バグ起票、次バッチ続行                                       |
-| `just live` 失敗                           | Phase 4 で障害分離・バグ起票                                                         |
-| サーキットブレーカー発動（5回）            | 残バグ報告して Phase 5 へ                                                            |
-| サブエージェント タイムアウト              | 失敗扱い、ノート追加、次へ                                                           |
-| `needs-review` ラベル付きチケット成功      | main にマージせず PR 作成、チケットはクローズしない（レビュー待ち）                   |
+| シナリオ                                    | アクション                                                                                                |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| チケットに how/AC が不足                    | P4 に降格、ノート追加、スキップ（`demoted` として記録）                                                   |
+| `bd ready` + `in_progress` が 0 件（初回）  | 「対象チケットなし」で終了                                                                                |
+| `in_progress` チケット発見                  | `RESUMED=true` フラグ付与、claim スキップ、`git checkout -- .` でクリーンスタート                         |
+| 再スキャンで新規チケット 0 件               | ループ終了、Phase 5 へ                                                                                    |
+| チケットが実行前に closed/deferred/blocked  | スキップ、`PROCESSED_IDS` に追加、次のチケットへ                                                          |
+| `bd update --claim` 失敗                    | スキップ、次のチケットへ                                                                                  |
+| TDD テスト作成失敗                          | チケットを失敗マーク、unclaim、次へ                                                                       |
+| 実装後 `just test` 失敗                     | 変更を revert、失敗マーク、次へ                                                                           |
+| worktree マージ競合                         | 競合解決 → `just test` → 失敗なら revert + P1 バグ起票                                                    |
+| `/simplify` 後の `just test` 失敗           | `/simplify` コミットを revert し再テスト。それでも失敗なら既存のステップ6 失敗パスへ                      |
+| マージ後 `just test` 失敗（3回）            | バッチ変更を revert、P1 バグ起票、次バッチ続行                                                            |
+| `just live` 失敗                            | Phase 4 で障害分離・バグ起票                                                                              |
+| サーキットブレーカー発動（5回）             | 残バグ報告して Phase 5 へ                                                                                 |
+| サブエージェント タイムアウト               | 失敗扱い、ノート追加、次へ                                                                                |
+| `needs-review` ラベル付きチケット成功       | main にマージせず PR 作成、チケットはクローズしない（レビュー待ち）                                       |
 | needs-review とファイル重複する非NRチケット | `DEFERRED_TICKETS` に追加しバッチから除外。`PROCESSED_IDS` には追加しない（次イテレーションで再スキャン） |
-| `gh pr create` 失敗                        | エラーをノートに追加、チケットは失敗扱い（ブランチは残す）                             |
-| `git push` 失敗（PR 用ブランチ push）      | エラーをノートに追加、チケットは失敗扱い                                               |
+| `gh pr create` 失敗                         | エラーをノートに追加、チケットは失敗扱い（ブランチは残す）                                                |
+| `git push` 失敗（PR 用ブランチ push）       | エラーをノートに追加、チケットは失敗扱い                                                                  |
 
 ## 関連スキル
 
