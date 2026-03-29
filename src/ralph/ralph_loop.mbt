@@ -12,6 +12,7 @@ pub struct RalphLoop {
   max_rework_attempts : Int
   max_in_flight : Int
   file_checker : (String) -> Bool
+  seen_sessions : Map[String, String]
 }
 
 ///|
@@ -50,6 +51,7 @@ pub fn RalphLoop::new(
     max_rework_attempts: config.max_rework_attempts,
     max_in_flight: safe_max_in_flight,
     file_checker,
+    seen_sessions: {},
   }
 }
 
@@ -1181,7 +1183,26 @@ fn handle_event(
   match event {
     OutputLine(line) => rl.callbacks.emit(AgentOutput({ agent_id, line }))
     Info(msg) => rl.callbacks.emit(Info({ agent_id, message: msg }))
-    _ => ()
+    Usage(input_tokens~, output_tokens~, cache_read~, cache_write~, cost_usd~) => {
+      let msg = "[Usage] agent=\{agent_id} input=\{input_tokens} output=\{output_tokens} cache_read=\{cache_read} cache_write=\{cache_write} cost_usd=\{cost_usd}"
+      rl.callbacks.emit(Info({ agent_id, message: msg }))
+    }
+    SessionId(sid) => {
+      let already_seen = match rl.seen_sessions.get(agent_id) {
+        Some(prev) => prev == sid
+        None => false
+      }
+      if not(already_seen) {
+        rl.seen_sessions[agent_id] = sid
+        let msg = "[Session] agent=\{agent_id} session_id=\{sid}"
+        rl.callbacks.emit(Info({ agent_id, message: msg }))
+      }
+    }
+    ToolCall(..) => ()
+    ToolResult(..) => ()
+    SubAgentStart(..) => ()
+    SubAgentEnd(..) => ()
+    StatusChange(_) => ()
   }
 }
 

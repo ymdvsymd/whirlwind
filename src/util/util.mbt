@@ -173,6 +173,17 @@ pub fn json_escape(s : String) -> String {
 }
 
 ///|
+/// Check if needle matches haystack at position i
+fn is_match_at(h : Array[Char], n : Array[Char], i : Int) -> Bool {
+  for j = 0; j < n.length(); j = j + 1 {
+    if h[i + j] != n[j] {
+      return false
+    }
+  }
+  true
+}
+
+///|
 /// Find the first occurrence of needle in haystack
 pub fn find_substring(haystack : String, needle : String) -> Int {
   let h = haystack.to_array()
@@ -181,14 +192,7 @@ pub fn find_substring(haystack : String, needle : String) -> Int {
     return -1
   }
   for i = 0; i <= h.length() - n.length(); i = i + 1 {
-    let mut found = true
-    for j = 0; j < n.length(); j = j + 1 {
-      if h[i + j] != n[j] {
-        found = false
-        break
-      }
-    }
-    if found {
+    if is_match_at(h, n, i) {
       return i
     }
   }
@@ -208,14 +212,7 @@ pub fn find_substring_from(
     return -1
   }
   for i = from; i <= h.length() - n.length(); i = i + 1 {
-    let mut found = true
-    for j = 0; j < n.length(); j = j + 1 {
-      if h[i + j] != n[j] {
-        found = false
-        break
-      }
-    }
-    if found {
+    if is_match_at(h, n, i) {
       return i
     }
   }

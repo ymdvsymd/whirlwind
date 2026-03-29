@@ -30,7 +30,7 @@ jobs:
           sed -i "s/__VERSION__/$(node -p "require('./package.json').version")/" bin/whirlwind.js
           chmod +x bin/whirlwind.js
       - run: npm run build:sdk
-      - run: prettier --check 'sdk/**/*.{mts,mjs}'
+      - run: npx prettier --check 'sdk/**/*.{mts,mjs}'
       - run: node --test sdk/*.test.mjs
       - run: moon test --target js
       - name: Check test coverage
