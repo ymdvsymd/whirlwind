@@ -71,8 +71,8 @@ whirlwind [オプション...]
 | -------------------------- | -------------------------------------- | ------------------------------------------ |
 | `--config=<path>`          | 設定ファイルのパス                     | `whirlwind.json`（なければプリセット使用） |
 | `--planner=<kind>`         | Planner エージェントの種類を上書き     | `claude-code`                              |
-| `--builder=<kind>`         | Builder エージェントの種類を上書き     | `claude-code`                              |
-| `--verifier=<kind>`        | Verifier エージェントの種類を上書き    | `codex`                                    |
+| `--builder=<kind>`         | Builder エージェントの種類を上書き     | `codex`                                    |
+| `--verifier=<kind>`        | Verifier エージェントの種類を上書き    | `claude-code`                              |
 | `--planner-model=<model>`  | Planner モデルを上書き                 | `sonnet`                                   |
 | `--builder-model=<model>`  | Builder モデルを上書き                 | `sonnet`                                   |
 | `--verifier-model=<model>` | Verifier モデルを上書き                | `sonnet`                                   |
@@ -196,8 +196,8 @@ whirlwind --config=my-config.json --builder=codex --lang=ja
 | エージェント | ID         | Kind       | Role     |
 | ------------ | ---------- | ---------- | -------- |
 | Planner      | `planner`  | ClaudeCode | Planner  |
-| Builder      | `builder`  | ClaudeCode | Dev      |
-| Verifier     | `verifier` | Codex      | Verifier |
+| Builder      | `builder`  | Codex      | Dev      |
+| Verifier     | `verifier` | ClaudeCode | Verifier |
 
 その他のデフォルト: `max_rework_attempts`: 3
 
