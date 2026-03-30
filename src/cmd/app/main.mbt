@@ -85,8 +85,10 @@ fn print_usage() -> Unit {
   println("Options:")
   println("  --config=<path>         Config file path (default: preset)")
   println("  --planner=<kind>        Planner agent kind (default: claude-code)")
-  println("  --builder=<kind>        Builder agent kind (default: claude-code)")
-  println("  --verifier=<kind>       Verifier agent kind (default: codex)")
+  println("  --builder=<kind>        Builder agent kind (default: codex)")
+  println(
+    "  --verifier=<kind>       Verifier agent kind (default: claude-code)",
+  )
   println(
     "  --planner-model=<model>  Planner model (default: sonnet for claude-code)",
   )
